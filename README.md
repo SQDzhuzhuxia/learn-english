@@ -21,3 +21,21 @@ The first milestone is a Web/PWA product that turns daily English study into a g
 ## Current Direction
 
 Start with a Next.js Web/PWA app, use cloud sync for cross-device study, and keep the architecture ready for future mobile, desktop, local speech recognition, and local model support.
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+Local app: http://localhost:3000
+
+Quality checks:
+
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```

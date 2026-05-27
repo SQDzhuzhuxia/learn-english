@@ -10,6 +10,7 @@ out/
 .vercel/
 .turbo/
 coverage/
+*.tsbuildinfo
 
 # Local env
 .env
@@ -39,4 +40,3 @@ storage/
 uploads/
 recordings/
 transcripts/
-

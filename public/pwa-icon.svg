@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>Learn English</title>
+  <rect width="512" height="512" rx="96" fill="#0f766e"/>
+  <path fill="#ffffff" d="M128 132h166c49 0 90 40 90 90v158h-52V222c0-21-17-38-38-38H180v64h132v50H180v82h-52V132Z"/>
+  <path fill="#d9f3ee" d="M216 328h168v52H216z"/>
+</svg>

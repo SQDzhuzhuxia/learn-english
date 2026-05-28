@@ -43,6 +43,7 @@
 - 账号系统：Supabase Auth 或后续自建 Auth
 - 同步策略：本地数据先形成同步快照，后续按 key + hash 增量 upsert 到云端
 - 表结构草案：`docs/supabase-sync-schema-v0.1.sql`
+- 客户端配置：`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ### AI 接入
 

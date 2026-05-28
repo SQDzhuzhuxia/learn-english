@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Cloud, Database, Download, KeyRound, Upload } from "lucide-react";
+import { CloudSyncPanel } from "@/components/settings/cloud-sync-panel";
 import { settingsGroups } from "@/lib/mock-data";
 import {
   createLocalBackup,
@@ -107,6 +108,8 @@ export function SettingsClient() {
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
+        <CloudSyncPanel />
+
         <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">

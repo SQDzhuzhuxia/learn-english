@@ -514,10 +514,42 @@ export function PracticeClient() {
                   <p className="text-sm font-semibold text-emerald-800">{feedback.score}%</p>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-emerald-700">{feedback.tip}</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
+                    <p className="text-xs text-emerald-700">完整度</p>
+                    <p className="mt-1 text-sm font-semibold text-emerald-900">
+                      {feedback.matchedWords}/{feedback.totalWords}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
+                    <p className="text-xs text-emerald-700">疑似多出</p>
+                    <p className="mt-1 text-sm font-semibold text-emerald-900">
+                      {feedback.extraWords.length}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
+                    <p className="text-xs text-emerald-700">重点词</p>
+                    <p className="mt-1 text-sm font-semibold text-emerald-900">
+                      {feedback.focusWords.slice(0, 2).join(", ") || "继续保持"}
+                    </p>
+                  </div>
+                </div>
                 {feedback.missingWords.length > 0 ? (
                   <p className="mt-2 text-xs leading-5 text-emerald-700">
                     漏掉：{feedback.missingWords.join(", ")}
                   </p>
+                ) : null}
+                {feedback.extraWords.length > 0 ? (
+                  <p className="mt-2 text-xs leading-5 text-emerald-700">
+                    多出/误识别：{feedback.extraWords.join(", ")}
+                  </p>
+                ) : null}
+                {feedback.suggestions.length > 0 ? (
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-emerald-700">
+                    {feedback.suggestions.slice(0, 2).map((suggestion) => (
+                      <li key={suggestion}>{suggestion}</li>
+                    ))}
+                  </ul>
                 ) : null}
               </div>
             ) : null}

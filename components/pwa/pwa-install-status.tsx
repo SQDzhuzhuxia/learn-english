@@ -29,7 +29,9 @@ function isStandaloneDisplay() {
 
 export function PwaInstallStatus() {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
+  const [online, setOnline] = useState(() =>
+    typeof navigator === "undefined" || typeof navigator.onLine !== "boolean" ? true : navigator.onLine
+  );
   const [installed, setInstalled] = useState(() => isStandaloneDisplay());
   const [dismissed, setDismissed] = useState(false);
 

@@ -1,12 +1,4 @@
-import { Mic, PenLine, Repeat, UserRoundCheck } from "lucide-react";
 import { practiceModes } from "@/lib/mock-data";
-
-const icons = {
-  shadowing: Repeat,
-  retelling: Mic,
-  writing: PenLine,
-  roleplay: UserRoundCheck
-};
 
 export default function PracticePage() {
   return (
@@ -18,7 +10,7 @@ export default function PracticePage() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {practiceModes.map((mode) => {
-          const Icon = icons[mode.id];
+          const Icon = mode.icon;
 
           return (
             <article key={mode.id} className="rounded-lg border border-border bg-panel p-5 shadow-sm">

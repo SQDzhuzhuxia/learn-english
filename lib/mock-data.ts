@@ -1,0 +1,428 @@
+import {
+  BookOpenText,
+  BookmarkCheck,
+  ClipboardCheck,
+  Headphones,
+  Mic,
+  PenLine
+} from "lucide-react";
+
+export const dailyPlan = {
+  dateLabel: "2026-05-28",
+  title: "30 分钟美国生活英语输入训练",
+  focus:
+    "今天围绕“预约看医生”建立可理解输入：先听读，再逐句理解，最后跟读并保存真实可用表达。",
+  durationMinutes: 30,
+  completion: 38,
+  currentMaterial: {
+    title: "A Visit to the Doctor",
+    type: "美国生活",
+    level: "A1+",
+    progress: 42,
+    nextAction: "继续第 3 句精听"
+  },
+  steps: [
+    {
+      id: "warmup",
+      title: "复习唤醒",
+      description: "先复习昨天保存的 6 个词句，让今天的输入更容易听懂。",
+      minutes: 4,
+      icon: BookmarkCheck,
+      status: "done"
+    },
+    {
+      id: "input",
+      title: "听读输入",
+      description: "听读医生预约对话，目标是抓住大意，不追求每个词都懂。",
+      minutes: 12,
+      icon: Headphones,
+      status: "current"
+    },
+    {
+      id: "intensive",
+      title: "逐句精学",
+      description: "拆解 8 个高频句，标记认识、模糊、不认识。",
+      minutes: 8,
+      icon: BookOpenText,
+      status: "todo"
+    },
+    {
+      id: "output",
+      title: "跟读输出",
+      description: "录 5 个关键句，先追求说完整、说清楚。",
+      minutes: 6,
+      icon: Mic,
+      status: "todo"
+    }
+  ],
+  habits: [
+    {
+      label: "连续学习",
+      value: "3 天"
+    },
+    {
+      label: "今日剩余",
+      value: "18 分钟"
+    },
+    {
+      label: "输入占比",
+      value: "70%"
+    }
+  ]
+};
+
+export const studyQueue = [
+  {
+    id: "doctor-input",
+    label: "正在学",
+    title: "A Visit to the Doctor",
+    action: "继续精听",
+    href: "/study"
+  },
+  {
+    id: "review-due",
+    label: "到期",
+    title: "12 张词句卡",
+    action: "开始复习",
+    href: "/review"
+  },
+  {
+    id: "retell",
+    label: "输出",
+    title: "复述 4 句看医生表达",
+    action: "稍后练习",
+    href: "/practice"
+  }
+];
+
+export const materialFilters = ["全部", "合适", "美国生活", "职场", "自动化", "入籍", "用户导入"];
+
+export const materials = [
+  {
+    id: "doctor-visit",
+    title: "A Visit to the Doctor",
+    type: "美国生活",
+    level: "A1+",
+    minutes: 18,
+    status: "学习中",
+    progress: 42,
+    knownRate: 68,
+    inputType: "对话 + 音频",
+    priority: "今日推荐",
+    summary: "预约医生、说明症状、确认时间。适合初级阶段积累生活高频句。",
+    keyExpressions: ["make an appointment", "sore throat", "Do you have any openings?"]
+  },
+  {
+    id: "apartment-tour",
+    title: "Looking for an Apartment",
+    type: "租房",
+    level: "A1",
+    minutes: 15,
+    status: "未开始",
+    progress: 0,
+    knownRate: 74,
+    inputType: "故事 + 对话",
+    priority: "本周建议",
+    summary: "看房、询问租金、押金、交通和维修。",
+    keyExpressions: ["security deposit", "monthly rent", "Is it available?"]
+  },
+  {
+    id: "work-intro",
+    title: "Introducing My Work",
+    type: "职场",
+    level: "A2",
+    minutes: 20,
+    status: "未开始",
+    progress: 0,
+    knownRate: 51,
+    inputType: "短文 + 跟读",
+    priority: "稍难",
+    summary: "用简单英语介绍自动化背景、项目经验和工作职责。",
+    keyExpressions: ["automation engineer", "control system", "troubleshooting"]
+  },
+  {
+    id: "grocery-store",
+    title: "At the Grocery Store",
+    type: "日常",
+    level: "A1",
+    minutes: 12,
+    status: "未开始",
+    progress: 0,
+    knownRate: 81,
+    inputType: "对话",
+    priority: "轻松输入",
+    summary: "购物、询价、找商品、结账。",
+    keyExpressions: ["Where can I find", "checkout", "receipt"]
+  },
+  {
+    id: "n400-small-talk",
+    title: "N-400 Interview Warm-up",
+    type: "入籍",
+    level: "A2",
+    minutes: 16,
+    status: "未开始",
+    progress: 0,
+    knownRate: 46,
+    inputType: "问答",
+    priority: "长期目标",
+    summary: "姓名、地址、工作、家庭等基础问答。",
+    keyExpressions: ["current address", "employment history", "marital status"]
+  },
+  {
+    id: "plc-basic",
+    title: "Basic PLC Troubleshooting",
+    type: "自动化",
+    level: "A2",
+    minutes: 22,
+    status: "未开始",
+    progress: 0,
+    knownRate: 39,
+    inputType: "技术短文",
+    priority: "专业储备",
+    summary: "设备报警、传感器、输入输出、排查步骤。",
+    keyExpressions: ["fault alarm", "sensor signal", "input and output"]
+  }
+];
+
+export const studyMaterial = {
+  title: "A Visit to the Doctor",
+  subtitle: "美国生活场景 · 预约医生",
+  level: "A1+",
+  progress: 42,
+  currentSegment: 2,
+  totalSegments: 8,
+  knownWords: 68,
+  estimatedMinutesLeft: 11
+};
+
+export const studySegments = [
+  {
+    id: "s1",
+    order: 1,
+    text: "I have had a sore throat since yesterday.",
+    translation: "我从昨天开始嗓子疼。",
+    status: "done",
+    familiarity: "认识",
+    note: "现在完成时 + since 表示症状从过去持续到现在。"
+  },
+  {
+    id: "s2",
+    order: 2,
+    text: "I would like to make an appointment with a doctor.",
+    translation: "我想预约医生。",
+    status: "current",
+    familiarity: "重点",
+    note: "would like to 比 want to 更礼貌，适合电话或前台。"
+  },
+  {
+    id: "s3",
+    order: 3,
+    text: "Do you have any openings this afternoon?",
+    translation: "今天下午有空档吗？",
+    status: "todo",
+    familiarity: "模糊",
+    note: "opening 在预约场景里表示“可预约时间”。"
+  },
+  {
+    id: "s4",
+    order: 4,
+    text: "Could you please spell your last name?",
+    translation: "请拼一下你的姓好吗？",
+    status: "todo",
+    familiarity: "不认识",
+    note: "Could you please 是非常高频的礼貌请求句型。"
+  },
+  {
+    id: "s5",
+    order: 5,
+    text: "Please arrive fifteen minutes early to fill out the forms.",
+    translation: "请提前十五分钟到，填写表格。",
+    status: "todo",
+    familiarity: "模糊",
+    note: "fill out forms 是美国生活中非常常见的表达。"
+  }
+];
+
+export const aiExplanation = {
+  sentence: "I would like to make an appointment with a doctor.",
+  meaning: "这句话是在预约医生时说明你的需求，语气礼貌、自然，可以直接照着说。",
+  structure: [
+    "I would like to...：我想要...，比 I want to 更礼貌",
+    "make an appointment：预约",
+    "with a doctor：和医生，表示预约对象"
+  ],
+  expressions: [
+    {
+      text: "make an appointment",
+      meaning: "预约",
+      example: "I need to make an appointment for next week."
+    },
+    {
+      text: "I would like to...",
+      meaning: "我想要...",
+      example: "I would like to speak with a nurse."
+    }
+  ],
+  commonMistake: "不要直接说 I want see doctor。自然说法是 I would like to see a doctor 或 I need to see a doctor.",
+  shadowingTip: "把 would like 连起来读，像 /wud-laik/，不要每个词都停顿。"
+};
+
+export const reviewSummary = {
+  dueToday: 12,
+  newCards: 5,
+  expectedMinutes: 8,
+  completionRate: 0,
+  focus: "优先复习预约医生场景里的短语和句子。"
+};
+
+export const reviewCards = [
+  {
+    id: "r1",
+    front: "make an appointment",
+    back: "预约",
+    example: "I would like to make an appointment with a doctor.",
+    source: "A Visit to the Doctor",
+    cardType: "短语卡",
+    dueToday: true,
+    difficulty: "重点",
+    nextReview: "评分后安排"
+  },
+  {
+    id: "r2",
+    front: "sore throat",
+    back: "嗓子疼",
+    example: "I have had a sore throat since yesterday.",
+    source: "A Visit to the Doctor",
+    cardType: "词组卡",
+    dueToday: true,
+    difficulty: "简单",
+    nextReview: "评分后安排"
+  },
+  {
+    id: "r3",
+    front: "Could you please spell your last name?",
+    back: "请拼一下你的姓好吗？",
+    example: "Could you please spell your last name?",
+    source: "A Visit to the Doctor",
+    cardType: "句卡",
+    dueToday: true,
+    difficulty: "模糊",
+    nextReview: "评分后安排"
+  },
+  {
+    id: "r4",
+    front: "Do you have any openings this afternoon?",
+    back: "今天下午有空档吗？",
+    example: "Do you have any openings this afternoon?",
+    source: "A Visit to the Doctor",
+    cardType: "听力卡",
+    dueToday: false,
+    difficulty: "困难",
+    nextReview: "明天"
+  }
+];
+
+export const reviewRatings = [
+  {
+    id: "again",
+    label: "忘了",
+    next: "6 小时后",
+    tone: "border-rose-200 bg-rose-50 text-rose-700"
+  },
+  {
+    id: "hard",
+    label: "困难",
+    next: "明天",
+    tone: "border-amber-200 bg-amber-50 text-amber-700"
+  },
+  {
+    id: "good",
+    label: "一般",
+    next: "4 天后",
+    tone: "border-sky-200 bg-sky-50 text-sky-700"
+  },
+  {
+    id: "easy",
+    label: "简单",
+    next: "7 天后",
+    tone: "border-emerald-200 bg-emerald-50 text-emerald-700"
+  }
+];
+
+export const progressStats = [
+  {
+    label: "输入分钟",
+    value: "86",
+    hint: "本周听读"
+  },
+  {
+    label: "跟读次数",
+    value: "14",
+    hint: "句子级输出"
+  },
+  {
+    label: "掌握词句",
+    value: "42",
+    hint: "来自真实材料"
+  },
+  {
+    label: "完成复习",
+    value: "31",
+    hint: "到期卡片"
+  }
+];
+
+export const practiceModes = [
+  {
+    id: "shadowing",
+    title: "跟读",
+    description: "听一句、模仿一句、转写对比。",
+    icon: Mic
+  },
+  {
+    id: "retelling",
+    title: "复述",
+    description: "用简单英语讲回刚学过的内容。",
+    icon: ClipboardCheck
+  },
+  {
+    id: "writing",
+    title: "写作",
+    description: "练邮件、消息、自我介绍和工作表达。",
+    icon: PenLine
+  },
+  {
+    id: "roleplay",
+    title: "场景口语",
+    description: "围绕美国生活、职场和移民场景对话。",
+    icon: Headphones
+  }
+];
+
+export const scenarioMap = [
+  {
+    name: "看病预约",
+    status: "入门",
+    progress: 24
+  },
+  {
+    name: "租房沟通",
+    status: "未开始",
+    progress: 0
+  },
+  {
+    name: "面试自我介绍",
+    status: "学习中",
+    progress: 18
+  },
+  {
+    name: "自动化技术沟通",
+    status: "未开始",
+    progress: 0
+  },
+  {
+    name: "N-400 问答",
+    status: "未开始",
+    progress: 0
+  }
+];

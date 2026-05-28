@@ -1,134 +1,219 @@
+import Link from "next/link";
 import {
+  ArrowRight,
   BookOpenText,
   CalendarCheck,
   CheckCircle2,
   Clock3,
   Headphones,
-  Mic,
   Play,
-  RefreshCcw,
-  Sparkles
+  RefreshCcw
 } from "lucide-react";
-import { dailyPlan, progressStats, reviewCards } from "@/lib/mock-data";
+import { dailyPlan, progressStats, reviewCards, studyQueue } from "@/lib/mock-data";
 
 export default function TodayPage() {
   const dueCards = reviewCards.filter((card) => card.dueToday);
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
-      <section className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+      <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
         <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm font-medium text-accent">今日计划</p>
+              <p className="text-sm font-medium text-accent">{dailyPlan.dateLabel} · 今日计划</p>
               <h1 className="mt-2 text-2xl font-semibold text-foreground sm:text-3xl">
                 {dailyPlan.title}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-                {dailyPlan.focus}
-              </p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">{dailyPlan.focus}</p>
             </div>
-            <div className="flex shrink-0 items-center gap-2 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm font-medium text-foreground">
-              <Clock3 className="h-4 w-4 text-accent" />
-              {dailyPlan.durationMinutes} 分钟
+            <div className="flex w-full shrink-0 flex-col gap-2 rounded-lg border border-border bg-panel-strong p-3 lg:w-44">
+              <div className="flex items-center justify-between text-sm font-medium text-foreground">
+                <span>今日进度</span>
+                <span>{dailyPlan.completion}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-white">
+                <div
+                  className="h-2 rounded-full bg-accent"
+                  style={{ width: `${dailyPlan.completion}%` }}
+                />
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted">
+                <Clock3 className="h-3.5 w-3.5" />
+                {dailyPlan.durationMinutes} 分钟模式
+              </div>
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {dailyPlan.steps.map((step) => (
-              <article key={step.id} className="rounded-lg border border-border bg-white p-4">
+          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {dailyPlan.steps.map((step, index) => (
+              <article
+                key={step.id}
+                className={`rounded-lg border p-4 ${
+                  step.status === "current"
+                    ? "border-accent bg-accent-soft"
+                    : "border-border bg-white"
+                }`}
+              >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-accent shadow-sm">
                     <step.icon className="h-4 w-4" />
                   </div>
                   <span className="text-xs font-medium text-muted">{step.minutes} 分钟</span>
                 </div>
-                <h2 className="mt-4 text-base font-semibold text-foreground">{step.title}</h2>
+                <p className="mt-4 text-xs font-medium text-muted">Step {index + 1}</p>
+                <h2 className="mt-1 text-base font-semibold text-foreground">{step.title}</h2>
                 <p className="mt-2 text-sm leading-6 text-muted">{step.description}</p>
               </article>
             ))}
           </div>
 
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-strong">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/study"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-strong"
+            >
               <Play className="h-4 w-4" />
-              开始今日学习
-            </button>
-            <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-panel-strong">
+              继续今日学习
+            </Link>
+            <Link
+              href="/review"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-panel-strong"
+            >
               <RefreshCcw className="h-4 w-4 text-accent" />
-              调整为 60 分钟
-            </button>
+              先完成复习
+            </Link>
           </div>
         </div>
 
         <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">今日复习</h2>
-            <CalendarCheck className="h-5 w-5 text-accent" />
-          </div>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            {dueCards.length} 张词句卡到期，优先复习来自真实材料的句子。
-          </p>
-          <div className="mt-4 space-y-3">
-            {dueCards.map((card) => (
-              <div key={card.id} className="rounded-lg border border-border bg-white p-3">
-                <p className="text-sm font-medium text-foreground">{card.front}</p>
-                <p className="mt-1 text-xs text-muted">{card.source}</p>
-              </div>
-            ))}
-          </div>
-        </aside>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm lg:col-span-2">
-          <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-accent">当前材料</p>
               <h2 className="mt-2 text-xl font-semibold text-foreground">
-                A Visit to the Doctor
+                {dailyPlan.currentMaterial.title}
               </h2>
             </div>
             <BookOpenText className="h-5 w-5 text-accent" />
           </div>
-          <div className="mt-4 rounded-lg border border-border bg-panel-strong p-4">
-            <p className="text-base leading-8 text-foreground">
-              I have had a sore throat since yesterday, and I would like to make an appointment with a doctor.
-            </p>
-            <p className="mt-3 text-sm leading-6 text-muted">
-              从“预约看医生”开始积累美国生活高频表达，今天先掌握 appointment、sore throat、since yesterday。
-            </p>
+
+          <div className="mt-4 space-y-4">
+            <div>
+              <div className="flex items-center justify-between text-sm text-muted">
+                <span>{dailyPlan.currentMaterial.type} · {dailyPlan.currentMaterial.level}</span>
+                <span>{dailyPlan.currentMaterial.progress}%</span>
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-panel-strong">
+                <div
+                  className="h-2 rounded-full bg-accent"
+                  style={{ width: `${dailyPlan.currentMaterial.progress}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border bg-panel-strong p-4">
+              <p className="text-sm font-semibold text-foreground">
+                {dailyPlan.currentMaterial.nextAction}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                先把当前句听懂、读顺，再保存 appointment 相关表达。
+              </p>
+            </div>
+
+            <Link
+              href="/study"
+              className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
+            >
+              进入学习器
+              <ArrowRight className="h-4 w-4 text-accent" />
+            </Link>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground hover:bg-panel-strong">
-              <Headphones className="h-4 w-4 text-accent" />
-              精听
-            </button>
-            <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground hover:bg-panel-strong">
-              <Mic className="h-4 w-4 text-accent" />
-              跟读
-            </button>
-            <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground hover:bg-panel-strong">
-              <Sparkles className="h-4 w-4 text-accent" />
-              AI 解释
-            </button>
+        </aside>
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-accent">今日队列</p>
+              <h2 className="mt-2 text-lg font-semibold text-foreground">下一步做什么</h2>
+            </div>
+            <Headphones className="h-5 w-5 text-accent" />
+          </div>
+          <div className="mt-4 divide-y divide-border rounded-lg border border-border bg-white">
+            {studyQueue.map((item) => (
+              <Link
+                href={item.href}
+                key={item.id}
+                className="flex items-center justify-between gap-4 p-4 transition hover:bg-panel-strong"
+              >
+                <div>
+                  <p className="text-xs font-medium text-accent">{item.label}</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{item.title}</p>
+                </div>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-muted">
+                  {item.action}
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
 
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">本周进度</h2>
-            <CheckCircle2 className="h-5 w-5 text-accent" />
+        <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+          <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">今日复习</h2>
+              <CalendarCheck className="h-5 w-5 text-accent" />
+            </div>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {dueCards.length} 张词句卡到期，优先复习来自真实材料的句子。
+            </p>
+            <div className="mt-4 space-y-2">
+              {dueCards.slice(0, 3).map((card) => (
+                <div key={card.id} className="rounded-lg border border-border bg-white p-3">
+                  <p className="text-sm font-medium text-foreground">{card.front}</p>
+                  <p className="mt-1 text-xs text-muted">{card.cardType} · {card.difficulty}</p>
+                </div>
+              ))}
+            </div>
+          </aside>
+
+          <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">本周进度</h2>
+              <CheckCircle2 className="h-5 w-5 text-accent" />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {progressStats.map((stat) => (
+                <div key={stat.label} className="rounded-lg border border-border bg-white p-3">
+                  <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
+                  <p className="mt-1 text-xs font-medium text-muted">{stat.label}</p>
+                  <p className="mt-1 text-xs text-muted">{stat.hint}</p>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-medium text-accent">学习原则</p>
+            <h2 className="mt-2 text-lg font-semibold text-foreground">今天只需要跟着流程走</h2>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {progressStats.map((stat) => (
-              <div key={stat.label} className="rounded-lg border border-border bg-white p-3">
-                <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
-                <p className="mt-1 text-xs text-muted">{stat.label}</p>
+          <div className="grid gap-2 text-sm text-muted sm:grid-cols-3">
+            {dailyPlan.habits.map((habit) => (
+              <div key={habit.label} className="rounded-lg border border-border bg-white px-3 py-2">
+                <p className="font-semibold text-foreground">{habit.value}</p>
+                <p className="mt-1 text-xs">{habit.label}</p>
               </div>
             ))}
           </div>
         </div>
+        <p className="mt-4 text-sm leading-6 text-muted">
+          初级阶段不靠硬聊推进，先让听读输入变得可理解；输出只做跟读、复述和短句表达，所有不会的内容进入复习。
+        </p>
       </section>
     </main>
   );

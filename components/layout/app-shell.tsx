@@ -104,8 +104,24 @@ export function AppShell({ children }: { children: ReactNode }) {
               <p className="text-xs font-medium text-muted">美国工作 · 生活 · 移民</p>
               <p className="text-sm font-semibold text-foreground">今日输入驱动训练</p>
             </div>
-            <div className="hidden items-center gap-2 rounded-lg border border-border bg-panel-strong px-3 py-2 text-xs font-medium text-muted sm:flex">
-              30-60 min
+            <div className="flex items-center gap-2">
+              <Link
+                href="/progress"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white text-muted hover:bg-panel-strong hover:text-foreground lg:hidden"
+                aria-label="进度"
+              >
+                <ChartNoAxesColumnIncreasing className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/settings"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white text-muted hover:bg-panel-strong hover:text-foreground lg:hidden"
+                aria-label="设置"
+              >
+                <Settings className="h-4 w-4" />
+              </Link>
+              <div className="hidden items-center gap-2 rounded-lg border border-border bg-panel-strong px-3 py-2 text-xs font-medium text-muted sm:flex">
+                30-60 min
+              </div>
             </div>
           </div>
         </header>

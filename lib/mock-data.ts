@@ -1,10 +1,15 @@
 import {
   BookOpenText,
   BookmarkCheck,
+  Bot,
   ClipboardCheck,
+  Cloud,
   Headphones,
   Mic,
-  PenLine
+  PenLine,
+  ShieldCheck,
+  SlidersHorizontal,
+  WifiOff
 } from "lucide-react";
 
 export const dailyPlan = {
@@ -377,25 +382,108 @@ export const practiceModes = [
     id: "shadowing",
     title: "跟读",
     description: "听一句、模仿一句、转写对比。",
-    icon: Mic
+    icon: Mic,
+    todayTask: "跟读 5 个预约医生关键句",
+    estimatedMinutes: 6,
+    status: "今日任务",
+    output: "录音 + 转写"
   },
   {
     id: "retelling",
     title: "复述",
     description: "用简单英语讲回刚学过的内容。",
-    icon: ClipboardCheck
+    icon: ClipboardCheck,
+    todayTask: "复述看医生对话大意",
+    estimatedMinutes: 5,
+    status: "建议",
+    output: "英文短句"
   },
   {
     id: "writing",
     title: "写作",
     description: "练邮件、消息、自我介绍和工作表达。",
-    icon: PenLine
+    icon: PenLine,
+    todayTask: "写一句预约医生短信",
+    estimatedMinutes: 4,
+    status: "轻量",
+    output: "AI 修改"
   },
   {
     id: "roleplay",
     title: "场景口语",
     description: "围绕美国生活、职场和移民场景对话。",
-    icon: Headphones
+    icon: Headphones,
+    todayTask: "前台预约角色扮演",
+    estimatedMinutes: 8,
+    status: "稍后",
+    output: "对话记录"
+  }
+];
+
+export const todayPractice = {
+  title: "跟读：预约医生 5 句",
+  material: "A Visit to the Doctor",
+  target: "能把 I would like to make an appointment 说完整、说清楚。",
+  steps: [
+    "先听原句 2 遍",
+    "慢速跟读 3 遍",
+    "录音 1 遍",
+    "看转写结果，保存错误表达"
+  ],
+  prompt: "I would like to make an appointment with a doctor."
+};
+
+export const writingPrompts = [
+  {
+    title: "预约短信",
+    prompt: "用英文写一句：我想预约医生，我从昨天开始嗓子疼。",
+    level: "A1+"
+  },
+  {
+    title: "工作自我介绍",
+    prompt: "用两句英文介绍：我是自动化专业，做过控制系统相关工作。",
+    level: "A2"
+  },
+  {
+    title: "生活消息",
+    prompt: "用英文问：今天下午有空档吗？",
+    level: "A1"
+  }
+];
+
+export const learningBalance = [
+  {
+    label: "听读输入",
+    value: 70,
+    minutes: 86
+  },
+  {
+    label: "输出练习",
+    value: 18,
+    minutes: 22
+  },
+  {
+    label: "复习巩固",
+    value: 12,
+    minutes: 15
+  }
+];
+
+export const weaknessInsights = [
+  {
+    title: "听力启动慢",
+    detail: "预约类句子第一遍容易漏掉 would like to 和 openings。",
+    action: "继续做逐句循环和慢速跟读。"
+  },
+  {
+    title: "中式表达",
+    detail: "容易说 I want see doctor。",
+    action: "把 I would like to... 作为固定句型复习。"
+  },
+  {
+    title: "词汇缺口",
+    detail: "appointment、opening、fill out 需要放进高频复习。",
+    action: "优先复习真实句子，不单独背词。"
   }
 ];
 
@@ -424,5 +512,101 @@ export const scenarioMap = [
     name: "N-400 问答",
     status: "未开始",
     progress: 0
+  }
+];
+
+export const weeklyTimeline = [
+  {
+    day: "周一",
+    input: 18,
+    output: 4,
+    review: 5
+  },
+  {
+    day: "周二",
+    input: 22,
+    output: 6,
+    review: 6
+  },
+  {
+    day: "周三",
+    input: 16,
+    output: 5,
+    review: 7
+  },
+  {
+    day: "周四",
+    input: 30,
+    output: 7,
+    review: 8
+  }
+];
+
+export const settingsGroups = [
+  {
+    title: "学习目标",
+    description: "控制每日节奏、英语方向和界面语言。",
+    items: [
+      {
+        icon: SlidersHorizontal,
+        label: "每日目标",
+        value: "30-60 分钟",
+        detail: "默认 30 分钟，周末可切换 60 分钟。"
+      },
+      {
+        icon: BookOpenText,
+        label: "目标英语",
+        value: "美式英语",
+        detail: "材料、发音、生活场景优先按美国方向组织。"
+      },
+      {
+        icon: ClipboardCheck,
+        label: "界面语言",
+        value: "中文为主",
+        detail: "关键表达中英混合，后续逐步增加英文比例。"
+      }
+    ]
+  },
+  {
+    title: "AI 和语音",
+    description: "后续统一管理模型供应商、API Key 和语音识别。",
+    items: [
+      {
+        icon: Bot,
+        label: "AI 供应商",
+        value: "待配置",
+        detail: "预留 OpenAI、Claude、Gemini、DeepSeek、通义、豆包和本地模型。"
+      },
+      {
+        icon: Mic,
+        label: "语音识别",
+        value: "云端优先",
+        detail: "先接云端 STT，后续支持 Whisper/whisper.cpp 离线。"
+      },
+      {
+        icon: ShieldCheck,
+        label: "密钥安全",
+        value: "服务端代理",
+        detail: "API Key 不放到前端，不提交 .env。"
+      }
+    ]
+  },
+  {
+    title: "同步和离线",
+    description: "服务多地点学习：办公室、家里、手机浏览器。",
+    items: [
+      {
+        icon: Cloud,
+        label: "云同步",
+        value: "v0.5 接入",
+        detail: "账号、材料、词句、复习记录后续同步到云数据库。"
+      },
+      {
+        icon: WifiOff,
+        label: "离线学习",
+        value: "后续增强",
+        detail: "先缓存页面和材料，再逐步支持本地语音和模型。"
+      }
+    ]
   }
 ];

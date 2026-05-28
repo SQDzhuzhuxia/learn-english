@@ -196,6 +196,24 @@ function createReviewCardId(materialId: string, segmentId: string) {
   return `card-${materialId}-${segmentId}`;
 }
 
+function createStableTextHash(text: string) {
+  let hash = 0;
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
+  }
+
+  return hash.toString(36);
+}
+
+function createExpressionLearningItemId(materialId: string, segmentId: string, expressionText: string) {
+  return `item-${materialId}-${segmentId}-expr-${createStableTextHash(expressionText.toLowerCase())}`;
+}
+
+function createExpressionReviewCardId(materialId: string, segmentId: string, expressionText: string) {
+  return `card-${materialId}-${segmentId}-expr-${createStableTextHash(expressionText.toLowerCase())}`;
+}
+
 export function saveSegmentAsReviewCard(material: StudyMaterialRecord, segment: MaterialSegment) {
   const items = loadLearningItems();
   const cards = loadReviewCards();
@@ -243,6 +261,105 @@ export function saveSegmentAsReviewCard(material: StudyMaterialRecord, segment: 
   };
 
   saveLearningItems([item, ...items]);
+  saveReviewCards([card, ...cards]);
+
+  return {
+    item,
+    card,
+    created: true
+  };
+}
+
+export type SaveExpressionInput = {
+  text: string;
+  meaningZh?: string;
+  example?: string;
+};
+
+export function saveExpressionAsReviewCard(
+  material: StudyMaterialRecord,
+  segment: MaterialSegment,
+  expression: SaveExpressionInput
+) {
+  const items = loadLearningItems();
+  const cards = loadReviewCards();
+  const expressionText = expression.text.trim();
+  const meaningZh = expression.meaningZh?.trim() || "待 AI 解释";
+  const example = expression.example?.trim() || segment.text;
+
+  if (!expressionText) {
+    return {
+      item: undefined,
+      card: undefined,
+      created: false
+    };
+  }
+
+  const existingItem = items.find(
+    (item) =>
+      item.sourceMaterialId === material.id &&
+      item.sourceSegmentId === segment.id &&
+      item.text.trim().toLowerCase() === expressionText.toLowerCase() &&
+      item.status !== "archived"
+  );
+  const existingLinkedCard = existingItem
+    ? cards.find((card) => card.learningItemId === existingItem.id)
+    : undefined;
+
+  if (existingItem && existingLinkedCard) {
+    return {
+      item: existingItem,
+      card: existingLinkedCard,
+      created: false
+    };
+  }
+
+  const learningItemId =
+    existingItem?.id ?? createExpressionLearningItemId(material.id, segment.id, expressionText);
+  const reviewCardId = createExpressionReviewCardId(material.id, segment.id, expressionText);
+  const timestamp = nowIso();
+  const existingCard = cards.find((card) => card.id === reviewCardId);
+
+  if (existingCard) {
+    return {
+      item: items.find((item) => item.id === learningItemId),
+      card: existingCard,
+      created: false
+    };
+  }
+
+  const item: LearningItemRecord =
+    existingItem ?? {
+      id: learningItemId,
+      type: expressionText.includes(" ") ? "phrase" : "word",
+      text: expressionText,
+      meaningZh,
+      sourceMaterialId: material.id,
+      sourceMaterialTitle: material.title,
+      sourceSegmentId: segment.id,
+      contextText: example,
+      status: "active",
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+  const card: ReviewCardRecord = {
+    id: reviewCardId,
+    learningItemId,
+    cardType: "recognition",
+    front: expressionText,
+    back: meaningZh,
+    example,
+    source: material.title,
+    dueAt: timestamp,
+    intervalDays: 0,
+    ease: 2.5,
+    status: "new",
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+
+  saveLearningItems(existingItem ? items : [item, ...items]);
   saveReviewCards([card, ...cards]);
 
   return {

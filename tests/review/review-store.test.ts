@@ -6,8 +6,10 @@ import {
   loadLearningItems,
   loadReviewCards,
   restoreLearningItem,
+  saveExpressionAsReviewCard,
   updateLearningItem
 } from "@/lib/review/review-store";
+import { getSeedMaterials } from "@/lib/content/material-store";
 import type { ReviewCardRecord } from "@/lib/review/types";
 
 function setupLocalStorage() {
@@ -111,5 +113,30 @@ describe("learning item management", () => {
     expect(result.deletedCards).toBe(1);
     expect(loadLearningItems().some((record) => record.id === "seed-item-spell-name")).toBe(false);
     expect(loadReviewCards().some((record) => record.learningItemId === "seed-item-spell-name")).toBe(false);
+  });
+
+  it("saves an expression as a review card without duplicates", () => {
+    const material = getSeedMaterials()[0];
+    const segment = material.segments[2];
+
+    const first = saveExpressionAsReviewCard(material, segment, {
+      text: "openings",
+      meaningZh: "可预约的空档",
+      example: segment.text
+    });
+    const second = saveExpressionAsReviewCard(material, segment, {
+      text: "openings",
+      meaningZh: "可预约的空档",
+      example: segment.text
+    });
+
+    const savedItems = loadLearningItems().filter((item) => item.text === "openings");
+    const savedCards = loadReviewCards().filter((card) => card.learningItemId === first.item?.id);
+
+    expect(first.created).toBe(true);
+    expect(second.created).toBe(false);
+    expect(savedItems).toHaveLength(1);
+    expect(savedItems[0]?.type).toBe("word");
+    expect(savedCards).toHaveLength(1);
   });
 });

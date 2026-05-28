@@ -6,9 +6,12 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "English",
     description: "Personal AI English immersion app.",
     start_url: "/",
+    scope: "/",
     display: "standalone",
+    orientation: "portrait",
     background_color: "#f8fafc",
     theme_color: "#0f766e",
+    categories: ["education", "productivity"],
     icons: [
       {
         src: "/pwa-icon.svg",

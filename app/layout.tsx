@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AppShell } from "@/components/layout/app-shell";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
+        <ServiceWorkerRegister />
         <AppShell>{children}</AppShell>
       </body>
     </html>

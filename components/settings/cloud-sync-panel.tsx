@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Cloud, LogOut, Mail, RefreshCw, UploadCloud } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
-import { downloadSyncRecords, uploadSyncSnapshot } from "@/lib/sync/cloud-sync";
+import { compareSyncHashes, downloadSyncRecords, uploadSyncSnapshot } from "@/lib/sync/cloud-sync";
 import type { CloudSyncClient } from "@/lib/sync/cloud-sync";
 import { createLocalSyncSnapshot, restoreSyncRecords } from "@/lib/sync/local-backup";
+import { summarizeSyncSnapshot } from "@/lib/sync/sync-snapshot";
 
 export function CloudSyncPanel() {
   const config = useMemo(() => getSupabasePublicConfig(), []);
@@ -119,9 +120,13 @@ export function CloudSyncPanel() {
     }
 
     try {
+      const localSnapshot = createLocalSyncSnapshot("browser");
       const result = await downloadSyncRecords(supabase as unknown as CloudSyncClient, data.user.id);
+      const comparison = compareSyncHashes(summarizeSyncSnapshot(localSnapshot).hashes, result.hashes);
       const restoredCount = restoreSyncRecords(result.records);
-      setMessage(`已拉取 ${restoredCount} 组云端数据，刷新页面后生效。`);
+      setMessage(
+        `已拉取 ${restoredCount} 组云端数据，其中 ${comparison.changed + comparison.remoteOnly} 组会更新本地，刷新页面后生效。`
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "云同步拉取失败。");
     } finally {

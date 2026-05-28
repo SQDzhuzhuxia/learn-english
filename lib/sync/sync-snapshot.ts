@@ -84,7 +84,7 @@ export function summarizeSyncSnapshot(snapshot: SyncSnapshotPayload) {
   return {
     recordCount: snapshot.records.length,
     totalBytes: snapshot.records.reduce((sum, record) => sum + record.sizeBytes, 0),
-    hashes: snapshot.records.reduce<Record<string, string>>((hashes, record) => {
+    hashes: snapshot.records.reduce<Partial<Record<SyncableStorageKey, string>>>((hashes, record) => {
       hashes[record.key] = record.hash;
       return hashes;
     }, {})

@@ -40,7 +40,15 @@ export type CloudSyncRecordRow = {
 
 export type DownloadSyncRecordsResult = {
   records: Partial<Record<SyncableStorageKey, string>>;
+  hashes: Partial<Record<SyncableStorageKey, string>>;
   downloadedRecords: number;
+};
+
+export type SyncRecordComparison = {
+  same: number;
+  localOnly: number;
+  remoteOnly: number;
+  changed: number;
 };
 
 function assertNoSyncError(result: { error?: SyncError | null }, fallback: string) {
@@ -120,16 +128,57 @@ export async function downloadSyncRecords(
 
   assertNoSyncError(result, "云同步 records 拉取失败。");
 
-  const records = (result.data ?? []).reduce<Partial<Record<SyncableStorageKey, string>>>((nextRecords, row) => {
+  const rows = result.data ?? [];
+  const records = rows.reduce<Partial<Record<SyncableStorageKey, string>>>((nextRecords, row) => {
     if (isSyncableStorageKey(row.storage_key)) {
       nextRecords[row.storage_key] = row.storage_value;
     }
 
     return nextRecords;
   }, {});
+  const hashes = rows.reduce<Partial<Record<SyncableStorageKey, string>>>((nextHashes, row) => {
+    if (isSyncableStorageKey(row.storage_key)) {
+      nextHashes[row.storage_key] = row.value_hash;
+    }
+
+    return nextHashes;
+  }, {});
 
   return {
     records,
+    hashes,
     downloadedRecords: Object.keys(records).length
   };
+}
+
+export function compareSyncHashes(
+  localHashes: Partial<Record<SyncableStorageKey, string>>,
+  remoteHashes: Partial<Record<SyncableStorageKey, string>>
+): SyncRecordComparison {
+  const localKeys = Object.keys(localHashes).filter(isSyncableStorageKey);
+  const remoteKeys = Object.keys(remoteHashes).filter(isSyncableStorageKey);
+  const allKeys = new Set<SyncableStorageKey>([...localKeys, ...remoteKeys]);
+  const comparison: SyncRecordComparison = {
+    same: 0,
+    localOnly: 0,
+    remoteOnly: 0,
+    changed: 0
+  };
+
+  allKeys.forEach((key) => {
+    const localHash = localHashes[key];
+    const remoteHash = remoteHashes[key];
+
+    if (localHash && remoteHash && localHash === remoteHash) {
+      comparison.same += 1;
+    } else if (localHash && remoteHash && localHash !== remoteHash) {
+      comparison.changed += 1;
+    } else if (localHash) {
+      comparison.localOnly += 1;
+    } else {
+      comparison.remoteOnly += 1;
+    }
+  });
+
+  return comparison;
 }

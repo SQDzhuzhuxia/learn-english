@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { downloadSyncRecords, uploadSyncSnapshot } from "@/lib/sync/cloud-sync";
+import { compareSyncHashes, downloadSyncRecords, uploadSyncSnapshot } from "@/lib/sync/cloud-sync";
 import type { SyncSnapshotPayload } from "@/lib/sync/sync-snapshot";
 
 function createSnapshot(): SyncSnapshotPayload {
@@ -96,6 +96,29 @@ describe("uploadSyncSnapshot", () => {
     expect(eq).toHaveBeenCalledWith("user_id", "user-1");
     expect(result.downloadedRecords).toBe(1);
     expect(result.records["learn-english.materials.v1"]).toBe("[1]");
+    expect(result.hashes["learn-english.materials.v1"]).toBe("abc");
     expect("learn-english.unknown.v1" in result.records).toBe(false);
+  });
+
+  it("compares local and remote record hashes", () => {
+    const comparison = compareSyncHashes(
+      {
+        "learn-english.materials.v1": "same",
+        "learn-english.review-cards.v1": "local",
+        "learn-english.review-logs.v1": "old"
+      },
+      {
+        "learn-english.materials.v1": "same",
+        "learn-english.activity-log.v1": "remote",
+        "learn-english.review-logs.v1": "new"
+      }
+    );
+
+    expect(comparison).toEqual({
+      same: 1,
+      localOnly: 1,
+      remoteOnly: 1,
+      changed: 1
+    });
   });
 });

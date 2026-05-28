@@ -7,6 +7,7 @@ export type PracticeAttemptRecord = {
   materialTitle: string;
   durationSeconds: number;
   transcript?: string;
+  transcriptSource?: "browser" | "cloud";
   score?: number;
   feedback?: string;
   status: "recorded" | "transcribed" | "reviewed";

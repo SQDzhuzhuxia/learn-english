@@ -21,6 +21,14 @@ import {
 } from "@/lib/speech/practice-store";
 import { createShadowingFeedback, type ShadowingFeedback } from "@/lib/speech/shadowing-feedback";
 
+type CloudTranscription = {
+  text: string;
+  source: "cloud" | "fallback";
+  provider: string;
+  model?: string;
+  error?: string;
+};
+
 type SpeechRecognitionResultLike = {
   isFinal: boolean;
   0: {
@@ -69,6 +77,8 @@ export function PracticeClient() {
   const [audioUrl, setAudioUrl] = useState("");
   const [message, setMessage] = useState("");
   const [transcript, setTranscript] = useState("");
+  const [transcriptSource, setTranscriptSource] = useState<"browser" | "cloud" | "">("");
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [feedback, setFeedback] = useState<ShadowingFeedback | null>(null);
   const [attempts, setAttempts] = useState<PracticeAttemptRecord[]>([]);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -133,6 +143,8 @@ export function PracticeClient() {
       setElapsedSeconds(0);
       setAudioUrl("");
       setTranscript("");
+      setTranscriptSource("");
+      setIsTranscribing(false);
       setFeedback(null);
       transcriptRef.current = "";
       setMessage("");
@@ -144,35 +156,7 @@ export function PracticeClient() {
       });
 
       recorder.addEventListener("stop", () => {
-        const durationSeconds = Math.max(1, Math.floor((getTimestampMs() - startedAtRef.current) / 1000));
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        const nextAudioUrl = URL.createObjectURL(blob);
-        const finalTranscript = transcriptRef.current.trim();
-        const nextFeedback = finalTranscript
-          ? createShadowingFeedback(todayPractice.prompt, finalTranscript)
-          : null;
-        const attempt = addPracticeAttempt({
-          type: "shadowing",
-          prompt: todayPractice.prompt,
-          materialTitle: todayPractice.material,
-          durationSeconds,
-          transcript: finalTranscript || undefined,
-          score: nextFeedback?.score,
-          feedback: nextFeedback?.tip
-        });
-
-        recordStudyActivity({
-          type: "output",
-          label: `跟读录音：${todayPractice.title}`,
-          minutes: Math.max(1, Math.ceil(durationSeconds / 60)),
-          materialTitle: todayPractice.material
-        });
-        setAudioUrl(nextAudioUrl);
-        setFeedback(nextFeedback);
-        setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
-        setMessage(finalTranscript ? "已保存本次跟读和浏览器转写。" : "已保存本次跟读记录。");
-        stream.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
+        void handleRecordingStopped(recorder, stream);
       });
 
       recorder.start();
@@ -181,6 +165,91 @@ export function PracticeClient() {
     } catch {
       setMessage("无法打开麦克风，请检查浏览器权限。");
     }
+  }
+
+  async function requestCloudTranscription(blob: Blob) {
+    const file = new File([blob], "shadowing.webm", {
+      type: blob.type || "audio/webm"
+    });
+    const formData = new FormData();
+    formData.set("file", file);
+    formData.set("language", "en");
+    formData.set("prompt", todayPractice.prompt);
+
+    const response = await fetch("/api/speech/transcribe", {
+      method: "POST",
+      body: formData
+    });
+    const payload = (await response.json()) as {
+      transcription?: CloudTranscription;
+      error?: string;
+    };
+
+    if (!response.ok || !payload.transcription) {
+      throw new Error(payload.error ?? "云端转写失败。");
+    }
+
+    return payload.transcription;
+  }
+
+  async function handleRecordingStopped(recorder: MediaRecorder, stream: MediaStream) {
+    const durationSeconds = Math.max(1, Math.floor((getTimestampMs() - startedAtRef.current) / 1000));
+    const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+    const nextAudioUrl = URL.createObjectURL(blob);
+    let finalTranscript = transcriptRef.current.trim();
+    let finalTranscriptSource: "browser" | "cloud" | undefined = finalTranscript ? "browser" : undefined;
+
+    setIsTranscribing(true);
+
+    try {
+      const cloudTranscription = await requestCloudTranscription(blob);
+
+      if (cloudTranscription.text.trim()) {
+        finalTranscript = cloudTranscription.text.trim();
+        finalTranscriptSource = "cloud";
+      } else if (cloudTranscription.error && !finalTranscript) {
+        setMessage(`云端转写未启用：${cloudTranscription.error}`);
+      }
+    } catch (error) {
+      if (!finalTranscript) {
+        setMessage(error instanceof Error ? error.message : "云端转写失败。");
+      }
+    } finally {
+      setIsTranscribing(false);
+    }
+
+    const nextFeedback = finalTranscript
+      ? createShadowingFeedback(todayPractice.prompt, finalTranscript)
+      : null;
+    const attempt = addPracticeAttempt({
+      type: "shadowing",
+      prompt: todayPractice.prompt,
+      materialTitle: todayPractice.material,
+      durationSeconds,
+      transcript: finalTranscript || undefined,
+      transcriptSource: finalTranscriptSource,
+      score: nextFeedback?.score,
+      feedback: nextFeedback?.tip
+    });
+
+    recordStudyActivity({
+      type: "output",
+      label: `跟读录音：${todayPractice.title}`,
+      minutes: Math.max(1, Math.ceil(durationSeconds / 60)),
+      materialTitle: todayPractice.material
+    });
+    setAudioUrl(nextAudioUrl);
+    setTranscript(finalTranscript);
+    setTranscriptSource(finalTranscriptSource ?? "");
+    setFeedback(nextFeedback);
+    setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
+    setMessage(
+      finalTranscript
+        ? `已保存本次跟读和${finalTranscriptSource === "cloud" ? "云端" : "浏览器"}转写。`
+        : "已保存本次跟读记录。"
+    );
+    stream.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
   }
 
   function stopRecording() {
@@ -290,9 +359,17 @@ export function PracticeClient() {
 
             {transcript ? (
               <div className="mt-4 rounded-lg border border-border bg-white p-3">
-                <p className="text-sm font-medium text-muted">浏览器转写</p>
+                <p className="text-sm font-medium text-muted">
+                  {transcriptSource === "cloud" ? "云端转写" : "浏览器转写"}
+                </p>
                 <p className="mt-2 text-sm leading-6 text-foreground">{transcript}</p>
               </div>
+            ) : null}
+
+            {isTranscribing ? (
+              <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+                正在请求云端转写...
+              </p>
             ) : null}
 
             {feedback ? (
@@ -381,6 +458,11 @@ export function PracticeClient() {
                 </p>
                 {attempt.transcript ? (
                   <p className="mt-2 text-xs leading-5 text-muted">{attempt.transcript}</p>
+                ) : null}
+                {attempt.transcriptSource ? (
+                  <p className="mt-2 text-xs text-muted">
+                    {attempt.transcriptSource === "cloud" ? "云端转写" : "浏览器转写"}
+                  </p>
                 ) : null}
                 {typeof attempt.score === "number" ? (
                   <p className="mt-2 text-xs font-semibold text-accent">跟读匹配度 {attempt.score}%</p>

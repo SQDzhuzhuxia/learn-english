@@ -224,6 +224,55 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
     setSaveMessage(result.created ? "已保存表达，并生成复习卡。" : "这个表达已经在复习队列里。");
   }
 
+  function findSegmentForExpression(expression: SavableExpression) {
+    if (!material || !current) {
+      return undefined;
+    }
+
+    return (
+      material.segments.find((segment) => expression.example.includes(segment.text)) ??
+      material.segments.find((segment) => segment.text.includes(expression.text)) ??
+      current
+    );
+  }
+
+  function handleSaveMaterialExpressions() {
+    if (!material || !aiBatchState.materialExplanation) {
+      return;
+    }
+
+    let createdCount = 0;
+    const expressions = aiBatchState.materialExplanation.keyExpressions.map((expression) => ({
+      text: expression.text,
+      meaning: expression.meaningZh,
+      example: expression.example
+    }));
+
+    expressions.forEach((expression) => {
+      const segment = findSegmentForExpression(expression);
+
+      if (!segment) {
+        return;
+      }
+
+      const result = saveExpressionAsReviewCard(material, segment, {
+        text: expression.text,
+        meaningZh: expression.meaning,
+        example: expression.example
+      });
+
+      if (result.created) {
+        createdCount += 1;
+      }
+    });
+
+    setSaveMessage(
+      createdCount > 0
+        ? `已保存 ${createdCount} 个整篇重点表达，并生成复习卡。`
+        : "整篇重点表达已经在复习队列里。"
+    );
+  }
+
   async function handleGenerateAiExplanation() {
     if (!material || !current) {
       return;
@@ -622,9 +671,18 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                 >
                   <p>{aiBatchState.message}</p>
                   {aiBatchState.materialExplanation ? (
-                    <p className="mt-1 text-xs opacity-90">
-                      {aiBatchState.materialExplanation.summaryZh}
-                    </p>
+                    <div className="mt-2 space-y-2">
+                      <p className="text-xs opacity-90">{aiBatchState.materialExplanation.summaryZh}</p>
+                      {aiBatchState.materialExplanation.keyExpressions.length > 0 ? (
+                        <button
+                          onClick={handleSaveMaterialExpressions}
+                          className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                        >
+                          <BookmarkPlus className="h-3.5 w-3.5" />
+                          保存整篇重点表达
+                        </button>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
               ) : null}

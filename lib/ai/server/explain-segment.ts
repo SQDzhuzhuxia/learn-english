@@ -1,6 +1,12 @@
-import { createFallbackSegmentExplanation } from "@/lib/ai/fallback-explanation";
-import { explainSegmentWithOpenAiCompatible } from "@/lib/ai/openai-compatible";
-import type { ExplainSegmentInput } from "@/lib/ai/types";
+import {
+  createFallbackMaterialExplanation,
+  createFallbackSegmentExplanation
+} from "@/lib/ai/fallback-explanation";
+import {
+  explainMaterialWithOpenAiCompatible,
+  explainSegmentWithOpenAiCompatible
+} from "@/lib/ai/openai-compatible";
+import type { ExplainMaterialInput, ExplainSegmentInput } from "@/lib/ai/types";
 
 type Environment = Record<string, string | undefined>;
 
@@ -100,5 +106,26 @@ export async function explainSegment(input: ExplainSegmentInput, env: Environmen
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI provider failed";
     return createFallbackSegmentExplanation(input, `${config.providerLabel} 暂不可用：${message}`);
+  }
+}
+
+export async function explainMaterial(input: ExplainMaterialInput, env: Environment = process.env) {
+  const config = resolveAiRuntimeConfig(env);
+
+  if (config.mode === "fallback") {
+    return createFallbackMaterialExplanation(input, config.reason);
+  }
+
+  try {
+    const explanation = await explainMaterialWithOpenAiCompatible(input, config);
+
+    if (explanation.segments.length === 0) {
+      return createFallbackMaterialExplanation(input, `${config.providerLabel} 没有返回可用分句解释`);
+    }
+
+    return explanation;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "AI provider failed";
+    return createFallbackMaterialExplanation(input, `${config.providerLabel} 暂不可用：${message}`);
   }
 }

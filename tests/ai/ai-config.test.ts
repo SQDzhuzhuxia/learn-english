@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveAiRuntimeConfig } from "@/lib/ai/server/explain-segment";
+import { explainMaterial, resolveAiRuntimeConfig } from "@/lib/ai/server/explain-segment";
 
 describe("resolveAiRuntimeConfig", () => {
   it("uses fallback mode by default", () => {
@@ -29,5 +29,26 @@ describe("resolveAiRuntimeConfig", () => {
     });
 
     expect(config.mode).toBe("fallback");
+  });
+
+  it("returns a fallback batch explanation when provider is not configured", async () => {
+    const explanation = await explainMaterial(
+      {
+        materialTitle: "Doctor Visit",
+        materialType: "美国生活",
+        level: "A1",
+        segments: [
+          {
+            id: "s1",
+            order: 1,
+            text: "I need to see a doctor."
+          }
+        ]
+      },
+      {}
+    );
+
+    expect(explanation.source).toBe("fallback");
+    expect(explanation.segments).toHaveLength(1);
   });
 });

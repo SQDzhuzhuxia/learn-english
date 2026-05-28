@@ -30,7 +30,7 @@ import {
 } from "@/lib/content/material-store";
 import { saveExpressionAsReviewCard, saveSegmentAsReviewCard } from "@/lib/review/review-store";
 import type { StudyMaterialRecord } from "@/lib/content/types";
-import type { AiSegmentExplanation } from "@/lib/ai/types";
+import type { AiMaterialExplanation, AiSegmentExplanation } from "@/lib/ai/types";
 
 const AI_EXPLANATION_CACHE_KEY = "learn-english.ai-segment-explanations.v1";
 
@@ -38,6 +38,13 @@ type AiExplanationState = {
   status: "idle" | "loading" | "success" | "error";
   explanation?: AiSegmentExplanation;
   message?: string;
+};
+
+type AiBatchState = {
+  status: "idle" | "loading" | "success" | "error";
+  message?: string;
+  explainedCount?: number;
+  materialExplanation?: AiMaterialExplanation;
 };
 
 type SavableExpression = {
@@ -83,6 +90,18 @@ function setCachedAiExplanation(cacheKey: string, explanation: AiSegmentExplanat
   window.localStorage.setItem(AI_EXPLANATION_CACHE_KEY, JSON.stringify(cache));
 }
 
+function setCachedAiExplanations(entries: Array<{ cacheKey: string; explanation: AiSegmentExplanation }>) {
+  if (!canUseLocalStorage()) {
+    return;
+  }
+
+  const cache = readAiExplanationCache();
+  entries.forEach((entry) => {
+    cache[entry.cacheKey] = entry.explanation;
+  });
+  window.localStorage.setItem(AI_EXPLANATION_CACHE_KEY, JSON.stringify(cache));
+}
+
 function resolveInitialMaterial(materialId?: string) {
   const seedMaterials = getSeedMaterials();
   const fallbackId = materialId ?? seedMaterials[0]?.id;
@@ -100,6 +119,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
   );
   const [saveMessage, setSaveMessage] = useState("");
   const [aiState, setAiState] = useState<AiExplanationState>({ status: "idle" });
+  const [aiBatchState, setAiBatchState] = useState<AiBatchState>({ status: "idle" });
 
   useEffect(() => {
     let cancelled = false;
@@ -261,6 +281,86 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
         explanation: previous.explanation,
         message: error instanceof Error ? error.message : "AI 解释生成失败。"
       }));
+    }
+  }
+
+  async function handleGenerateMaterialExplanation() {
+    if (!material || !current) {
+      return;
+    }
+
+    setAiBatchState({
+      status: "loading",
+      message: "正在批量解释整篇材料..."
+    });
+
+    try {
+      const response = await fetch("/api/ai/explain-material", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          materialTitle: material.title,
+          materialType: material.type,
+          level: material.level,
+          contextText: material.contentText,
+          segments: material.segments.map((segment) => ({
+            id: segment.id,
+            order: segment.order,
+            text: segment.text
+          }))
+        })
+      });
+
+      const payload = (await response.json()) as {
+        explanation?: AiMaterialExplanation;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.explanation) {
+        throw new Error(payload.error ?? "批量解释生成失败。");
+      }
+
+      const entries = payload.explanation.segments.map((segment) => ({
+        cacheKey: `${material.id}:${segment.segmentId}`,
+        explanation: segment.explanation
+      }));
+      const currentExplanation = payload.explanation.segments.find(
+        (segment) => segment.segmentId === current.id
+      )?.explanation;
+
+      setCachedAiExplanations(entries);
+      recordStudyActivity({
+        type: "ai",
+        label: `AI 批量解释：${material.title}`,
+        minutes: Math.max(1, Math.ceil(entries.length / 5)),
+        materialId: material.id,
+        materialTitle: material.title
+      });
+
+      if (currentExplanation) {
+        setAiState({
+          status: "success",
+          explanation: currentExplanation,
+          message: "已从整篇批量解释中读取当前句。"
+        });
+      }
+
+      setAiBatchState({
+        status: "success",
+        explainedCount: entries.length,
+        materialExplanation: payload.explanation,
+        message:
+          payload.explanation.source === "model"
+            ? `已由 ${payload.explanation.provider} 批量解释 ${entries.length} 句。`
+            : `已生成 ${entries.length} 句本地降级解释，配置 API 后会调用模型。`
+      });
+    } catch (error) {
+      setAiBatchState({
+        status: "error",
+        message: error instanceof Error ? error.message : "批量解释生成失败。"
+      });
     }
   }
 
@@ -471,20 +571,34 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
             </div>
           ) : (
             <div className="mt-4 space-y-4">
-              <button
-                onClick={handleGenerateAiExplanation}
-                disabled={aiState.status === "loading"}
-                className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {aiState.status === "loading" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : aiState.explanation ? (
-                  <RotateCw className="h-4 w-4" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                {aiState.explanation ? "重新生成解释" : "生成当前句解释"}
-              </button>
+              <div className="grid gap-2">
+                <button
+                  onClick={handleGenerateAiExplanation}
+                  disabled={aiState.status === "loading" || aiBatchState.status === "loading"}
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {aiState.status === "loading" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : aiState.explanation ? (
+                    <RotateCw className="h-4 w-4" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {aiState.explanation ? "重新生成当前句" : "生成当前句解释"}
+                </button>
+                <button
+                  onClick={handleGenerateMaterialExplanation}
+                  disabled={aiState.status === "loading" || aiBatchState.status === "loading"}
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {aiBatchState.status === "loading" ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 text-accent" />
+                  )}
+                  批量解释整篇
+                </button>
+              </div>
 
               {aiState.message ? (
                 <p
@@ -496,6 +610,23 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                 >
                   {aiState.message}
                 </p>
+              ) : null}
+
+              {aiBatchState.message ? (
+                <div
+                  className={`rounded-lg border px-3 py-2 text-sm leading-6 ${
+                    aiBatchState.status === "error"
+                      ? "border-rose-200 bg-rose-50 text-rose-700"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  }`}
+                >
+                  <p>{aiBatchState.message}</p>
+                  {aiBatchState.materialExplanation ? (
+                    <p className="mt-1 text-xs opacity-90">
+                      {aiBatchState.materialExplanation.summaryZh}
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
 
               {aiState.explanation ? (

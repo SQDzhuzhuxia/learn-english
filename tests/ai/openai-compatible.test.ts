@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  explainMaterialWithOpenAiCompatible,
   explainSegmentWithOpenAiCompatible,
+  parseMaterialExplanationResponse,
   parseSegmentExplanationResponse
 } from "@/lib/ai/openai-compatible";
-import type { ExplainSegmentInput } from "@/lib/ai/types";
+import type { ExplainMaterialInput, ExplainSegmentInput } from "@/lib/ai/types";
 
 const input: ExplainSegmentInput = {
   materialTitle: "Apartment Tour",
@@ -11,6 +13,25 @@ const input: ExplainSegmentInput = {
   level: "A1",
   sentence: "Is the apartment available next month?",
   contextText: "I am looking for an apartment near my office."
+};
+
+const materialInput: ExplainMaterialInput = {
+  materialTitle: "Apartment Tour",
+  materialType: "租房",
+  level: "A1",
+  contextText: "Is the apartment available next month? How much is the deposit?",
+  segments: [
+    {
+      id: "s1",
+      order: 1,
+      text: "Is the apartment available next month?"
+    },
+    {
+      id: "s2",
+      order: 2,
+      text: "How much is the deposit?"
+    }
+  ]
 };
 
 afterEach(() => {
@@ -41,6 +62,48 @@ describe("parseSegmentExplanationResponse", () => {
     expect(explanation.source).toBe("model");
     expect(explanation.provider).toBe("Test Provider");
     expect(explanation.keyExpressions[0]?.text).toBe("available");
+  });
+});
+
+describe("parseMaterialExplanationResponse", () => {
+  it("normalizes batch provider JSON into material explanations", () => {
+    const explanation = parseMaterialExplanationResponse(
+      JSON.stringify({
+        materialTitle: materialInput.materialTitle,
+        summaryZh: "租房看房相关材料。",
+        levelNote: "适合 A1 学习者逐句输入。",
+        segments: [
+          {
+            segmentId: "s1",
+            order: 1,
+            meaningZh: "询问公寓是否可租。",
+            structure: ["Is ... available：是否可用"],
+            keyExpressions: [
+              {
+                text: "available",
+                meaningZh: "可用的，可租的",
+                example: "Is the apartment available next month?"
+              }
+            ],
+            commonMistake: "不要说 can use apartment。",
+            shadowingTip: "available 前后稍微停顿。"
+          }
+        ],
+        keyExpressions: [
+          {
+            text: "deposit",
+            meaningZh: "押金",
+            example: "How much is the deposit?"
+          }
+        ]
+      }),
+      materialInput,
+      "Test Provider"
+    );
+
+    expect(explanation.source).toBe("model");
+    expect(explanation.segments[0]?.segmentId).toBe("s1");
+    expect(explanation.keyExpressions[0]?.text).toBe("deposit");
   });
 });
 
@@ -94,5 +157,62 @@ describe("explainSegmentWithOpenAiCompatible", () => {
       })
     );
     expect(explanation.meaningZh).toContain("公寓");
+  });
+
+  it("calls a chat-completions compatible endpoint for batch material explanations", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  materialTitle: materialInput.materialTitle,
+                  summaryZh: "租房看房相关材料。",
+                  levelNote: "适合 A1 学习者逐句输入。",
+                  segments: [
+                    {
+                      segmentId: "s1",
+                      order: 1,
+                      meaningZh: "询问公寓是否可租。",
+                      structure: ["Is ... available：是否可用"],
+                      keyExpressions: [
+                        {
+                          text: "available",
+                          meaningZh: "可用的",
+                          example: "Is the apartment available next month?"
+                        }
+                      ],
+                      commonMistake: "不要逐词翻译。",
+                      shadowingTip: "先慢速读完整句。"
+                    }
+                  ],
+                  keyExpressions: []
+                })
+              }
+            }
+          ]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const explanation = await explainMaterialWithOpenAiCompatible(materialInput, {
+      baseUrl: "http://localhost:11434/v1/",
+      apiKey: "test-key",
+      model: "test-model",
+      providerLabel: "Local Test",
+      timeoutMs: 5000
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:11434/v1/chat/completions",
+      expect.objectContaining({
+        method: "POST"
+      })
+    );
+    expect(explanation.segments).toHaveLength(1);
   });
 });

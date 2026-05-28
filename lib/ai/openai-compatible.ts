@@ -1,6 +1,9 @@
 import type {
+  AiMaterialExplanation,
+  AiMaterialSegmentExplanation,
   AiSegmentExplanation,
   AiSegmentExpression,
+  ExplainMaterialInput,
   ExplainSegmentInput
 } from "@/lib/ai/types";
 
@@ -38,6 +41,31 @@ function buildPrompt(input: ExplainSegmentInput) {
     `学习者水平：${input.level}`,
     `当前句：${input.sentence}`,
     input.contextText ? `上下文：${input.contextText.slice(0, 2400)}` : ""
+  ].join("\n");
+}
+
+function buildMaterialPrompt(input: ExplainMaterialInput) {
+  const segments = input.segments
+    .slice(0, 60)
+    .map((segment) => `${segment.order}. [${segment.id}] ${segment.text}`)
+    .join("\n");
+
+  return [
+    "请为中文母语、英语初级学习者批量解释一篇英语材料。",
+    "目标是美国生活和工作英语，要服务大量可理解输入，不要写考试化长篇语法讲义。",
+    "必须输出 JSON，不要输出 markdown。",
+    "JSON 字段：materialTitle, summaryZh, levelNote, segments, keyExpressions。",
+    "segments 是数组，每项包含 segmentId, order, meaningZh, structure, keyExpressions, commonMistake, shadowingTip。",
+    "每个 segment 的 structure 是 2 到 4 个中文字符串。",
+    "每个 segment 的 keyExpressions 是 1 到 3 个对象，每个对象包含 text, meaningZh, example。",
+    "keyExpressions 是整篇材料最值得保存的 5 到 12 个表达，每项包含 text, meaningZh, example。",
+    "",
+    `材料标题：${input.materialTitle}`,
+    `材料类型：${input.materialType}`,
+    `学习者水平：${input.level}`,
+    input.contextText ? `全文上下文：${input.contextText.slice(0, 5000)}` : "",
+    "分句：",
+    segments
   ].join("\n");
 }
 
@@ -129,10 +157,85 @@ export function parseSegmentExplanationResponse(
   };
 }
 
-export async function explainSegmentWithOpenAiCompatible(
-  input: ExplainSegmentInput,
-  config: OpenAiCompatibleConfig
-) {
+function parseMaterialSegment(
+  raw: unknown,
+  input: ExplainMaterialInput,
+  providerLabel: string
+): AiMaterialSegmentExplanation | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+
+  const record = raw as Record<string, unknown>;
+  const segmentId = readString(record.segmentId, "");
+  const order =
+    typeof record.order === "number"
+      ? record.order
+      : Number.parseInt(readString(record.order, ""), 10);
+  const sourceSegment =
+    input.segments.find((segment) => segment.id === segmentId) ??
+    input.segments.find((segment) => segment.order === order);
+
+  if (!sourceSegment) {
+    return undefined;
+  }
+
+  const sentence = sourceSegment.text;
+
+  return {
+    segmentId: sourceSegment.id,
+    order: sourceSegment.order,
+    explanation: {
+      sentence,
+      meaningZh: readString(record.meaningZh, "这句话需要结合上下文理解。"),
+      structure: readStringArray(record.structure, ["先理解整句大意，再观察可复用表达。"]),
+      keyExpressions:
+        readExpressions(record.keyExpressions, sentence).length > 0
+          ? readExpressions(record.keyExpressions, sentence)
+          : [
+              {
+                text: sentence.split(/\s+/).slice(0, 4).join(" "),
+                meaningZh: "建议作为整句表达保存复习。",
+                example: sentence
+              }
+            ],
+      commonMistake: readString(
+        record.commonMistake,
+        "不要按中文语序逐词翻译，优先模仿自然英语表达。"
+      ),
+      shadowingTip: readString(record.shadowingTip, "先慢速完整跟读，再逐步提高流利度。"),
+      source: "model",
+      provider: providerLabel,
+      generatedAt: new Date().toISOString()
+    }
+  };
+}
+
+export function parseMaterialExplanationResponse(
+  content: string,
+  input: ExplainMaterialInput,
+  providerLabel: string
+): AiMaterialExplanation {
+  const parsed = JSON.parse(extractJsonObject(content)) as Record<string, unknown>;
+  const parsedSegments = Array.isArray(parsed.segments) ? parsed.segments : [];
+  const segments = parsedSegments
+    .map((segment) => parseMaterialSegment(segment, input, providerLabel))
+    .filter((segment): segment is AiMaterialSegmentExplanation => Boolean(segment));
+  const generatedAt = new Date().toISOString();
+
+  return {
+    materialTitle: readString(parsed.materialTitle, input.materialTitle),
+    summaryZh: readString(parsed.summaryZh, "这篇材料适合逐句听读，并保存真实可用表达。"),
+    levelNote: readString(parsed.levelNote, "先理解大意，再逐句精学。"),
+    segments,
+    keyExpressions: readExpressions(parsed.keyExpressions, input.segments[0]?.text ?? "").slice(0, 12),
+    source: "model",
+    provider: providerLabel,
+    generatedAt
+  };
+}
+
+async function requestChatCompletion(prompt: string, config: OpenAiCompatibleConfig) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
 
@@ -160,7 +263,7 @@ export async function explainSegmentWithOpenAiCompatible(
           },
           {
             role: "user",
-            content: buildPrompt(input)
+            content: prompt
           }
         ]
       })
@@ -177,8 +280,24 @@ export async function explainSegmentWithOpenAiCompatible(
       throw new Error("AI provider returned an empty message");
     }
 
-    return parseSegmentExplanationResponse(content, input, config.providerLabel);
+    return content;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function explainSegmentWithOpenAiCompatible(
+  input: ExplainSegmentInput,
+  config: OpenAiCompatibleConfig
+) {
+  const content = await requestChatCompletion(buildPrompt(input), config);
+  return parseSegmentExplanationResponse(content, input, config.providerLabel);
+}
+
+export async function explainMaterialWithOpenAiCompatible(
+  input: ExplainMaterialInput,
+  config: OpenAiCompatibleConfig
+) {
+  const content = await requestChatCompletion(buildMaterialPrompt(input), config);
+  return parseMaterialExplanationResponse(content, input, config.providerLabel);
 }

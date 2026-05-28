@@ -1,4 +1,9 @@
-import type { AiSegmentExplanation, ExplainSegmentInput } from "@/lib/ai/types";
+import type {
+  AiMaterialExplanation,
+  AiSegmentExplanation,
+  ExplainMaterialInput,
+  ExplainSegmentInput
+} from "@/lib/ai/types";
 
 const STOP_WORDS = new Set([
   "the",
@@ -78,5 +83,49 @@ export function createFallbackSegmentExplanation(
     source: "fallback",
     provider: reason,
     generatedAt: new Date().toISOString()
+  };
+}
+
+export function createFallbackMaterialExplanation(
+  input: ExplainMaterialInput,
+  reason = "AI provider is not configured"
+): AiMaterialExplanation {
+  const generatedAt = new Date().toISOString();
+  const segments = input.segments.slice(0, 60).map((segment) => ({
+    segmentId: segment.id,
+    order: segment.order,
+    explanation: {
+      ...createFallbackSegmentExplanation(
+        {
+          materialTitle: input.materialTitle,
+          materialType: input.materialType,
+          level: input.level,
+          sentence: segment.text,
+          contextText: input.contextText
+        },
+        reason
+      ),
+      generatedAt
+    }
+  }));
+  const expressionMap = new Map<string, AiMaterialExplanation["keyExpressions"][number]>();
+
+  segments.forEach((segment) => {
+    segment.explanation.keyExpressions.forEach((expression) => {
+      if (!expressionMap.has(expression.text.toLowerCase())) {
+        expressionMap.set(expression.text.toLowerCase(), expression);
+      }
+    });
+  });
+
+  return {
+    materialTitle: input.materialTitle,
+    summaryZh: `本地降级总结：这篇《${input.materialTitle}》适合先逐句听读，理解大意，再保存真实可用表达。`,
+    levelNote: `当前标注难度为 ${input.level || "未标注"}。如果听力吃力，可以先按逐句精学方式推进。`,
+    segments,
+    keyExpressions: Array.from(expressionMap.values()).slice(0, 12),
+    source: "fallback",
+    provider: reason,
+    generatedAt
   };
 }

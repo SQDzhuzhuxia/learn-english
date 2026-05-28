@@ -25,3 +25,34 @@ export type ExplainSegmentInput = {
   sentence: string;
   contextText?: string;
 };
+
+export type ExplainMaterialSegmentInput = {
+  id: string;
+  order: number;
+  text: string;
+};
+
+export type ExplainMaterialInput = {
+  materialTitle: string;
+  materialType: string;
+  level: string;
+  segments: ExplainMaterialSegmentInput[];
+  contextText?: string;
+};
+
+export type AiMaterialSegmentExplanation = {
+  segmentId: string;
+  order: number;
+  explanation: AiSegmentExplanation;
+};
+
+export type AiMaterialExplanation = {
+  materialTitle: string;
+  summaryZh: string;
+  levelNote: string;
+  segments: AiMaterialSegmentExplanation[];
+  keyExpressions: AiSegmentExpression[];
+  source: AiExplanationSource;
+  provider: string;
+  generatedAt: string;
+};

@@ -12,6 +12,7 @@ import {
   Sparkles,
   Target
 } from "lucide-react";
+import { PwaInstallStatus } from "@/components/pwa/pwa-install-status";
 import type { ReactNode } from "react";
 
 const navigation = [
@@ -111,6 +112,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <p className="text-sm font-semibold text-foreground">今日输入驱动训练</p>
             </div>
             <div className="flex items-center gap-2">
+              <PwaInstallStatus />
               <Link
                 href="/progress"
                 className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white text-muted hover:bg-panel-strong hover:text-foreground lg:hidden"

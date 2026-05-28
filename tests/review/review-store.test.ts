@@ -8,6 +8,7 @@ import {
   restoreLearningItem,
   saveExpressionAsReviewCard,
   saveSegmentAsReviewCard,
+  saveWritingItemAsReviewCard,
   updateLearningItem
 } from "@/lib/review/review-store";
 import { getSeedMaterials } from "@/lib/content/material-store";
@@ -158,6 +159,77 @@ describe("learning item management", () => {
       "production",
       "recognition",
       "speaking"
+    ]);
+  });
+
+  it("saves writing corrections and expressions as review cards without duplicates", () => {
+    const sentenceFirst = saveWritingItemAsReviewCard({
+      kind: "corrected-sentence",
+      promptTitle: "Self introduction",
+      prompt: "Introduce yourself in two sentences.",
+      originalText: "I am engineer.",
+      correctedText: "I am an engineer.",
+      text: "I am an engineer.",
+      example: "I am an engineer."
+    });
+    const sentenceSecond = saveWritingItemAsReviewCard({
+      kind: "corrected-sentence",
+      promptTitle: "Self introduction",
+      prompt: "Introduce yourself in two sentences.",
+      originalText: "I am engineer.",
+      correctedText: "I am an engineer.",
+      text: "I am an engineer.",
+      example: "I am an engineer."
+    });
+    const expressionFirst = saveWritingItemAsReviewCard({
+      kind: "expression",
+      promptTitle: "Self introduction",
+      prompt: "Introduce yourself in two sentences.",
+      originalText: "I am engineer.",
+      correctedText: "I am an engineer.",
+      text: "an engineer",
+      meaningZh: "一名工程师",
+      example: "I am an engineer."
+    });
+    const expressionSecond = saveWritingItemAsReviewCard({
+      kind: "expression",
+      promptTitle: "Self introduction",
+      prompt: "Introduce yourself in two sentences.",
+      originalText: "I am engineer.",
+      correctedText: "I am an engineer.",
+      text: "an engineer",
+      meaningZh: "一名工程师",
+      example: "I am an engineer."
+    });
+
+    const sentenceCards = loadReviewCards().filter(
+      (card) => card.learningItemId === sentenceFirst.item?.id
+    );
+    const expressionCards = loadReviewCards().filter(
+      (card) => card.learningItemId === expressionFirst.item?.id
+    );
+
+    expect(sentenceFirst.created).toBe(true);
+    expect(sentenceSecond.created).toBe(false);
+    expect(expressionFirst.created).toBe(true);
+    expect(expressionSecond.created).toBe(false);
+    expect(sentenceFirst.item?.type).toBe("sentence");
+    expect(sentenceFirst.item?.sourceMaterialTitle).toBe("短写作：Self introduction");
+    expect(sentenceFirst.item?.meaningZh).toBe("原句：I am engineer.");
+    expect(expressionFirst.item?.type).toBe("phrase");
+    expect(loadLearningItems().filter((item) => item.text === "an engineer")).toHaveLength(1);
+    expect(sentenceCards.map((card) => card.cardType).sort()).toEqual([
+      "listening",
+      "production",
+      "recognition",
+      "speaking"
+    ]);
+    expect(expressionCards.map((card) => card.cardType).sort()).toEqual([
+      "listening",
+      "production",
+      "recognition",
+      "speaking",
+      "spelling"
     ]);
   });
 });

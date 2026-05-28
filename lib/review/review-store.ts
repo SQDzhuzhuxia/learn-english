@@ -228,6 +228,30 @@ function createExpressionReviewCardId(
   );
 }
 
+function createWritingSourceMaterialId(promptTitle: string) {
+  return `writing-${createStableTextHash(promptTitle.toLowerCase())}`;
+}
+
+function createWritingSourceSegmentId(kind: SaveWritingItemKind, text: string) {
+  return `${kind}-${createStableTextHash(text.toLowerCase())}`;
+}
+
+function createWritingLearningItemId(sourceMaterialId: string, sourceSegmentId: string, text: string) {
+  return `item-${sourceMaterialId}-${sourceSegmentId}-${createStableTextHash(text.toLowerCase())}`;
+}
+
+function createWritingReviewCardId(
+  sourceMaterialId: string,
+  sourceSegmentId: string,
+  text: string,
+  cardType: ReviewCardType = "recognition"
+) {
+  return createTypedCardId(
+    `card-${sourceMaterialId}-${sourceSegmentId}-${createStableTextHash(text.toLowerCase())}`,
+    cardType
+  );
+}
+
 function createReviewCardRecord(input: {
   id: string;
   learningItemId: string;
@@ -416,6 +440,19 @@ export type SaveExpressionInput = {
   example?: string;
 };
 
+export type SaveWritingItemKind = "corrected-sentence" | "expression";
+
+export type SaveWritingItemInput = {
+  kind: SaveWritingItemKind;
+  promptTitle: string;
+  prompt?: string;
+  originalText?: string;
+  correctedText?: string;
+  text: string;
+  meaningZh?: string;
+  example?: string;
+};
+
 export function saveExpressionAsReviewCard(
   material: StudyMaterialRecord,
   segment: MaterialSegment,
@@ -499,6 +536,117 @@ export function saveExpressionAsReviewCard(
     label: `保存表达：${expressionText}`,
     materialId: material.id,
     materialTitle: material.title
+  });
+
+  return {
+    item,
+    card: reviewCards[0],
+    cards: reviewCards,
+    created: true
+  };
+}
+
+export function saveWritingItemAsReviewCard(input: SaveWritingItemInput) {
+  const items = loadLearningItems();
+  const cards = loadReviewCards();
+  const text = input.text.trim();
+  const promptTitle = input.promptTitle.trim() || "短写作";
+
+  if (!text) {
+    return {
+      item: undefined,
+      card: undefined,
+      created: false
+    };
+  }
+
+  const sourceMaterialId = createWritingSourceMaterialId(promptTitle);
+  const sourceSegmentId = createWritingSourceSegmentId(input.kind, text);
+  const sourceMaterialTitle = `短写作：${promptTitle}`;
+  const contextText =
+    input.example?.trim() ||
+    input.correctedText?.trim() ||
+    input.originalText?.trim() ||
+    input.prompt?.trim() ||
+    text;
+  const meaningZh =
+    input.meaningZh?.trim() ||
+    (input.kind === "corrected-sentence" && input.originalText?.trim()
+      ? `原句：${input.originalText.trim()}`
+      : "待 AI 解释");
+
+  const existingItem = items.find(
+    (item) =>
+      item.sourceMaterialId === sourceMaterialId &&
+      item.sourceSegmentId === sourceSegmentId &&
+      item.text.trim().toLowerCase() === text.toLowerCase() &&
+      item.status !== "archived"
+  );
+  const existingLinkedCard = existingItem
+    ? cards.find((card) => card.learningItemId === existingItem.id)
+    : undefined;
+
+  if (existingItem && existingLinkedCard) {
+    return {
+      item: existingItem,
+      card: existingLinkedCard,
+      cards: cards.filter((card) => card.learningItemId === existingItem.id),
+      created: false
+    };
+  }
+
+  const learningItemId =
+    existingItem?.id ?? createWritingLearningItemId(sourceMaterialId, sourceSegmentId, text);
+  const reviewCardId = createWritingReviewCardId(sourceMaterialId, sourceSegmentId, text);
+  const timestamp = nowIso();
+  const existingCard = cards.find((card) => card.id === reviewCardId);
+
+  if (existingCard) {
+    return {
+      item: items.find((item) => item.id === learningItemId),
+      card: existingCard,
+      cards: cards.filter((card) => card.learningItemId === learningItemId),
+      created: false
+    };
+  }
+
+  const item: LearningItemRecord =
+    existingItem ?? {
+      id: learningItemId,
+      type:
+        input.kind === "corrected-sentence"
+          ? "sentence"
+          : text.includes(" ")
+            ? "phrase"
+            : "word",
+      text,
+      meaningZh,
+      sourceMaterialId,
+      sourceMaterialTitle,
+      sourceSegmentId,
+      contextText,
+      status: "active",
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+  const reviewCards = createReviewCardsForLearningItem({
+    baseCardId: reviewCardId,
+    item,
+    source: sourceMaterialTitle,
+    timestamp
+  });
+
+  saveLearningItems(existingItem ? items : [item, ...items]);
+  saveReviewCards([...reviewCards, ...cards]);
+  recordStudyActivity({
+    type: "asset",
+    label:
+      input.kind === "corrected-sentence"
+        ? `保存写作句子：${text}`
+        : `保存写作表达：${text}`,
+    materialId: sourceMaterialId,
+    materialTitle: sourceMaterialTitle
   });
 
   return {

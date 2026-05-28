@@ -9,6 +9,7 @@ import {
   MicOff,
   PenLine,
   Play,
+  Plus,
   Square,
   Volume2
 } from "lucide-react";
@@ -20,7 +21,8 @@ import {
   type PracticeAttemptRecord
 } from "@/lib/speech/practice-store";
 import { createShadowingFeedback, type ShadowingFeedback } from "@/lib/speech/shadowing-feedback";
-import type { AiWritingCorrection } from "@/lib/ai/types";
+import { saveWritingItemAsReviewCard } from "@/lib/review/review-store";
+import type { AiSegmentExpression, AiWritingCorrection } from "@/lib/ai/types";
 
 type CloudTranscription = {
   text: string;
@@ -86,6 +88,8 @@ export function PracticeClient() {
   const [writingText, setWritingText] = useState("");
   const [writingCorrection, setWritingCorrection] = useState<AiWritingCorrection | null>(null);
   const [writingMessage, setWritingMessage] = useState("");
+  const [writingSaveMessage, setWritingSaveMessage] = useState("");
+  const [savedWritingKeys, setSavedWritingKeys] = useState<Record<string, boolean>>({});
   const [isCorrectingWriting, setIsCorrectingWriting] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -172,6 +176,8 @@ export function PracticeClient() {
         minutes: 1
       });
       setWritingCorrection(payload.correction);
+      setWritingSaveMessage("");
+      setSavedWritingKeys({});
       setWritingMessage(
         payload.correction.source === "model"
           ? `已由 ${payload.correction.provider} 批改。`
@@ -182,6 +188,68 @@ export function PracticeClient() {
     } finally {
       setIsCorrectingWriting(false);
     }
+  }
+
+  function createWritingSaveKey(kind: "corrected-sentence" | "expression", text: string) {
+    return `${kind}:${text.trim().toLowerCase()}`;
+  }
+
+  function markWritingItemSaved(key: string) {
+    setSavedWritingKeys((current) => ({
+      ...current,
+      [key]: true
+    }));
+  }
+
+  function handleSaveCorrectedWriting() {
+    if (!writingCorrection) {
+      return;
+    }
+
+    const prompt = writingPrompts[selectedWritingIndex];
+    const key = createWritingSaveKey("corrected-sentence", writingCorrection.correctedText);
+    const result = saveWritingItemAsReviewCard({
+      kind: "corrected-sentence",
+      promptTitle: prompt.title,
+      prompt: prompt.prompt,
+      originalText: writingCorrection.originalText,
+      correctedText: writingCorrection.correctedText,
+      text: writingCorrection.correctedText,
+      example: writingCorrection.correctedText
+    });
+
+    markWritingItemSaved(key);
+    setWritingSaveMessage(
+      result.created
+        ? `已保存自然写法，并生成 ${result.cards?.length ?? 1} 张复习卡。`
+        : "这条自然写法已经在复习系统里。"
+    );
+  }
+
+  function handleSaveWritingExpression(expression: AiSegmentExpression) {
+    if (!writingCorrection) {
+      return;
+    }
+
+    const prompt = writingPrompts[selectedWritingIndex];
+    const key = createWritingSaveKey("expression", expression.text);
+    const result = saveWritingItemAsReviewCard({
+      kind: "expression",
+      promptTitle: prompt.title,
+      prompt: prompt.prompt,
+      originalText: writingCorrection.originalText,
+      correctedText: writingCorrection.correctedText,
+      text: expression.text,
+      meaningZh: expression.meaningZh,
+      example: expression.example || writingCorrection.correctedText
+    });
+
+    markWritingItemSaved(key);
+    setWritingSaveMessage(
+      result.created
+        ? `已保存表达“${expression.text}”，并生成 ${result.cards?.length ?? 1} 张复习卡。`
+        : `表达“${expression.text}”已经在复习系统里。`
+    );
   }
 
   async function startRecording() {
@@ -544,7 +612,7 @@ export function PracticeClient() {
               <div key={item} className="rounded-lg border border-border bg-white p-4">
                 <p className="text-sm font-semibold text-foreground">{item}</p>
                 <p className="mt-2 text-xs leading-5 text-muted">
-                  {item === "复习卡" ? "后续接入" : "本轮已接入"}
+                  本轮已接入
                 </p>
               </div>
             ))}
@@ -574,6 +642,8 @@ export function PracticeClient() {
                     setSelectedWritingIndex(index);
                     setWritingCorrection(null);
                     setWritingMessage("");
+                    setWritingSaveMessage("");
+                    setSavedWritingKeys({});
                   }}
                   className={`rounded-lg border p-3 text-left ${
                     index === selectedWritingIndex
@@ -622,7 +692,19 @@ export function PracticeClient() {
             {writingCorrection ? (
               <div className="mt-4 space-y-4">
                 <section>
-                  <p className="text-sm font-medium text-muted">更自然写法</p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-medium text-muted">更自然写法</p>
+                    <button
+                      onClick={handleSaveCorrectedWriting}
+                      disabled={savedWritingKeys[createWritingSaveKey("corrected-sentence", writingCorrection.correctedText)]}
+                      className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      <Plus className="h-4 w-4 text-accent" />
+                      {savedWritingKeys[createWritingSaveKey("corrected-sentence", writingCorrection.correctedText)]
+                        ? "已保存"
+                        : "保存复习卡"}
+                    </button>
+                  </div>
                   <p className="mt-2 rounded-lg bg-panel-strong p-3 text-sm leading-6 text-foreground">
                     {writingCorrection.correctedText}
                   </p>
@@ -643,12 +725,32 @@ export function PracticeClient() {
                   <p className="text-sm font-medium text-muted">可保存表达</p>
                   <div className="mt-2 space-y-2">
                     {writingCorrection.betterExpressions.map((expression) => (
-                      <div key={expression.text} className="rounded-lg border border-border bg-panel-strong p-3">
-                        <p className="text-sm font-semibold text-foreground">{expression.text}</p>
-                        <p className="mt-1 text-xs leading-5 text-muted">{expression.meaningZh}</p>
+                      <div
+                        key={expression.text}
+                        className="flex flex-col gap-3 rounded-lg border border-border bg-panel-strong p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{expression.text}</p>
+                          <p className="mt-1 text-xs leading-5 text-muted">{expression.meaningZh}</p>
+                        </div>
+                        <button
+                          onClick={() => handleSaveWritingExpression(expression)}
+                          disabled={savedWritingKeys[createWritingSaveKey("expression", expression.text)]}
+                          className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          <Plus className="h-4 w-4 text-accent" />
+                          {savedWritingKeys[createWritingSaveKey("expression", expression.text)]
+                            ? "已保存"
+                            : "保存"}
+                        </button>
                       </div>
                     ))}
                   </div>
+                  {writingSaveMessage ? (
+                    <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                      {writingSaveMessage}
+                    </p>
+                  ) : null}
                 </section>
               </div>
             ) : (

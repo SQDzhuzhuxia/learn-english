@@ -3,6 +3,7 @@
 import { getNextReviewDate, getReviewIntervalDays } from "@/lib/review/scheduler";
 import type { MaterialSegment, StudyMaterialRecord } from "@/lib/content/types";
 import type {
+  LearningItemType,
   LearningItemRecord,
   ReviewCardRecord,
   ReviewLogRecord
@@ -33,7 +34,9 @@ export function getSeedLearningItems(): LearningItemRecord[] {
       sourceMaterialTitle: "A Visit to the Doctor",
       sourceSegmentId: "s2",
       contextText: "I would like to make an appointment with a doctor.",
-      createdAt: "2026-05-28T00:00:00.000Z"
+      status: "active",
+      createdAt: "2026-05-28T00:00:00.000Z",
+      updatedAt: "2026-05-28T00:00:00.000Z"
     },
     {
       id: "seed-item-sore-throat",
@@ -45,7 +48,9 @@ export function getSeedLearningItems(): LearningItemRecord[] {
       sourceMaterialTitle: "A Visit to the Doctor",
       sourceSegmentId: "s1",
       contextText: "I have had a sore throat since yesterday.",
-      createdAt: "2026-05-28T00:00:00.000Z"
+      status: "active",
+      createdAt: "2026-05-28T00:00:00.000Z",
+      updatedAt: "2026-05-28T00:00:00.000Z"
     },
     {
       id: "seed-item-spell-name",
@@ -56,7 +61,9 @@ export function getSeedLearningItems(): LearningItemRecord[] {
       sourceMaterialTitle: "A Visit to the Doctor",
       sourceSegmentId: "s4",
       contextText: "Could you please spell your last name?",
-      createdAt: "2026-05-28T00:00:00.000Z"
+      status: "active",
+      createdAt: "2026-05-28T00:00:00.000Z",
+      updatedAt: "2026-05-28T00:00:00.000Z"
     }
   ];
 }
@@ -141,8 +148,24 @@ function writeJson<T>(key: string, value: T) {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
+function normalizeLearningItems(items: LearningItemRecord[]) {
+  return items.map((item) => ({
+    ...item,
+    status: item.status ?? "active",
+    updatedAt: item.updatedAt ?? item.createdAt
+  }));
+}
+
 export function loadLearningItems() {
-  return readJson<LearningItemRecord[]>(LEARNING_ITEMS_KEY, getSeedLearningItems());
+  const items = normalizeLearningItems(
+    readJson<LearningItemRecord[]>(LEARNING_ITEMS_KEY, getSeedLearningItems())
+  );
+
+  if (canUseStorage()) {
+    saveLearningItems(items);
+  }
+
+  return items;
 }
 
 export function saveLearningItems(items: LearningItemRecord[]) {
@@ -198,7 +221,9 @@ export function saveSegmentAsReviewCard(material: StudyMaterialRecord, segment: 
     sourceMaterialTitle: material.title,
     sourceSegmentId: segment.id,
     contextText: segment.text,
-    createdAt: timestamp
+    status: "active",
+    createdAt: timestamp,
+    updatedAt: timestamp
   };
 
   const card: ReviewCardRecord = {
@@ -224,6 +249,144 @@ export function saveSegmentAsReviewCard(material: StudyMaterialRecord, segment: 
     item,
     card,
     created: true
+  };
+}
+
+export type LearningItemUpdateInput = {
+  type: LearningItemType;
+  text: string;
+  meaningZh?: string;
+  meaningEn?: string;
+  contextText: string;
+};
+
+export function updateLearningItem(itemId: string, updates: LearningItemUpdateInput) {
+  const timestamp = nowIso();
+  let updatedItem: LearningItemRecord | undefined;
+
+  const updatedItems = loadLearningItems().map((item) => {
+    if (item.id !== itemId) {
+      return item;
+    }
+
+    updatedItem = {
+      ...item,
+      ...updates,
+      updatedAt: timestamp
+    };
+
+    return updatedItem;
+  });
+
+  saveLearningItems(updatedItems);
+
+  if (updatedItem) {
+    const updatedCards = loadReviewCards().map((card) => {
+      if (card.learningItemId !== itemId) {
+        return card;
+      }
+
+      return {
+        ...card,
+        front: updatedItem?.text ?? card.front,
+        back: updatedItem?.meaningZh || updatedItem?.meaningEn || card.back,
+        example: updatedItem?.contextText ?? card.example,
+        updatedAt: timestamp
+      };
+    });
+
+    saveReviewCards(updatedCards);
+  }
+
+  return updatedItem;
+}
+
+export function archiveLearningItem(itemId: string) {
+  const timestamp = nowIso();
+  let archivedItem: LearningItemRecord | undefined;
+
+  const updatedItems = loadLearningItems().map((item) => {
+    if (item.id !== itemId) {
+      return item;
+    }
+
+    archivedItem = {
+      ...item,
+      status: "archived",
+      archivedAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    return archivedItem;
+  });
+
+  saveLearningItems(updatedItems);
+  saveReviewCards(
+    loadReviewCards().map((card) =>
+      card.learningItemId === itemId
+        ? {
+            ...card,
+            status: "suspended",
+            updatedAt: timestamp
+          }
+        : card
+    )
+  );
+
+  return archivedItem;
+}
+
+export function restoreLearningItem(itemId: string) {
+  const timestamp = nowIso();
+  let restoredItem: LearningItemRecord | undefined;
+
+  const updatedItems = loadLearningItems().map((item) => {
+    if (item.id !== itemId) {
+      return item;
+    }
+
+    restoredItem = {
+      ...item,
+      status: "active",
+      archivedAt: undefined,
+      updatedAt: timestamp
+    };
+
+    return restoredItem;
+  });
+
+  saveLearningItems(updatedItems);
+  saveReviewCards(
+    loadReviewCards().map((card) =>
+      card.learningItemId === itemId
+        ? {
+            ...card,
+            status: card.intervalDays > 0 ? "review" : "new",
+            updatedAt: timestamp
+          }
+        : card
+    )
+  );
+
+  return restoredItem;
+}
+
+export function deleteLearningItem(itemId: string) {
+  const items = loadLearningItems();
+  const cards = loadReviewCards();
+  const cardsToDelete = cards.filter((card) => card.learningItemId === itemId);
+  const cardIdsToDelete = new Set(cardsToDelete.map((card) => card.id));
+  const nextItems = items.filter((item) => item.id !== itemId);
+  const nextCards = cards.filter((card) => card.learningItemId !== itemId);
+  const nextLogs = loadReviewLogs().filter((log) => !cardIdsToDelete.has(log.cardId));
+
+  saveLearningItems(nextItems);
+  saveReviewCards(nextCards);
+  saveReviewLogs(nextLogs);
+
+  return {
+    deletedItems: items.length - nextItems.length,
+    deletedCards: cardsToDelete.length
   };
 }
 

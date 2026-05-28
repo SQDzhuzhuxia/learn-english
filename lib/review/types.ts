@@ -1,10 +1,12 @@
 import type { ReviewRating } from "@/lib/review/scheduler";
 
 export type LearningItemType = "word" | "phrase" | "sentence" | "pattern" | "error";
+export type LearningItemStatus = "active" | "archived";
 
 export type LearningItemRecord = {
   id: string;
   type: LearningItemType;
+  status?: LearningItemStatus;
   text: string;
   meaningZh?: string;
   meaningEn?: string;
@@ -13,6 +15,8 @@ export type LearningItemRecord = {
   sourceSegmentId: string;
   contextText: string;
   createdAt: string;
+  updatedAt?: string;
+  archivedAt?: string;
 };
 
 export type ReviewCardType = "recognition" | "listening" | "spelling" | "speaking" | "production";

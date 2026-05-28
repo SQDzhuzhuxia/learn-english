@@ -46,7 +46,7 @@ export function ReviewClient() {
 
       const loaded = loadReviewCards();
       setCards(loaded);
-      setActiveCardId((current) => current || loaded[0]?.id || "");
+      setActiveCardId((current) => current || loaded.find((card) => card.status !== "suspended")?.id || "");
     });
 
     return () => {
@@ -54,18 +54,20 @@ export function ReviewClient() {
     };
   }, []);
 
-  const dueCards = useMemo(() => cards.filter((card) => isCardDue(card)), [cards]);
+  const visibleCards = useMemo(() => cards.filter((card) => card.status !== "suspended"), [cards]);
+  const dueCards = useMemo(() => visibleCards.filter((card) => isCardDue(card)), [visibleCards]);
   const activeCard =
-    cards.find((card) => card.id === activeCardId) ?? dueCards[0] ?? cards[0];
-  const newCards = cards.filter((card) => card.status === "new").length;
+    visibleCards.find((card) => card.id === activeCardId) ?? dueCards[0] ?? visibleCards[0];
+  const newCards = visibleCards.filter((card) => card.status === "new").length;
 
   function handleRate(cardId: string, rating: ReviewRating) {
     const updated = reviewCard(cardId, rating);
     const nextCards = loadReviewCards();
+    const nextVisibleCards = nextCards.filter((card) => card.status !== "suspended");
     setCards(nextCards);
 
-    const nextDue = nextCards.find((card) => isCardDue(card) && card.id !== cardId);
-    setActiveCardId(nextDue?.id ?? nextCards[0]?.id ?? "");
+    const nextDue = nextVisibleCards.find((card) => isCardDue(card) && card.id !== cardId);
+    setActiveCardId(nextDue?.id ?? nextVisibleCards[0]?.id ?? "");
 
     if (updated) {
       setMessage(`已记录：${formatDueLabel(updated)}复习。`);
@@ -111,7 +113,7 @@ export function ReviewClient() {
               <p className="mt-1 text-xs text-muted">新卡</p>
             </div>
             <div className="rounded-lg border border-border bg-white p-4">
-              <p className="text-2xl font-semibold text-foreground">{cards.length}</p>
+              <p className="text-2xl font-semibold text-foreground">{visibleCards.length}</p>
               <p className="mt-1 text-xs text-muted">总卡片</p>
             </div>
           </div>
@@ -188,7 +190,7 @@ export function ReviewClient() {
             <RotateCcw className="h-5 w-5 text-accent" />
           </div>
           <div className="mt-4 space-y-3">
-            {cards.map((card) => (
+            {visibleCards.map((card) => (
               <button
                 key={card.id}
                 onClick={() => setActiveCardId(card.id)}

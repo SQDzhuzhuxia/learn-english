@@ -5,13 +5,17 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   BookmarkPlus,
+  Bot,
   ChevronLeft,
   ChevronRight,
   Headphones,
   Languages,
+  Loader2,
   Mic,
   Play,
   Repeat2,
+  RotateCw,
+  Sparkles,
   Volume2
 } from "lucide-react";
 import { aiExplanation } from "@/lib/mock-data";
@@ -25,6 +29,58 @@ import {
 } from "@/lib/content/material-store";
 import { saveSegmentAsReviewCard } from "@/lib/review/review-store";
 import type { StudyMaterialRecord } from "@/lib/content/types";
+import type { AiSegmentExplanation } from "@/lib/ai/types";
+
+const AI_EXPLANATION_CACHE_KEY = "learn-english.ai-segment-explanations.v1";
+
+type AiExplanationState = {
+  status: "idle" | "loading" | "success" | "error";
+  explanation?: AiSegmentExplanation;
+  message?: string;
+};
+
+type SavableExpression = {
+  text: string;
+  meaning: string;
+  example: string;
+};
+
+function canUseLocalStorage() {
+  return typeof window !== "undefined" && Boolean(window.localStorage);
+}
+
+function readAiExplanationCache() {
+  if (!canUseLocalStorage()) {
+    return {};
+  }
+
+  const raw = window.localStorage.getItem(AI_EXPLANATION_CACHE_KEY);
+
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(raw) as Record<string, AiSegmentExplanation>;
+  } catch {
+    window.localStorage.removeItem(AI_EXPLANATION_CACHE_KEY);
+    return {};
+  }
+}
+
+function getCachedAiExplanation(cacheKey: string) {
+  return readAiExplanationCache()[cacheKey];
+}
+
+function setCachedAiExplanation(cacheKey: string, explanation: AiSegmentExplanation) {
+  if (!canUseLocalStorage()) {
+    return;
+  }
+
+  const cache = readAiExplanationCache();
+  cache[cacheKey] = explanation;
+  window.localStorage.setItem(AI_EXPLANATION_CACHE_KEY, JSON.stringify(cache));
+}
 
 function resolveInitialMaterial(materialId?: string) {
   const seedMaterials = getSeedMaterials();
@@ -42,6 +98,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
     () => resolveInitialMaterial(materialId)?.currentSegmentOrder ?? 1
   );
   const [saveMessage, setSaveMessage] = useState("");
+  const [aiState, setAiState] = useState<AiExplanationState>({ status: "idle" });
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +123,49 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
     return material?.segments.find((segment) => segment.order === currentOrder) ?? material?.segments[0];
   }, [currentOrder, material]);
 
+  const aiCacheKey = material && current ? `${material.id}:${current.id}` : "";
+
+  const savableExpressions = useMemo<SavableExpression[]>(() => {
+    if (!material || !current) {
+      return [];
+    }
+
+    if (material.source === "seed") {
+      return aiExplanation.expressions;
+    }
+
+    if (aiState.explanation?.keyExpressions.length) {
+      return aiState.explanation.keyExpressions.map((expression) => ({
+        text: expression.text,
+        meaning: expression.meaningZh,
+        example: expression.example
+      }));
+    }
+
+    return material.keyExpressions.map((expression) => ({
+      text: expression,
+      meaning: "生成 AI 解释后会补充中文意思",
+      example: current.text
+    }));
+  }, [aiState.explanation, current, material]);
+
+  useEffect(() => {
+    setSaveMessage("");
+
+    if (!material || !current || material.source === "seed") {
+      setAiState({ status: "idle" });
+      return;
+    }
+
+    const cached = getCachedAiExplanation(`${material.id}:${current.id}`);
+
+    if (cached) {
+      setAiState({ status: "success", explanation: cached, message: "已读取本地 AI 解释缓存。" });
+    } else {
+      setAiState({ status: "idle" });
+    }
+  }, [current, material]);
+
   function moveTo(order: number) {
     if (!material) {
       return;
@@ -87,6 +187,59 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
 
     const result = saveSegmentAsReviewCard(material, current);
     setSaveMessage(result.created ? "已保存到词句本，并生成复习卡。" : "这句话已经在复习队列里。");
+  }
+
+  async function handleGenerateAiExplanation() {
+    if (!material || !current) {
+      return;
+    }
+
+    setAiState((previous) => ({
+      status: "loading",
+      explanation: previous.explanation,
+      message: "正在为当前句生成解释..."
+    }));
+
+    try {
+      const response = await fetch("/api/ai/explain-segment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          materialTitle: material.title,
+          materialType: material.type,
+          level: material.level,
+          sentence: current.text,
+          contextText: material.contentText
+        })
+      });
+
+      const payload = (await response.json()) as {
+        explanation?: AiSegmentExplanation;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.explanation) {
+        throw new Error(payload.error ?? "AI 解释生成失败。");
+      }
+
+      setCachedAiExplanation(aiCacheKey, payload.explanation);
+      setAiState({
+        status: "success",
+        explanation: payload.explanation,
+        message:
+          payload.explanation.source === "model"
+            ? `已由 ${payload.explanation.provider} 生成解释。`
+            : "当前使用本地降级解释，配置 API 后会自动调用模型。"
+      });
+    } catch (error) {
+      setAiState((previous) => ({
+        status: "error",
+        explanation: previous.explanation,
+        message: error instanceof Error ? error.message : "AI 解释生成失败。"
+      }));
+    }
   }
 
   if (!material || !current) {
@@ -189,9 +342,11 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
             ) : null}
             {current.note ? (
               <p className="mt-3 text-sm leading-6 text-muted">{current.note}</p>
+            ) : aiState.explanation ? (
+              <p className="mt-3 text-sm leading-6 text-muted">{aiState.explanation.meaningZh}</p>
             ) : (
               <p className="mt-3 text-sm leading-6 text-muted">
-                用户导入文本暂时没有翻译和 AI 解释，后续会接入模型自动生成。
+                用户导入文本可以点击右侧生成 AI 解释；未配置 API 时会先给出本地降级解释。
               </p>
             )}
           </div>
@@ -293,23 +448,77 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
               </section>
             </div>
           ) : (
-            <p className="mt-4 rounded-lg border border-border bg-white p-3 text-sm leading-6 text-muted">
-              这篇是你导入的材料。下一步 Sprint 会把 AI 解释接进来，自动生成中文解释、重点词句和复习卡。
-            </p>
+            <div className="mt-4 space-y-4">
+              <button
+                onClick={handleGenerateAiExplanation}
+                disabled={aiState.status === "loading"}
+                className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {aiState.status === "loading" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : aiState.explanation ? (
+                  <RotateCw className="h-4 w-4" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {aiState.explanation ? "重新生成解释" : "生成当前句解释"}
+              </button>
+
+              {aiState.message ? (
+                <p
+                  className={`rounded-lg border px-3 py-2 text-sm leading-6 ${
+                    aiState.status === "error"
+                      ? "border-rose-200 bg-rose-50 text-rose-700"
+                      : "border-sky-200 bg-sky-50 text-sky-800"
+                  }`}
+                >
+                  {aiState.message}
+                </p>
+              ) : null}
+
+              {aiState.explanation ? (
+                <>
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-medium text-muted">
+                    <Bot className="h-4 w-4 text-accent" />
+                    {aiState.explanation.source === "model"
+                      ? `模型解释 · ${aiState.explanation.provider}`
+                      : `本地降级 · ${aiState.explanation.provider}`}
+                  </div>
+
+                  <section>
+                    <h3 className="text-sm font-semibold text-foreground">句子意思</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">{aiState.explanation.meaningZh}</p>
+                  </section>
+
+                  <section>
+                    <h3 className="text-sm font-semibold text-foreground">结构拆解</h3>
+                    <ul className="mt-2 space-y-2 text-sm leading-6 text-muted">
+                      {aiState.explanation.structure.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </section>
+
+                  <section>
+                    <h3 className="text-sm font-semibold text-foreground">中文母语者易错点</h3>
+                    <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800">
+                      {aiState.explanation.commonMistake}
+                    </p>
+                  </section>
+                </>
+              ) : (
+                <p className="rounded-lg border border-border bg-white p-3 text-sm leading-6 text-muted">
+                  这篇是你导入的材料。点击生成后，系统会按“中文解释、结构拆解、易错点、重点表达”的格式给当前句做学习说明。
+                </p>
+              )}
+            </div>
           )}
         </section>
 
         <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-foreground">可保存表达</h2>
           <div className="mt-4 space-y-3">
-            {(material.source === "seed"
-              ? aiExplanation.expressions
-              : material.keyExpressions.map((expression) => ({
-                  text: expression,
-                  meaning: "待 AI 解释",
-                  example: current.text
-                }))
-            ).map((expression) => (
+            {savableExpressions.map((expression) => (
               <div key={expression.text} className="rounded-lg border border-border bg-white p-3">
                 <p className="text-sm font-semibold text-foreground">{expression.text}</p>
                 <p className="mt-1 text-sm text-muted">{expression.meaning}</p>
@@ -320,7 +529,8 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
           <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-800">
             {material.source === "seed"
               ? aiExplanation.shadowingTip
-              : "用户导入材料已能学习和保存进度；AI 提取表达会在后续 Sprint 接入。"}
+              : aiState.explanation?.shadowingTip ??
+                "用户导入材料已能学习和保存进度；生成 AI 解释后会自动补充跟读建议和重点表达。"}
           </p>
           <Link
             href="/review"

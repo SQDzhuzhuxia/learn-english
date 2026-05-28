@@ -7,6 +7,7 @@ import {
   loadReviewCards,
   restoreLearningItem,
   saveExpressionAsReviewCard,
+  saveSegmentAsReviewCard,
   updateLearningItem
 } from "@/lib/review/review-store";
 import { getSeedMaterials } from "@/lib/content/material-store";
@@ -137,6 +138,26 @@ describe("learning item management", () => {
     expect(second.created).toBe(false);
     expect(savedItems).toHaveLength(1);
     expect(savedItems[0]?.type).toBe("word");
-    expect(savedCards).toHaveLength(1);
+    expect(savedCards.map((card) => card.cardType).sort()).toEqual([
+      "production",
+      "recognition",
+      "spelling"
+    ]);
+  });
+
+  it("creates multiple practice card types for saved sentences", () => {
+    const material = getSeedMaterials()[0];
+    const segment = material.segments[2];
+
+    const result = saveSegmentAsReviewCard(material, segment);
+    const savedCards = loadReviewCards().filter((card) => card.learningItemId === result.item?.id);
+
+    expect(result.created).toBe(true);
+    expect(savedCards.map((card) => card.cardType).sort()).toEqual([
+      "listening",
+      "production",
+      "recognition",
+      "speaking"
+    ]);
   });
 });

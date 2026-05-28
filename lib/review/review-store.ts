@@ -5,6 +5,7 @@ import type { MaterialSegment, StudyMaterialRecord } from "@/lib/content/types";
 import type {
   LearningItemType,
   LearningItemRecord,
+  ReviewCardType,
   ReviewCardRecord,
   ReviewLogRecord
 } from "@/lib/review/types";
@@ -192,8 +193,12 @@ function createLearningItemId(materialId: string, segmentId: string) {
   return `item-${materialId}-${segmentId}`;
 }
 
-function createReviewCardId(materialId: string, segmentId: string) {
-  return `card-${materialId}-${segmentId}`;
+function createTypedCardId(baseCardId: string, cardType: ReviewCardType) {
+  return cardType === "recognition" ? baseCardId : `${baseCardId}-${cardType}`;
+}
+
+function createReviewCardId(materialId: string, segmentId: string, cardType: ReviewCardType = "recognition") {
+  return createTypedCardId(`card-${materialId}-${segmentId}`, cardType);
 }
 
 function createStableTextHash(text: string) {
@@ -210,14 +215,148 @@ function createExpressionLearningItemId(materialId: string, segmentId: string, e
   return `item-${materialId}-${segmentId}-expr-${createStableTextHash(expressionText.toLowerCase())}`;
 }
 
-function createExpressionReviewCardId(materialId: string, segmentId: string, expressionText: string) {
-  return `card-${materialId}-${segmentId}-expr-${createStableTextHash(expressionText.toLowerCase())}`;
+function createExpressionReviewCardId(
+  materialId: string,
+  segmentId: string,
+  expressionText: string,
+  cardType: ReviewCardType = "recognition"
+) {
+  return createTypedCardId(
+    `card-${materialId}-${segmentId}-expr-${createStableTextHash(expressionText.toLowerCase())}`,
+    cardType
+  );
+}
+
+function createReviewCardRecord(input: {
+  id: string;
+  learningItemId: string;
+  cardType: ReviewCardType;
+  front: string;
+  back: string;
+  example: string;
+  source: string;
+  timestamp: string;
+}): ReviewCardRecord {
+  return {
+    id: input.id,
+    learningItemId: input.learningItemId,
+    cardType: input.cardType,
+    front: input.front,
+    back: input.back,
+    example: input.example,
+    source: input.source,
+    dueAt: input.timestamp,
+    intervalDays: 0,
+    ease: 2.5,
+    status: "new",
+    createdAt: input.timestamp,
+    updatedAt: input.timestamp
+  };
+}
+
+function createReviewCardsForLearningItem(input: {
+  baseCardId: string;
+  item: LearningItemRecord;
+  source: string;
+  timestamp: string;
+}) {
+  const answer = input.item.meaningZh || input.item.meaningEn || "待 AI 解释";
+  const hasMeaning = Boolean(input.item.meaningZh || input.item.meaningEn);
+  const cards: ReviewCardRecord[] = [
+    createReviewCardRecord({
+      id: createTypedCardId(input.baseCardId, "recognition"),
+      learningItemId: input.item.id,
+      cardType: "recognition",
+      front: input.item.text,
+      back: answer,
+      example: input.item.contextText,
+      source: input.source,
+      timestamp: input.timestamp
+    })
+  ];
+
+  if (hasMeaning) {
+    cards.push(
+      createReviewCardRecord({
+        id: createTypedCardId(input.baseCardId, "production"),
+        learningItemId: input.item.id,
+        cardType: "production",
+        front: answer,
+        back: input.item.text,
+        example: input.item.contextText,
+        source: input.source,
+        timestamp: input.timestamp
+      })
+    );
+  }
+
+  if (input.item.type === "word" || input.item.type === "phrase") {
+    cards.push(
+      createReviewCardRecord({
+        id: createTypedCardId(input.baseCardId, "spelling"),
+        learningItemId: input.item.id,
+        cardType: "spelling",
+        front: `拼写这个表达：${answer}`,
+        back: input.item.text,
+        example: input.item.contextText,
+        source: input.source,
+        timestamp: input.timestamp
+      })
+    );
+  }
+
+  if (input.item.type === "sentence" || input.item.type === "phrase") {
+    cards.push(
+      createReviewCardRecord({
+        id: createTypedCardId(input.baseCardId, "speaking"),
+        learningItemId: input.item.id,
+        cardType: "speaking",
+        front: `跟读并说清楚：${input.item.text}`,
+        back: input.item.text,
+        example: input.item.contextText,
+        source: input.source,
+        timestamp: input.timestamp
+      }),
+      createReviewCardRecord({
+        id: createTypedCardId(input.baseCardId, "listening"),
+        learningItemId: input.item.id,
+        cardType: "listening",
+        front: "听后写出或说出这个表达",
+        back: input.item.text,
+        example: input.item.contextText,
+        source: input.source,
+        timestamp: input.timestamp
+      })
+    );
+  }
+
+  return cards;
 }
 
 export function saveSegmentAsReviewCard(material: StudyMaterialRecord, segment: MaterialSegment) {
   const items = loadLearningItems();
   const cards = loadReviewCards();
-  const learningItemId = createLearningItemId(material.id, segment.id);
+  const existingItem = items.find(
+    (item) =>
+      item.sourceMaterialId === material.id &&
+      item.sourceSegmentId === segment.id &&
+      item.text.trim().toLowerCase() === segment.text.trim().toLowerCase() &&
+      item.status !== "archived"
+  );
+  const existingLinkedCard = existingItem
+    ? cards.find((card) => card.learningItemId === existingItem.id)
+    : undefined;
+
+  if (existingItem && existingLinkedCard) {
+    return {
+      item: existingItem,
+      card: existingLinkedCard,
+      cards: cards.filter((card) => card.learningItemId === existingItem.id),
+      created: false
+    };
+  }
+
+  const learningItemId = existingItem?.id ?? createLearningItemId(material.id, segment.id);
   const reviewCardId = createReviewCardId(material.id, segment.id);
   const timestamp = nowIso();
   const existingCard = cards.find((card) => card.id === reviewCardId);
@@ -226,46 +365,40 @@ export function saveSegmentAsReviewCard(material: StudyMaterialRecord, segment: 
     return {
       item: items.find((item) => item.id === learningItemId),
       card: existingCard,
+      cards: cards.filter((card) => card.learningItemId === learningItemId),
       created: false
     };
   }
 
-  const item: LearningItemRecord = {
-    id: learningItemId,
-    type: "sentence",
-    text: segment.text,
-    meaningZh: segment.translation,
-    sourceMaterialId: material.id,
-    sourceMaterialTitle: material.title,
-    sourceSegmentId: segment.id,
-    contextText: segment.text,
-    status: "active",
-    createdAt: timestamp,
-    updatedAt: timestamp
-  };
+  const item: LearningItemRecord =
+    existingItem ?? {
+      id: learningItemId,
+      type: "sentence",
+      text: segment.text,
+      meaningZh: segment.translation,
+      sourceMaterialId: material.id,
+      sourceMaterialTitle: material.title,
+      sourceSegmentId: segment.id,
+      contextText: segment.text,
+      status: "active",
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
 
-  const card: ReviewCardRecord = {
-    id: reviewCardId,
-    learningItemId,
-    cardType: "recognition",
-    front: segment.text,
-    back: segment.translation ?? "待 AI 解释",
-    example: segment.text,
+  const reviewCards = createReviewCardsForLearningItem({
+    baseCardId: reviewCardId,
+    item,
     source: material.title,
-    dueAt: timestamp,
-    intervalDays: 0,
-    ease: 2.5,
-    status: "new",
-    createdAt: timestamp,
-    updatedAt: timestamp
-  };
+    timestamp
+  });
 
-  saveLearningItems([item, ...items]);
-  saveReviewCards([card, ...cards]);
+  saveLearningItems(existingItem ? items : [item, ...items]);
+  saveReviewCards([...reviewCards, ...cards]);
 
   return {
     item,
-    card,
+    card: reviewCards[0],
+    cards: reviewCards,
     created: true
   };
 }
@@ -310,6 +443,7 @@ export function saveExpressionAsReviewCard(
     return {
       item: existingItem,
       card: existingLinkedCard,
+      cards: cards.filter((card) => card.learningItemId === existingItem.id),
       created: false
     };
   }
@@ -324,6 +458,7 @@ export function saveExpressionAsReviewCard(
     return {
       item: items.find((item) => item.id === learningItemId),
       card: existingCard,
+      cards: cards.filter((card) => card.learningItemId === learningItemId),
       created: false
     };
   }
@@ -343,28 +478,20 @@ export function saveExpressionAsReviewCard(
       updatedAt: timestamp
     };
 
-  const card: ReviewCardRecord = {
-    id: reviewCardId,
-    learningItemId,
-    cardType: "recognition",
-    front: expressionText,
-    back: meaningZh,
-    example,
+  const reviewCards = createReviewCardsForLearningItem({
+    baseCardId: reviewCardId,
+    item,
     source: material.title,
-    dueAt: timestamp,
-    intervalDays: 0,
-    ease: 2.5,
-    status: "new",
-    createdAt: timestamp,
-    updatedAt: timestamp
-  };
+    timestamp
+  });
 
   saveLearningItems(existingItem ? items : [item, ...items]);
-  saveReviewCards([card, ...cards]);
+  saveReviewCards([...reviewCards, ...cards]);
 
   return {
     item,
-    card,
+    card: reviewCards[0],
+    cards: reviewCards,
     created: true
   };
 }

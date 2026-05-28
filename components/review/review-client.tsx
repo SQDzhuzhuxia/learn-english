@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, RotateCcw, Volume2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Eye, RotateCcw, Volume2 } from "lucide-react";
 import { reviewRatings } from "@/lib/mock-data";
 import {
   getSeedReviewCards,
@@ -12,6 +12,22 @@ import {
 } from "@/lib/review/review-store";
 import type { ReviewCardRecord } from "@/lib/review/types";
 import type { ReviewRating } from "@/lib/review/scheduler";
+
+const cardTypeLabels: Record<ReviewCardRecord["cardType"], string> = {
+  recognition: "识别",
+  listening: "听力",
+  spelling: "拼写",
+  speaking: "口语",
+  production: "输出"
+};
+
+const cardTypeInstructions: Record<ReviewCardRecord["cardType"], string> = {
+  recognition: "看到英文，先说出中文意思。",
+  listening: "先播放，再尝试写出或说出听到的英文。",
+  spelling: "根据提示拼写英文表达。",
+  speaking: "先跟读，再自己说一遍。",
+  production: "看到中文，尝试说出自然英文。"
+};
 
 function formatDueLabel(card: ReviewCardRecord) {
   const dueAt = new Date(card.dueAt);
@@ -35,6 +51,7 @@ export function ReviewClient() {
   const [cards, setCards] = useState<ReviewCardRecord[]>(() => getSeedReviewCards());
   const [activeCardId, setActiveCardId] = useState(cards[0]?.id ?? "");
   const [message, setMessage] = useState("");
+  const [isAnswerVisible, setIsAnswerVisible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,10 +85,25 @@ export function ReviewClient() {
 
     const nextDue = nextVisibleCards.find((card) => isCardDue(card) && card.id !== cardId);
     setActiveCardId(nextDue?.id ?? nextVisibleCards[0]?.id ?? "");
+    setIsAnswerVisible(false);
 
     if (updated) {
       setMessage(`已记录：${formatDueLabel(updated)}复习。`);
     }
+  }
+
+  function handleSpeakCard(card: ReviewCardRecord) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      setMessage("当前浏览器不支持本地朗读。");
+      return;
+    }
+
+    const textToSpeak = card.cardType === "recognition" ? card.front : card.back;
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.lang = "en-US";
+    utterance.rate = 0.85;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
   }
 
   if (!activeCard) {
@@ -148,34 +180,52 @@ export function ReviewClient() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-medium text-accent">
-                {activeCard.cardType}
+                {cardTypeLabels[activeCard.cardType]}
               </span>
               <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
                 {formatDueLabel(activeCard)}
               </span>
             </div>
-            <button className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white hover:bg-panel-strong" aria-label="播放音频">
+            <button
+              onClick={() => handleSpeakCard(activeCard)}
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white hover:bg-panel-strong"
+              aria-label="播放当前卡片"
+            >
               <Volume2 className="h-4 w-4 text-accent" />
             </button>
           </div>
 
           <div className="mt-8 rounded-lg border border-border bg-panel-strong p-5">
+            <p className="mb-3 text-sm font-medium text-accent">
+              {cardTypeInstructions[activeCard.cardType]}
+            </p>
             <p className="text-2xl font-semibold leading-10 text-foreground">{activeCard.front}</p>
             <p className="mt-4 text-sm leading-6 text-muted">{activeCard.example}</p>
           </div>
 
-          <div className="mt-5 rounded-lg border border-border bg-white p-4">
-            <p className="text-sm font-medium text-muted">答案</p>
-            <p className="mt-2 text-lg font-semibold text-foreground">{activeCard.back}</p>
-            <p className="mt-2 text-sm text-muted">来源：{activeCard.source}</p>
-          </div>
+          {isAnswerVisible ? (
+            <div className="mt-5 rounded-lg border border-border bg-white p-4">
+              <p className="text-sm font-medium text-muted">答案</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{activeCard.back}</p>
+              <p className="mt-2 text-sm text-muted">来源：{activeCard.source}</p>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAnswerVisible(true)}
+              className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
+            >
+              <Eye className="h-4 w-4 text-accent" />
+              显示答案
+            </button>
+          )}
 
           <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
             {reviewRatings.map((rating) => (
               <button
                 key={rating.id}
+                disabled={!isAnswerVisible}
                 onClick={() => handleRate(activeCard.id, rating.id as ReviewRating)}
-                className={`min-h-16 rounded-lg border px-3 py-2 text-sm font-semibold ${rating.tone}`}
+                className={`min-h-16 rounded-lg border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 ${rating.tone}`}
               >
                 <span className="block">{rating.label}</span>
                 <span className="mt-1 block text-xs font-medium opacity-80">{rating.next}</span>
@@ -193,7 +243,10 @@ export function ReviewClient() {
             {visibleCards.map((card) => (
               <button
                 key={card.id}
-                onClick={() => setActiveCardId(card.id)}
+                onClick={() => {
+                  setActiveCardId(card.id);
+                  setIsAnswerVisible(false);
+                }}
                 className={`block w-full rounded-lg border p-3 text-left ${
                   card.id === activeCard.id ? "border-accent bg-accent-soft" : "border-border bg-white"
                 }`}
@@ -201,7 +254,9 @@ export function ReviewClient() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">{card.front}</p>
-                    <p className="mt-1 text-xs text-muted">{card.cardType} · {card.source}</p>
+                    <p className="mt-1 text-xs text-muted">
+                      {cardTypeLabels[card.cardType]} · {card.source}
+                    </p>
                   </div>
                   <span className="shrink-0 rounded-md border border-border bg-white px-2 py-1 text-xs text-muted">
                     {formatDueLabel(card)}

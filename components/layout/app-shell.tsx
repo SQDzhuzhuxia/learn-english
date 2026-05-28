@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BookMarked,
   BookOpenText,
   ChartNoAxesColumnIncreasing,
   Library,
@@ -28,6 +29,11 @@ const navigation = [
     href: "/study",
     label: "学习",
     icon: BookOpenText
+  },
+  {
+    href: "/notebook",
+    label: "词句",
+    icon: BookMarked
   },
   {
     href: "/review",

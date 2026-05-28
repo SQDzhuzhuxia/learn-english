@@ -40,3 +40,11 @@ npm run typecheck
 npm run test
 npm run build
 ```
+
+## Local Speech
+
+Server-side speech recognition is configured with `SPEECH_PROVIDER`.
+
+- `fallback`: keep browser transcription only.
+- `openai`: use OpenAI-compatible `/audio/transcriptions`.
+- `local-whisper` or `whisper-cpp`: send multipart audio to a local endpoint such as `SPEECH_BASE_URL=http://127.0.0.1:8080` and `SPEECH_ENDPOINT_PATH=/inference`.

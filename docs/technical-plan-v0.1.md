@@ -72,12 +72,13 @@ AI 能力分层：
 
 - 浏览器录音
 - 云端语音转文字
+- 本地 Whisper/whisper.cpp 服务端 endpoint 适配
 - 原句和转写文本对比
 - 句子级跟读反馈
 
 后续：
 
-- Whisper/whisper.cpp 本地转写
+- 内置离线 Whisper 模型打包
 - 本地音频切片
 - 发音、重音、连读、漏读分析
 - 口语实时对话
@@ -285,4 +286,3 @@ learn-english/
 ## 7. 近期决策
 
 当前推荐先从 Next.js Web/PWA 开始，不直接上 Flutter 或 React Native。原因是第一阶段最重要的是验证学习闭环，而不是原生能力。等 Web/PWA 每天能稳定使用后，再决定是否用 Capacitor 包装移动端，或单独开发 React Native/Flutter 客户端。
-

@@ -26,6 +26,7 @@ AI 解释真实接入      已完成
 本地数据迁移         已完成
 语音/跟读入口        已完成
 语音识别             已完成
+本地 Whisper 服务适配 已完成
 PWA 离线能力          进行中
 ```
 
@@ -51,6 +52,7 @@ PWA 离线能力          进行中
 | Sprint 2L | 已完成 | 云端 STT 转写接口、OpenAI-compatible 音频转写适配、练习页自动请求服务端转写 |
 | Sprint 2M | 已完成 | 短写作教练、AI 写作纠错接口、本地降级反馈 |
 | Sprint 2N | 已完成 | 写作批改结果可保存为词句本条目，并自动生成多类型复习卡 |
+| Sprint 2O | 已完成 | 本地 Whisper/whisper.cpp 服务适配，可配置本机转写 endpoint |
 | Sprint 3 | 未开始 | 复习系统增强、更多卡片类型、学习项管理 |
 | Sprint 4 | 未开始 | 跟读、复述、写作练习真实闭环 |
 | Sprint 5 | 未开始 | 登录、云数据库、跨设备同步、PWA 安装和离线缓存 |
@@ -100,6 +102,8 @@ PWA 离线能力          进行中
 - 跟读录音会计入本周输出分钟
 - 新增 `/api/speech/transcribe`
 - 支持 OpenAI-compatible `/audio/transcriptions` 转写适配
+- 支持本地 Whisper/whisper.cpp multipart endpoint 转写适配
+- 本地转写成功时练习记录会标记为“本地转写”
 - 云端转写未配置或失败时保留浏览器转写兜底
 - 已注册基础 Service Worker
 - 核心页面和静态资源支持缓存
@@ -112,7 +116,7 @@ PWA 离线能力          进行中
 
 ## 当前未完成能力
 
-- 本地 Whisper 接入
+- 内置离线 Whisper 模型打包
 - 音素级/发音级跟读评分
 - 自动云同步
 - 登录账号
@@ -133,6 +137,6 @@ PWA 离线能力          进行中
 
 当前下一步：
 
-1. 接入本地 Whisper。
+1. 内置离线 Whisper 模型打包。
 2. 音素级/发音级跟读评分。
 3. 设计自动云同步和账号系统。

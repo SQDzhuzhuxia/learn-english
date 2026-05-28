@@ -26,11 +26,13 @@ import type { AiSegmentExpression, AiWritingCorrection } from "@/lib/ai/types";
 
 type CloudTranscription = {
   text: string;
-  source: "cloud" | "fallback";
+  source: "cloud" | "local" | "fallback";
   provider: string;
   model?: string;
   error?: string;
 };
+
+type TranscriptSource = "browser" | "cloud" | "local";
 
 type SpeechRecognitionResultLike = {
   isFinal: boolean;
@@ -74,13 +76,21 @@ function getTimestampMs() {
   return new Date().getTime();
 }
 
+function getTranscriptSourceLabel(source: TranscriptSource) {
+  if (source === "local") {
+    return "本地转写";
+  }
+
+  return source === "cloud" ? "云端转写" : "浏览器转写";
+}
+
 export function PracticeClient() {
   const [isRecording, setIsRecording] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [audioUrl, setAudioUrl] = useState("");
   const [message, setMessage] = useState("");
   const [transcript, setTranscript] = useState("");
-  const [transcriptSource, setTranscriptSource] = useState<"browser" | "cloud" | "">("");
+  const [transcriptSource, setTranscriptSource] = useState<TranscriptSource | "">("");
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [feedback, setFeedback] = useState<ShadowingFeedback | null>(null);
   const [attempts, setAttempts] = useState<PracticeAttemptRecord[]>([]);
@@ -322,7 +332,7 @@ export function PracticeClient() {
     const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
     const nextAudioUrl = URL.createObjectURL(blob);
     let finalTranscript = transcriptRef.current.trim();
-    let finalTranscriptSource: "browser" | "cloud" | undefined = finalTranscript ? "browser" : undefined;
+    let finalTranscriptSource: TranscriptSource | undefined = finalTranscript ? "browser" : undefined;
 
     setIsTranscribing(true);
 
@@ -331,9 +341,9 @@ export function PracticeClient() {
 
       if (cloudTranscription.text.trim()) {
         finalTranscript = cloudTranscription.text.trim();
-        finalTranscriptSource = "cloud";
+        finalTranscriptSource = cloudTranscription.source === "local" ? "local" : "cloud";
       } else if (cloudTranscription.error && !finalTranscript) {
-        setMessage(`云端转写未启用：${cloudTranscription.error}`);
+        setMessage(`服务端转写未启用：${cloudTranscription.error}`);
       }
     } catch (error) {
       if (!finalTranscript) {
@@ -370,7 +380,7 @@ export function PracticeClient() {
     setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
     setMessage(
       finalTranscript
-        ? `已保存本次跟读和${finalTranscriptSource === "cloud" ? "云端" : "浏览器"}转写。`
+        ? `已保存本次跟读和${getTranscriptSourceLabel(finalTranscriptSource ?? "browser")}。`
         : "已保存本次跟读记录。"
     );
     stream.getTracks().forEach((track) => track.stop());
@@ -485,7 +495,7 @@ export function PracticeClient() {
             {transcript ? (
               <div className="mt-4 rounded-lg border border-border bg-white p-3">
                 <p className="text-sm font-medium text-muted">
-                  {transcriptSource === "cloud" ? "云端转写" : "浏览器转写"}
+                  {transcriptSource ? getTranscriptSourceLabel(transcriptSource) : "浏览器转写"}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-foreground">{transcript}</p>
               </div>
@@ -493,7 +503,7 @@ export function PracticeClient() {
 
             {isTranscribing ? (
               <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
-                正在请求云端转写...
+                正在请求服务端转写...
               </p>
             ) : null}
 
@@ -586,7 +596,7 @@ export function PracticeClient() {
                 ) : null}
                 {attempt.transcriptSource ? (
                   <p className="mt-2 text-xs text-muted">
-                    {attempt.transcriptSource === "cloud" ? "云端转写" : "浏览器转写"}
+                    {getTranscriptSourceLabel(attempt.transcriptSource)}
                   </p>
                 ) : null}
                 {typeof attempt.score === "number" ? (

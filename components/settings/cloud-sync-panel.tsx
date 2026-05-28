@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Cloud, LogOut, Mail, RefreshCw } from "lucide-react";
+import { Cloud, LogOut, Mail, RefreshCw, UploadCloud } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
+import { uploadSyncSnapshot } from "@/lib/sync/cloud-sync";
+import { createLocalSyncSnapshot } from "@/lib/sync/local-backup";
 
 export function CloudSyncPanel() {
   const config = useMemo(() => getSupabasePublicConfig(), []);
@@ -70,6 +72,34 @@ export function CloudSyncPanel() {
     setMessage("已退出账号。");
   }
 
+  async function handleUploadSnapshot() {
+    if (!supabase || !sessionEmail) {
+      setMessage("请先登录账号。");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data.user) {
+      setLoading(false);
+      setMessage(error?.message ?? "无法读取当前账号。");
+      return;
+    }
+
+    try {
+      const snapshot = createLocalSyncSnapshot("browser");
+      const result = await uploadSyncSnapshot(supabase, data.user.id, snapshot);
+      setMessage(`已上传 ${result.uploadedRecords} 组数据，${result.totalBytes} bytes。`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "云同步上传失败。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
       <div className="flex items-center gap-3">
@@ -85,14 +115,24 @@ export function CloudSyncPanel() {
       </div>
 
       {sessionEmail ? (
-        <button
-          onClick={handleSignOut}
-          disabled={loading}
-          className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          <LogOut className="h-4 w-4 text-accent" />
-          退出登录
-        </button>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <button
+            onClick={handleUploadSnapshot}
+            disabled={loading}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {loading ? <RefreshCw className="h-4 w-4" /> : <UploadCloud className="h-4 w-4" />}
+            上传快照
+          </button>
+          <button
+            onClick={handleSignOut}
+            disabled={loading}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            <LogOut className="h-4 w-4 text-accent" />
+            退出登录
+          </button>
+        </div>
       ) : (
         <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
           <input

@@ -23,6 +23,7 @@ import {
   setCurrentMaterialId,
   updateMaterialProgress
 } from "@/lib/content/material-store";
+import { saveSegmentAsReviewCard } from "@/lib/review/review-store";
 import type { StudyMaterialRecord } from "@/lib/content/types";
 
 function resolveInitialMaterial(materialId?: string) {
@@ -40,6 +41,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
   const [currentOrder, setCurrentOrder] = useState(
     () => resolveInitialMaterial(materialId)?.currentSegmentOrder ?? 1
   );
+  const [saveMessage, setSaveMessage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +78,15 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
     if (updated) {
       setMaterial(updated);
     }
+  }
+
+  function handleSaveCurrentSentence() {
+    if (!material || !current) {
+      return;
+    }
+
+    const result = saveSegmentAsReviewCard(material, current);
+    setSaveMessage(result.created ? "已保存到词句本，并生成复习卡。" : "这句话已经在复习队列里。");
   }
 
   if (!material || !current) {
@@ -194,7 +205,10 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
               <Repeat2 className="h-4 w-4 text-accent" />
               循环
             </button>
-            <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground hover:bg-panel-strong">
+            <button
+              onClick={handleSaveCurrentSentence}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground hover:bg-panel-strong"
+            >
               <BookmarkPlus className="h-4 w-4 text-accent" />
               保存
             </button>
@@ -203,6 +217,12 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
               跟读
             </button>
           </div>
+
+          {saveMessage ? (
+            <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              {saveMessage}
+            </p>
+          ) : null}
         </div>
 
         <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
@@ -304,6 +324,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
           </p>
           <Link
             href="/review"
+            onClick={handleSaveCurrentSentence}
             className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
           >
             保存并生成复习卡

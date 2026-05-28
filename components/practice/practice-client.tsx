@@ -19,6 +19,39 @@ import {
   loadPracticeAttempts,
   type PracticeAttemptRecord
 } from "@/lib/speech/practice-store";
+import { createShadowingFeedback, type ShadowingFeedback } from "@/lib/speech/shadowing-feedback";
+
+type SpeechRecognitionResultLike = {
+  isFinal: boolean;
+  0: {
+    transcript: string;
+  };
+};
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: {
+    length: number;
+    [index: number]: SpeechRecognitionResultLike;
+  };
+};
+
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+type SpeechWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+};
 
 function formatSeconds(seconds: number) {
   const minutes = Math.floor(seconds / 60);
@@ -26,15 +59,23 @@ function formatSeconds(seconds: number) {
   return `${minutes}:${String(rest).padStart(2, "0")}`;
 }
 
+function getTimestampMs() {
+  return new Date().getTime();
+}
+
 export function PracticeClient() {
   const [isRecording, setIsRecording] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [audioUrl, setAudioUrl] = useState("");
   const [message, setMessage] = useState("");
+  const [transcript, setTranscript] = useState("");
+  const [feedback, setFeedback] = useState<ShadowingFeedback | null>(null);
   const [attempts, setAttempts] = useState<PracticeAttemptRecord[]>([]);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const transcriptRef = useRef("");
   const startedAtRef = useRef<number>(0);
 
   useEffect(() => {
@@ -57,7 +98,7 @@ export function PracticeClient() {
     }
 
     const timer = window.setInterval(() => {
-      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAtRef.current) / 1000)));
+      setElapsedSeconds(Math.max(0, Math.floor((getTimestampMs() - startedAtRef.current) / 1000)));
     }, 500);
 
     return () => window.clearInterval(timer);
@@ -88,9 +129,12 @@ export function PracticeClient() {
       chunksRef.current = [];
       streamRef.current = stream;
       recorderRef.current = recorder;
-      startedAtRef.current = Date.now();
+      startedAtRef.current = getTimestampMs();
       setElapsedSeconds(0);
       setAudioUrl("");
+      setTranscript("");
+      setFeedback(null);
+      transcriptRef.current = "";
       setMessage("");
 
       recorder.addEventListener("dataavailable", (event) => {
@@ -100,14 +144,21 @@ export function PracticeClient() {
       });
 
       recorder.addEventListener("stop", () => {
-        const durationSeconds = Math.max(1, Math.floor((Date.now() - startedAtRef.current) / 1000));
+        const durationSeconds = Math.max(1, Math.floor((getTimestampMs() - startedAtRef.current) / 1000));
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
         const nextAudioUrl = URL.createObjectURL(blob);
+        const finalTranscript = transcriptRef.current.trim();
+        const nextFeedback = finalTranscript
+          ? createShadowingFeedback(todayPractice.prompt, finalTranscript)
+          : null;
         const attempt = addPracticeAttempt({
           type: "shadowing",
           prompt: todayPractice.prompt,
           materialTitle: todayPractice.material,
-          durationSeconds
+          durationSeconds,
+          transcript: finalTranscript || undefined,
+          score: nextFeedback?.score,
+          feedback: nextFeedback?.tip
         });
 
         recordStudyActivity({
@@ -117,13 +168,15 @@ export function PracticeClient() {
           materialTitle: todayPractice.material
         });
         setAudioUrl(nextAudioUrl);
+        setFeedback(nextFeedback);
         setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
-        setMessage("已保存本次跟读记录。");
+        setMessage(finalTranscript ? "已保存本次跟读和浏览器转写。" : "已保存本次跟读记录。");
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       });
 
       recorder.start();
+      startSpeechRecognition();
       setIsRecording(true);
     } catch {
       setMessage("无法打开麦克风，请检查浏览器权限。");
@@ -131,8 +184,47 @@ export function PracticeClient() {
   }
 
   function stopRecording() {
+    recognitionRef.current?.stop();
     recorderRef.current?.stop();
     setIsRecording(false);
+  }
+
+  function startSpeechRecognition() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const speechWindow = window as SpeechWindow;
+    const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+
+    if (!Recognition) {
+      return;
+    }
+
+    const recognition = new Recognition();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (event) => {
+      let nextTranscript = "";
+
+      for (let index = 0; index < event.results.length; index += 1) {
+        nextTranscript += `${event.results[index][0].transcript} `;
+      }
+
+      transcriptRef.current = nextTranscript.trim();
+      setTranscript(transcriptRef.current);
+    };
+    recognition.onerror = () => {
+      recognitionRef.current = null;
+    };
+    recognitionRef.current = recognition;
+
+    try {
+      recognition.start();
+    } catch {
+      recognitionRef.current = null;
+    }
   }
 
   return (
@@ -194,6 +286,28 @@ export function PracticeClient() {
               <audio className="mt-4 w-full" controls src={audioUrl}>
                 <track kind="captions" />
               </audio>
+            ) : null}
+
+            {transcript ? (
+              <div className="mt-4 rounded-lg border border-border bg-white p-3">
+                <p className="text-sm font-medium text-muted">浏览器转写</p>
+                <p className="mt-2 text-sm leading-6 text-foreground">{transcript}</p>
+              </div>
+            ) : null}
+
+            {feedback ? (
+              <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-emerald-800">{feedback.label}</p>
+                  <p className="text-sm font-semibold text-emerald-800">{feedback.score}%</p>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-emerald-700">{feedback.tip}</p>
+                {feedback.missingWords.length > 0 ? (
+                  <p className="mt-2 text-xs leading-5 text-emerald-700">
+                    漏掉：{feedback.missingWords.join(", ")}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
 
             {message ? (
@@ -265,6 +379,12 @@ export function PracticeClient() {
                 <p className="mt-2 text-xs text-muted">
                   {attempt.materialTitle} · {formatSeconds(attempt.durationSeconds)}
                 </p>
+                {attempt.transcript ? (
+                  <p className="mt-2 text-xs leading-5 text-muted">{attempt.transcript}</p>
+                ) : null}
+                {typeof attempt.score === "number" ? (
+                  <p className="mt-2 text-xs font-semibold text-accent">跟读匹配度 {attempt.score}%</p>
+                ) : null}
               </div>
             ))}
             {attempts.length === 0 ? (
@@ -281,11 +401,11 @@ export function PracticeClient() {
             <CheckCircle2 className="h-5 w-5 text-accent" />
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            {["录音记录", "转写反馈", "复习卡"].map((item) => (
+            {["录音记录", "浏览器转写", "复习卡"].map((item) => (
               <div key={item} className="rounded-lg border border-border bg-white p-4">
                 <p className="text-sm font-semibold text-foreground">{item}</p>
                 <p className="mt-2 text-xs leading-5 text-muted">
-                  {item === "录音记录" ? "本轮已接入" : "后续接入"}
+                  {item === "复习卡" ? "后续接入" : "本轮已接入"}
                 </p>
               </div>
             ))}

@@ -6,6 +6,9 @@ export type PracticeAttemptRecord = {
   prompt: string;
   materialTitle: string;
   durationSeconds: number;
+  transcript?: string;
+  score?: number;
+  feedback?: string;
   status: "recorded" | "transcribed" | "reviewed";
   createdAt: string;
 };
@@ -58,7 +61,7 @@ export function addPracticeAttempt(input: Omit<PracticeAttemptRecord, "id" | "cr
   const attempt: PracticeAttemptRecord = {
     ...input,
     id: `attempt-${Date.parse(createdAt)}-${Math.random().toString(36).slice(2, 8)}`,
-    status: "recorded",
+    status: input.transcript ? "transcribed" : "recorded",
     createdAt
   };
 

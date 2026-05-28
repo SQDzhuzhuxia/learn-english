@@ -25,13 +25,17 @@ describe("practice-store", () => {
       type: "shadowing",
       prompt: "I would like to make an appointment.",
       materialTitle: "A Visit to the Doctor",
-      durationSeconds: 8
+      durationSeconds: 8,
+      transcript: "I would like to make an appointment",
+      score: 100,
+      feedback: "这一遍已经比较完整。"
     });
 
     const attempts = loadPracticeAttempts();
 
-    expect(attempt.status).toBe("recorded");
+    expect(attempt.status).toBe("transcribed");
     expect(attempts).toHaveLength(1);
     expect(attempts[0]?.prompt).toContain("appointment");
+    expect(attempts[0]?.score).toBe(100);
   });
 });

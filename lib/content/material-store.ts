@@ -1,6 +1,7 @@
 "use client";
 
 import { materials as seedCards, studySegments } from "@/lib/mock-data";
+import { recordStudyActivity } from "@/lib/analytics/progress-store";
 import { estimateReadingMinutes, splitTextIntoSegments } from "@/lib/content/split-text";
 import type { NewTextMaterialInput, StudyMaterialRecord } from "@/lib/content/types";
 import { archiveLearningItemsByMaterialId } from "@/lib/review/review-store";
@@ -233,6 +234,7 @@ export function getCurrentMaterialId() {
 
 export function updateMaterialProgress(id: string, currentSegmentOrder: number) {
   const materials = loadMaterials();
+  const previousMaterial = materials.find((material) => material.id === id);
   const updated = materials.map((material) => {
     if (material.id !== id) {
       return material;
@@ -254,5 +256,17 @@ export function updateMaterialProgress(id: string, currentSegmentOrder: number) 
 
   saveMaterials(updated);
   setCurrentMaterialId(id);
-  return updated.find((material) => material.id === id);
+  const updatedMaterial = updated.find((material) => material.id === id);
+
+  if (updatedMaterial && previousMaterial?.currentSegmentOrder !== currentSegmentOrder) {
+    recordStudyActivity({
+      type: "input",
+      label: `逐句学习：${updatedMaterial.title}`,
+      minutes: 1,
+      materialId: updatedMaterial.id,
+      materialTitle: updatedMaterial.title
+    });
+  }
+
+  return updatedMaterial;
 }

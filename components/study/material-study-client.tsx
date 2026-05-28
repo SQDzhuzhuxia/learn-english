@@ -19,6 +19,7 @@ import {
   Volume2
 } from "lucide-react";
 import { aiExplanation } from "@/lib/mock-data";
+import { recordStudyActivity } from "@/lib/analytics/progress-store";
 import {
   findMaterialById,
   getCurrentMaterialId,
@@ -239,6 +240,13 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
       }
 
       setCachedAiExplanation(aiCacheKey, payload.explanation);
+      recordStudyActivity({
+        type: "ai",
+        label: `AI 解释：${current.text}`,
+        minutes: 1,
+        materialId: material.id,
+        materialTitle: material.title
+      });
       setAiState({
         status: "success",
         explanation: payload.explanation,

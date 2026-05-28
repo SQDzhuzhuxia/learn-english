@@ -1,5 +1,6 @@
 "use client";
 
+import { recordStudyActivity } from "@/lib/analytics/progress-store";
 import { getNextReviewDate, getReviewIntervalDays } from "@/lib/review/scheduler";
 import type { MaterialSegment, StudyMaterialRecord } from "@/lib/content/types";
 import type {
@@ -394,6 +395,12 @@ export function saveSegmentAsReviewCard(material: StudyMaterialRecord, segment: 
 
   saveLearningItems(existingItem ? items : [item, ...items]);
   saveReviewCards([...reviewCards, ...cards]);
+  recordStudyActivity({
+    type: "asset",
+    label: `保存句子：${segment.text}`,
+    materialId: material.id,
+    materialTitle: material.title
+  });
 
   return {
     item,
@@ -487,6 +494,12 @@ export function saveExpressionAsReviewCard(
 
   saveLearningItems(existingItem ? items : [item, ...items]);
   saveReviewCards([...reviewCards, ...cards]);
+  recordStudyActivity({
+    type: "asset",
+    label: `保存表达：${expressionText}`,
+    materialId: material.id,
+    materialTitle: material.title
+  });
 
   return {
     item,
@@ -724,6 +737,12 @@ export function reviewCard(cardId: string, rating: ReviewRating) {
       nextDueAt: nextDueAt.toISOString()
     };
     saveReviewLogs([log, ...logs]);
+    recordStudyActivity({
+      type: "review",
+      label: `复习：${updatedCard.front}`,
+      minutes: 1,
+      materialTitle: updatedCard.source
+    });
   }
 
   return updatedCard;

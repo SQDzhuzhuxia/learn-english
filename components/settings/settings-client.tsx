@@ -1,12 +1,32 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Database, Download, KeyRound, Upload } from "lucide-react";
+import { Cloud, Database, Download, KeyRound, Upload } from "lucide-react";
 import { settingsGroups } from "@/lib/mock-data";
-import { createLocalBackup, parseLocalBackup, restoreLocalBackup } from "@/lib/sync/local-backup";
+import {
+  createLocalBackup,
+  createLocalSyncSnapshot,
+  parseLocalBackup,
+  restoreLocalBackup
+} from "@/lib/sync/local-backup";
+import { summarizeSyncSnapshot } from "@/lib/sync/sync-snapshot";
 
 function createBackupFileName() {
   return `learn-english-backup-${new Date().toISOString().slice(0, 10)}.json`;
+}
+
+function createSyncSnapshotFileName() {
+  return `learn-english-sync-snapshot-${new Date().toISOString().slice(0, 10)}.json`;
+}
+
+function downloadJsonFile(fileName: string, payload: unknown) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export function SettingsClient() {
@@ -15,14 +35,15 @@ export function SettingsClient() {
 
   function handleExport() {
     const payload = createLocalBackup();
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = createBackupFileName();
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadJsonFile(createBackupFileName(), payload);
     setMessage(`已导出 ${Object.keys(payload.records).length} 组本地学习数据。`);
+  }
+
+  function handleCreateSyncSnapshot() {
+    const snapshot = createLocalSyncSnapshot();
+    const summary = summarizeSyncSnapshot(snapshot);
+    downloadJsonFile(createSyncSnapshotFileName(), snapshot);
+    setMessage(`已生成同步快照：${summary.recordCount} 组数据，${summary.totalBytes} bytes。`);
   }
 
   async function handleImport(file: File | undefined) {
@@ -106,13 +127,20 @@ export function SettingsClient() {
               </div>
             ))}
           </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
             <button
               onClick={handleExport}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
             >
               <Download className="h-4 w-4" />
               导出数据
+            </button>
+            <button
+              onClick={handleCreateSyncSnapshot}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
+            >
+              <Cloud className="h-4 w-4 text-accent" />
+              同步快照
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}

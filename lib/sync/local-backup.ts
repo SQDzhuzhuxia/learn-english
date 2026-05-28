@@ -1,5 +1,8 @@
 "use client";
 
+import { createSyncSnapshotFromRecords } from "@/lib/sync/sync-snapshot";
+import type { SyncSnapshotPayload } from "@/lib/sync/sync-snapshot";
+
 export type LocalBackupPayload = {
   app: "learn-english";
   version: 1;
@@ -34,6 +37,12 @@ export function createLocalBackup(): LocalBackupPayload {
     exportedAt: new Date().toISOString(),
     records
   };
+}
+
+export function createLocalSyncSnapshot(deviceId = "local-browser"): SyncSnapshotPayload {
+  return createSyncSnapshotFromRecords(createLocalBackup().records, {
+    deviceId
+  });
 }
 
 export function parseLocalBackup(raw: string): LocalBackupPayload {

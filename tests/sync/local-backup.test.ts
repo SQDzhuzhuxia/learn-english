@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createLocalBackup, parseLocalBackup, restoreLocalBackup } from "@/lib/sync/local-backup";
+import {
+  createLocalBackup,
+  createLocalSyncSnapshot,
+  parseLocalBackup,
+  restoreLocalBackup
+} from "@/lib/sync/local-backup";
 
 function setupLocalStorage() {
   const store = new Map<string, string>();
@@ -51,5 +56,16 @@ describe("local backup", () => {
     expect(restoreLocalBackup(payload)).toBe(1);
     expect(window.localStorage.getItem("learn-english.review-cards.v1")).toBe("[2]");
     expect(window.localStorage.getItem("bad-key")).toBeNull();
+  });
+
+  it("creates a cloud sync snapshot from local learning data", () => {
+    window.localStorage.setItem("learn-english.materials.v1", "[1]");
+    window.localStorage.setItem("learn-english.unknown.v1", "[2]");
+
+    const snapshot = createLocalSyncSnapshot("office-browser");
+
+    expect(snapshot.deviceId).toBe("office-browser");
+    expect(snapshot.records).toHaveLength(1);
+    expect(snapshot.records[0]?.key).toBe("learn-english.materials.v1");
   });
 });

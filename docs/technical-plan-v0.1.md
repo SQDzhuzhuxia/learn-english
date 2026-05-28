@@ -41,6 +41,8 @@
 - 本地开发：Docker Postgres 或 SQLite 过渡
 - 文件存储：Supabase Storage 或 S3 兼容对象存储
 - 账号系统：Supabase Auth 或后续自建 Auth
+- 同步策略：本地数据先形成同步快照，后续按 key + hash 增量 upsert 到云端
+- 表结构草案：`docs/supabase-sync-schema-v0.1.sql`
 
 ### AI 接入
 

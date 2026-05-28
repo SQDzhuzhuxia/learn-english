@@ -4,25 +4,43 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
+  Check,
   ClipboardList,
+  CircleX,
   FilePlus2,
   Filter,
   Headphones,
+  Pencil,
   Search,
+  Trash2,
   Upload
 } from "lucide-react";
 import { materialFilters } from "@/lib/mock-data";
 import {
+  deleteUserMaterial,
   getSeedMaterials,
   loadMaterials,
-  setCurrentMaterialId
+  setCurrentMaterialId,
+  updateTextMaterial
 } from "@/lib/content/material-store";
-import type { StudyMaterialRecord } from "@/lib/content/types";
+import type { NewTextMaterialInput, StudyMaterialRecord } from "@/lib/content/types";
+
+function createEditForm(material: StudyMaterialRecord): NewTextMaterialInput {
+  return {
+    title: material.title,
+    type: material.type,
+    level: material.level,
+    contentText: material.contentText
+  };
+}
 
 export function MaterialLibraryClient() {
   const [materials, setMaterials] = useState<StudyMaterialRecord[]>(() => getSeedMaterials());
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("合适");
+  const [editingMaterialId, setEditingMaterialId] = useState("");
+  const [editForm, setEditForm] = useState<NewTextMaterialInput | null>(null);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +55,79 @@ export function MaterialLibraryClient() {
       cancelled = true;
     };
   }, []);
+
+  function refreshMaterials() {
+    setMaterials(loadMaterials());
+  }
+
+  function handleStartEdit(material: StudyMaterialRecord) {
+    setEditingMaterialId(material.id);
+    setEditForm(createEditForm(material));
+    setMessage("");
+  }
+
+  function handleCancelEdit() {
+    setEditingMaterialId("");
+    setEditForm(null);
+  }
+
+  function handleSaveEdit(materialId: string) {
+    if (!editForm) {
+      return;
+    }
+
+    const title = editForm.title.trim();
+    const contentText = editForm.contentText.trim();
+
+    if (!title) {
+      setMessage("材料标题不能为空。");
+      return;
+    }
+
+    if (contentText.length < 20) {
+      setMessage("材料正文太短，请保留一段完整英文文本。");
+      return;
+    }
+
+    const updated = updateTextMaterial(materialId, {
+      title,
+      type: editForm.type,
+      level: editForm.level,
+      contentText
+    });
+
+    if (!updated) {
+      setMessage("只有用户导入的材料可以编辑。");
+      return;
+    }
+
+    refreshMaterials();
+    handleCancelEdit();
+    setMessage("已更新材料，句子列表和关键词已重新生成。");
+  }
+
+  function handleDelete(material: StudyMaterialRecord) {
+    const confirmed = window.confirm(
+      "删除材料后，关联词句会归档、复习卡会暂停。确定删除这篇材料吗？"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const result = deleteUserMaterial(material.id);
+
+    if (!result.deleted) {
+      setMessage("内置材料不能删除，只能删除你导入的材料。");
+      return;
+    }
+
+    refreshMaterials();
+    handleCancelEdit();
+    setMessage(
+      `已删除材料，归档 ${result.archivedItems} 条关联词句，暂停 ${result.suspendedCards} 张复习卡。`
+    );
+  }
 
   const filteredMaterials = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -70,7 +161,7 @@ export function MaterialLibraryClient() {
               <p className="text-sm font-medium text-accent">材料库</p>
               <h1 className="mt-2 text-2xl font-semibold text-foreground">可理解输入材料中心</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-                先选择略高于当前水平的材料。现在已经可以导入文本并保存到浏览器本地。
+                先选择略高于当前水平的材料。用户导入材料现在可以编辑和删除。
               </p>
             </div>
             <Link
@@ -81,6 +172,12 @@ export function MaterialLibraryClient() {
               导入材料
             </Link>
           </div>
+
+          {message ? (
+            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              {message}
+            </p>
+          ) : null}
 
           <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
             <label className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-white px-3">
@@ -160,10 +257,99 @@ export function MaterialLibraryClient() {
                 </span>
                 <h2 className="mt-3 text-lg font-semibold text-foreground">{material.title}</h2>
               </div>
-              <ClipboardList className="h-5 w-5 shrink-0 text-accent" />
+              <div className="flex shrink-0 gap-2">
+                {material.source === "user" ? (
+                  <>
+                    <button
+                      onClick={() => handleStartEdit(material)}
+                      className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white text-muted hover:bg-panel-strong hover:text-foreground"
+                      aria-label="编辑材料"
+                      title="编辑"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(material)}
+                      className="flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                      aria-label="删除材料"
+                      title="删除"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </>
+                ) : (
+                  <ClipboardList className="h-5 w-5 shrink-0 text-accent" />
+                )}
+              </div>
             </div>
 
-            <p className="mt-3 text-sm leading-6 text-muted">{material.summary}</p>
+            {editingMaterialId === material.id && editForm ? (
+              <div className="mt-5 space-y-3 rounded-lg border border-border bg-panel-strong p-4">
+                <label className="block text-sm font-medium text-foreground">
+                  标题
+                  <input
+                    className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none"
+                    value={editForm.title}
+                    onChange={(event) => setEditForm({ ...editForm, title: event.target.value })}
+                  />
+                </label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm font-medium text-foreground">
+                    类型
+                    <select
+                      className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none"
+                      value={editForm.type}
+                      onChange={(event) => setEditForm({ ...editForm, type: event.target.value })}
+                    >
+                      <option>用户导入</option>
+                      <option>美国生活</option>
+                      <option>职场</option>
+                      <option>自动化</option>
+                      <option>入籍</option>
+                    </select>
+                  </label>
+                  <label className="block text-sm font-medium text-foreground">
+                    难度
+                    <select
+                      className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none"
+                      value={editForm.level}
+                      onChange={(event) => setEditForm({ ...editForm, level: event.target.value })}
+                    >
+                      <option>A1</option>
+                      <option>A1+</option>
+                      <option>A2</option>
+                      <option>B1</option>
+                    </select>
+                  </label>
+                </div>
+                <label className="block text-sm font-medium text-foreground">
+                  英文文本
+                  <textarea
+                    className="mt-2 min-h-48 w-full resize-y rounded-lg border border-border bg-white px-3 py-2 text-sm leading-6 text-foreground outline-none"
+                    value={editForm.contentText}
+                    onChange={(event) => setEditForm({ ...editForm, contentText: event.target.value })}
+                  />
+                </label>
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    onClick={handleCancelEdit}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
+                  >
+                    <CircleX className="h-4 w-4 text-muted" />
+                    取消
+                  </button>
+                  <button
+                    onClick={() => handleSaveEdit(material.id)}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
+                  >
+                    <Check className="h-4 w-4" />
+                    保存
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-muted">{material.summary}</p>
+            )}
 
             <div className="mt-4 flex flex-wrap gap-2">
               <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
@@ -174,6 +360,9 @@ export function MaterialLibraryClient() {
               </span>
               <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
                 {material.level}
+              </span>
+              <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
+                {material.source === "user" ? "可编辑" : "内置"}
               </span>
             </div>
 

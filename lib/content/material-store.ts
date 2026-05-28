@@ -3,6 +3,7 @@
 import { materials as seedCards, studySegments } from "@/lib/mock-data";
 import { estimateReadingMinutes, splitTextIntoSegments } from "@/lib/content/split-text";
 import type { NewTextMaterialInput, StudyMaterialRecord } from "@/lib/content/types";
+import { archiveLearningItemsByMaterialId } from "@/lib/review/review-store";
 
 const MATERIALS_KEY = "learn-english.materials.v1";
 const CURRENT_MATERIAL_KEY = "learn-english.current-material-id.v1";
@@ -113,12 +114,101 @@ export function createTextMaterial(input: NewTextMaterialInput): StudyMaterialRe
   };
 }
 
+function createMaterialFields(input: NewTextMaterialInput) {
+  const contentText = input.contentText.trim();
+  const segments = splitTextIntoSegments(contentText);
+
+  return {
+    title: input.title.trim(),
+    type: input.type,
+    level: input.level,
+    minutes: estimateReadingMinutes(contentText),
+    summary: contentText.slice(0, 120),
+    keyExpressions: segments
+      .slice(0, 3)
+      .map((segment) => segment.text.split(/\s+/).slice(0, 4).join(" ")),
+    contentText,
+    segments
+  };
+}
+
 export function addTextMaterial(input: NewTextMaterialInput) {
   const materials = loadMaterials();
   const material = createTextMaterial(input);
   saveMaterials([material, ...materials]);
   setCurrentMaterialId(material.id);
   return material;
+}
+
+export function updateTextMaterial(id: string, input: NewTextMaterialInput) {
+  const materials = loadMaterials();
+  let updatedMaterial: StudyMaterialRecord | undefined;
+
+  const updatedMaterials = materials.map((material) => {
+    if (material.id !== id || material.source !== "user") {
+      return material;
+    }
+
+    const nextFields = createMaterialFields(input);
+    const currentSegmentOrder = Math.min(
+      material.currentSegmentOrder,
+      Math.max(1, nextFields.segments.length)
+    );
+    const progress =
+      material.progress === 0
+        ? 0
+        : Math.min(
+            100,
+            Math.round((currentSegmentOrder / Math.max(1, nextFields.segments.length)) * 100)
+          );
+
+    updatedMaterial = {
+      ...material,
+      ...nextFields,
+      currentSegmentOrder,
+      progress,
+      status: progress >= 100 ? "已完成" : progress > 0 ? "学习中" : "未开始",
+      updatedAt: nowIso()
+    };
+
+    return updatedMaterial;
+  });
+
+  saveMaterials(updatedMaterials);
+
+  return updatedMaterial;
+}
+
+export function deleteUserMaterial(id: string) {
+  const materials = loadMaterials();
+  const materialToDelete = materials.find((material) => material.id === id);
+
+  if (!materialToDelete || materialToDelete.source !== "user") {
+    return {
+      deleted: false,
+      archivedItems: 0,
+      suspendedCards: 0
+    };
+  }
+
+  const nextMaterials = materials.filter((material) => material.id !== id);
+  const archiveResult = archiveLearningItemsByMaterialId(id);
+  saveMaterials(nextMaterials);
+
+  if (getCurrentMaterialId() === id) {
+    const nextCurrent = nextMaterials[0]?.id;
+
+    if (nextCurrent) {
+      setCurrentMaterialId(nextCurrent);
+    } else if (canUseStorage()) {
+      window.localStorage.removeItem(CURRENT_MATERIAL_KEY);
+    }
+  }
+
+  return {
+    deleted: true,
+    ...archiveResult
+  };
 }
 
 export function findMaterialById(id: string) {

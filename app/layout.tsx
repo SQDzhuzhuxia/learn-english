@@ -1,12 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import { AppShell } from "@/components/layout/app-shell";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter"
-});
 
 export const metadata: Metadata = {
   title: "Learn English",
@@ -31,7 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className={inter.variable}>
+      <body>
         <AppShell>{children}</AppShell>
       </body>
     </html>

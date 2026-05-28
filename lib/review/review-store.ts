@@ -390,6 +390,57 @@ export function deleteLearningItem(itemId: string) {
   };
 }
 
+export function archiveLearningItemsByMaterialId(materialId: string) {
+  const timestamp = nowIso();
+  const items = loadLearningItems();
+  const relatedItemIds = new Set(
+    items
+      .filter((item) => item.sourceMaterialId === materialId && item.status !== "archived")
+      .map((item) => item.id)
+  );
+
+  if (relatedItemIds.size === 0) {
+    return {
+      archivedItems: 0,
+      suspendedCards: 0
+    };
+  }
+
+  const updatedItems = items.map((item) =>
+    relatedItemIds.has(item.id)
+      ? {
+          ...item,
+          status: "archived" as const,
+          archivedAt: timestamp,
+          updatedAt: timestamp
+        }
+      : item
+  );
+
+  let suspendedCards = 0;
+  const updatedCards = loadReviewCards().map((card) => {
+    if (!relatedItemIds.has(card.learningItemId) || card.status === "suspended") {
+      return card;
+    }
+
+    suspendedCards += 1;
+
+    return {
+      ...card,
+      status: "suspended" as const,
+      updatedAt: timestamp
+    };
+  });
+
+  saveLearningItems(updatedItems);
+  saveReviewCards(updatedCards);
+
+  return {
+    archivedItems: relatedItemIds.size,
+    suspendedCards
+  };
+}
+
 export function isCardDue(card: ReviewCardRecord, referenceDate = new Date()) {
   return new Date(card.dueAt).getTime() <= referenceDate.getTime();
 }

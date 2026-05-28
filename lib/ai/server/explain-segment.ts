@@ -1,12 +1,14 @@
 import {
   createFallbackMaterialExplanation,
-  createFallbackSegmentExplanation
+  createFallbackSegmentExplanation,
+  createFallbackWritingCorrection
 } from "@/lib/ai/fallback-explanation";
 import {
+  correctWritingWithOpenAiCompatible,
   explainMaterialWithOpenAiCompatible,
   explainSegmentWithOpenAiCompatible
 } from "@/lib/ai/openai-compatible";
-import type { ExplainMaterialInput, ExplainSegmentInput } from "@/lib/ai/types";
+import type { CorrectWritingInput, ExplainMaterialInput, ExplainSegmentInput } from "@/lib/ai/types";
 
 type Environment = Record<string, string | undefined>;
 
@@ -127,5 +129,20 @@ export async function explainMaterial(input: ExplainMaterialInput, env: Environm
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI provider failed";
     return createFallbackMaterialExplanation(input, `${config.providerLabel} 暂不可用：${message}`);
+  }
+}
+
+export async function correctWriting(input: CorrectWritingInput, env: Environment = process.env) {
+  const config = resolveAiRuntimeConfig(env);
+
+  if (config.mode === "fallback") {
+    return createFallbackWritingCorrection(input, config.reason);
+  }
+
+  try {
+    return await correctWritingWithOpenAiCompatible(input, config);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "AI provider failed";
+    return createFallbackWritingCorrection(input, `${config.providerLabel} 暂不可用：${message}`);
   }
 }

@@ -3,6 +3,8 @@ import type {
   AiMaterialSegmentExplanation,
   AiSegmentExplanation,
   AiSegmentExpression,
+  AiWritingCorrection,
+  CorrectWritingInput,
   ExplainMaterialInput,
   ExplainSegmentInput
 } from "@/lib/ai/types";
@@ -66,6 +68,23 @@ function buildMaterialPrompt(input: ExplainMaterialInput) {
     input.contextText ? `全文上下文：${input.contextText.slice(0, 5000)}` : "",
     "分句：",
     segments
+  ].join("\n");
+}
+
+function buildWritingCorrectionPrompt(input: CorrectWritingInput) {
+  return [
+    "请为中文母语、英语初级学习者批改一段英文写作。",
+    "目标是美国生活和工作英语，反馈要实用、简洁、中文为主。",
+    "不要写长篇语法课。指出最重要的问题，给出更自然说法。",
+    "必须输出 JSON，不要输出 markdown。",
+    "JSON 字段：originalText, correctedText, feedbackZh, keyProblems, betterExpressions。",
+    "keyProblems 是 2 到 5 个中文字符串。",
+    "betterExpressions 是 1 到 4 个对象，每个对象包含 text, meaningZh, example。",
+    "",
+    `任务标题：${input.promptTitle}`,
+    `任务要求：${input.prompt}`,
+    `学习者水平：${input.level}`,
+    `用户文本：${input.userText}`
   ].join("\n");
 }
 
@@ -235,6 +254,35 @@ export function parseMaterialExplanationResponse(
   };
 }
 
+export function parseWritingCorrectionResponse(
+  content: string,
+  input: CorrectWritingInput,
+  providerLabel: string
+): AiWritingCorrection {
+  const parsed = JSON.parse(extractJsonObject(content)) as Record<string, unknown>;
+  const correctedText = readString(parsed.correctedText, input.userText);
+
+  return {
+    originalText: readString(parsed.originalText, input.userText),
+    correctedText,
+    feedbackZh: readString(parsed.feedbackZh, "建议先保证句子完整，再追求自然表达。"),
+    keyProblems: readStringArray(parsed.keyProblems, ["检查主语、动词和英文语序。"]),
+    betterExpressions:
+      readExpressions(parsed.betterExpressions, correctedText).length > 0
+        ? readExpressions(parsed.betterExpressions, correctedText)
+        : [
+            {
+              text: correctedText,
+              meaningZh: "更自然的表达。",
+              example: correctedText
+            }
+          ],
+    source: "model",
+    provider: providerLabel,
+    generatedAt: new Date().toISOString()
+  };
+}
+
 async function requestChatCompletion(prompt: string, config: OpenAiCompatibleConfig) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
@@ -300,4 +348,12 @@ export async function explainMaterialWithOpenAiCompatible(
 ) {
   const content = await requestChatCompletion(buildMaterialPrompt(input), config);
   return parseMaterialExplanationResponse(content, input, config.providerLabel);
+}
+
+export async function correctWritingWithOpenAiCompatible(
+  input: CorrectWritingInput,
+  config: OpenAiCompatibleConfig
+) {
+  const content = await requestChatCompletion(buildWritingCorrectionPrompt(input), config);
+  return parseWritingCorrectionResponse(content, input, config.providerLabel);
 }

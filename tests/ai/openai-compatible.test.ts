@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  correctWritingWithOpenAiCompatible,
   explainMaterialWithOpenAiCompatible,
   explainSegmentWithOpenAiCompatible,
   parseMaterialExplanationResponse,
-  parseSegmentExplanationResponse
+  parseSegmentExplanationResponse,
+  parseWritingCorrectionResponse
 } from "@/lib/ai/openai-compatible";
-import type { ExplainMaterialInput, ExplainSegmentInput } from "@/lib/ai/types";
+import type { CorrectWritingInput, ExplainMaterialInput, ExplainSegmentInput } from "@/lib/ai/types";
 
 const input: ExplainSegmentInput = {
   materialTitle: "Apartment Tour",
@@ -32,6 +34,13 @@ const materialInput: ExplainMaterialInput = {
       text: "How much is the deposit?"
     }
   ]
+};
+
+const writingInput: CorrectWritingInput = {
+  promptTitle: "预约短信",
+  prompt: "用英文写一句：我想预约医生。",
+  level: "A1",
+  userText: "I want see doctor."
 };
 
 afterEach(() => {
@@ -104,6 +113,32 @@ describe("parseMaterialExplanationResponse", () => {
     expect(explanation.source).toBe("model");
     expect(explanation.segments[0]?.segmentId).toBe("s1");
     expect(explanation.keyExpressions[0]?.text).toBe("deposit");
+  });
+});
+
+describe("parseWritingCorrectionResponse", () => {
+  it("normalizes writing correction JSON", () => {
+    const correction = parseWritingCorrectionResponse(
+      JSON.stringify({
+        originalText: writingInput.userText,
+        correctedText: "I want to see a doctor.",
+        feedbackZh: "see 前面需要 to。",
+        keyProblems: ["want 后面接 to do"],
+        betterExpressions: [
+          {
+            text: "I want to see a doctor.",
+            meaningZh: "我想看医生。",
+            example: "I want to see a doctor."
+          }
+        ]
+      }),
+      writingInput,
+      "Test Provider"
+    );
+
+    expect(correction.source).toBe("model");
+    expect(correction.correctedText).toContain("to see");
+    expect(correction.keyProblems[0]).toContain("want");
   });
 });
 
@@ -214,5 +249,52 @@ describe("explainSegmentWithOpenAiCompatible", () => {
       })
     );
     expect(explanation.segments).toHaveLength(1);
+  });
+
+  it("calls a chat-completions compatible endpoint for writing corrections", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  originalText: writingInput.userText,
+                  correctedText: "I want to see a doctor.",
+                  feedbackZh: "see 前面需要 to。",
+                  keyProblems: ["want 后面接 to do"],
+                  betterExpressions: [
+                    {
+                      text: "I want to see a doctor.",
+                      meaningZh: "我想看医生。",
+                      example: "I want to see a doctor."
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const correction = await correctWritingWithOpenAiCompatible(writingInput, {
+      baseUrl: "http://localhost:11434/v1",
+      apiKey: "test-key",
+      model: "test-model",
+      providerLabel: "Local Test",
+      timeoutMs: 5000
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:11434/v1/chat/completions",
+      expect.objectContaining({
+        method: "POST"
+      })
+    );
+    expect(correction.correctedText).toContain("doctor");
   });
 });

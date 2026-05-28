@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { explainMaterial, resolveAiRuntimeConfig } from "@/lib/ai/server/explain-segment";
+import { correctWriting, explainMaterial, resolveAiRuntimeConfig } from "@/lib/ai/server/explain-segment";
 
 describe("resolveAiRuntimeConfig", () => {
   it("uses fallback mode by default", () => {
@@ -50,5 +50,20 @@ describe("resolveAiRuntimeConfig", () => {
 
     expect(explanation.source).toBe("fallback");
     expect(explanation.segments).toHaveLength(1);
+  });
+
+  it("returns a fallback writing correction when provider is not configured", async () => {
+    const correction = await correctWriting(
+      {
+        promptTitle: "预约短信",
+        prompt: "用英文写一句：我想预约医生。",
+        level: "A1",
+        userText: "I want see doctor."
+      },
+      {}
+    );
+
+    expect(correction.source).toBe("fallback");
+    expect(correction.feedbackZh).toContain("本地降级");
   });
 });

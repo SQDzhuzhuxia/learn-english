@@ -56,3 +56,21 @@ export type AiMaterialExplanation = {
   provider: string;
   generatedAt: string;
 };
+
+export type CorrectWritingInput = {
+  promptTitle: string;
+  prompt: string;
+  level: string;
+  userText: string;
+};
+
+export type AiWritingCorrection = {
+  originalText: string;
+  correctedText: string;
+  feedbackZh: string;
+  keyProblems: string[];
+  betterExpressions: AiSegmentExpression[];
+  source: AiExplanationSource;
+  provider: string;
+  generatedAt: string;
+};

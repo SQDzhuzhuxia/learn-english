@@ -1,6 +1,8 @@
 import type {
   AiMaterialExplanation,
   AiSegmentExplanation,
+  AiWritingCorrection,
+  CorrectWritingInput,
   ExplainMaterialInput,
   ExplainSegmentInput
 } from "@/lib/ai/types";
@@ -127,5 +129,35 @@ export function createFallbackMaterialExplanation(
     source: "fallback",
     provider: reason,
     generatedAt
+  };
+}
+
+export function createFallbackWritingCorrection(
+  input: CorrectWritingInput,
+  reason = "AI provider is not configured"
+): AiWritingCorrection {
+  const originalText = input.userText.trim();
+  const sentence = originalText || "Please write one simple English sentence first.";
+
+  return {
+    originalText,
+    correctedText: sentence,
+    feedbackZh:
+      "本地降级反馈：先保证句子完整，有主语和动词。初级阶段不要追求复杂句，先把一个意思用自然短句说清楚。",
+    keyProblems: [
+      "检查是否有主语，例如 I / You / We。",
+      "检查是否有核心动词，例如 need / want / have / work。",
+      "中文想法不要逐词搬到英文里，优先使用短句。"
+    ],
+    betterExpressions: [
+      {
+        text: sentence,
+        meaningZh: "可以先把这句话作为待改进表达保存。",
+        example: sentence
+      }
+    ],
+    source: "fallback",
+    provider: reason,
+    generatedAt: new Date().toISOString()
   };
 }

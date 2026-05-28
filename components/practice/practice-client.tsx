@@ -20,6 +20,7 @@ import {
   type PracticeAttemptRecord
 } from "@/lib/speech/practice-store";
 import { createShadowingFeedback, type ShadowingFeedback } from "@/lib/speech/shadowing-feedback";
+import type { AiWritingCorrection } from "@/lib/ai/types";
 
 type CloudTranscription = {
   text: string;
@@ -81,6 +82,11 @@ export function PracticeClient() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [feedback, setFeedback] = useState<ShadowingFeedback | null>(null);
   const [attempts, setAttempts] = useState<PracticeAttemptRecord[]>([]);
+  const [selectedWritingIndex, setSelectedWritingIndex] = useState(0);
+  const [writingText, setWritingText] = useState("");
+  const [writingCorrection, setWritingCorrection] = useState<AiWritingCorrection | null>(null);
+  const [writingMessage, setWritingMessage] = useState("");
+  const [isCorrectingWriting, setIsCorrectingWriting] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -125,6 +131,57 @@ export function PracticeClient() {
     utterance.rate = 0.82;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
+  }
+
+  async function handleCorrectWriting() {
+    const prompt = writingPrompts[selectedWritingIndex];
+
+    if (!writingText.trim()) {
+      setWritingMessage("请先写一句英文。");
+      return;
+    }
+
+    setIsCorrectingWriting(true);
+    setWritingMessage("正在批改写作...");
+
+    try {
+      const response = await fetch("/api/ai/correct-writing", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          promptTitle: prompt.title,
+          prompt: prompt.prompt,
+          level: prompt.level,
+          userText: writingText
+        })
+      });
+      const payload = (await response.json()) as {
+        correction?: AiWritingCorrection;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.correction) {
+        throw new Error(payload.error ?? "写作批改失败。");
+      }
+
+      recordStudyActivity({
+        type: "output",
+        label: `短写作：${prompt.title}`,
+        minutes: 1
+      });
+      setWritingCorrection(payload.correction);
+      setWritingMessage(
+        payload.correction.source === "model"
+          ? `已由 ${payload.correction.provider} 批改。`
+          : "当前使用本地降级写作反馈，配置 AI 后会调用模型。"
+      );
+    } catch (error) {
+      setWritingMessage(error instanceof Error ? error.message : "写作批改失败。");
+    } finally {
+      setIsCorrectingWriting(false);
+    }
   }
 
   async function startRecording() {
@@ -504,21 +561,102 @@ export function PracticeClient() {
 
       <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">短写作任务</h2>
+          <h2 className="text-lg font-semibold text-foreground">短写作教练</h2>
           <PenLine className="h-5 w-5 text-accent" />
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {writingPrompts.map((item) => (
-            <div key={item.title} className="rounded-lg border border-border bg-white p-4">
+        <div className="mt-4 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="space-y-3">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {writingPrompts.map((item, index) => (
+                <button
+                  key={item.title}
+                  onClick={() => {
+                    setSelectedWritingIndex(index);
+                    setWritingCorrection(null);
+                    setWritingMessage("");
+                  }}
+                  className={`rounded-lg border p-3 text-left ${
+                    index === selectedWritingIndex
+                      ? "border-accent bg-accent-soft"
+                      : "border-border bg-white hover:bg-panel-strong"
+                  }`}
+                >
+                  <span className="block text-sm font-semibold text-foreground">{item.title}</span>
+                  <span className="mt-1 block text-xs text-muted">{item.level}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="rounded-lg border border-border bg-white p-4">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="font-semibold text-foreground">{item.title}</h3>
+                <h3 className="font-semibold text-foreground">{writingPrompts[selectedWritingIndex].title}</h3>
                 <span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-medium text-accent">
-                  {item.level}
+                  {writingPrompts[selectedWritingIndex].level}
                 </span>
               </div>
-              <p className="mt-2 text-sm leading-6 text-muted">{item.prompt}</p>
+              <p className="mt-2 text-sm leading-6 text-muted">{writingPrompts[selectedWritingIndex].prompt}</p>
+              <textarea
+                value={writingText}
+                onChange={(event) => setWritingText(event.target.value)}
+                className="mt-4 min-h-32 w-full resize-y rounded-lg border border-border bg-white px-3 py-2 text-sm leading-6 text-foreground outline-none focus:border-accent"
+                placeholder="Write your English sentence here..."
+              />
+              <button
+                onClick={handleCorrectWriting}
+                disabled={isCorrectingWriting}
+                className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <PenLine className="h-4 w-4" />
+                {isCorrectingWriting ? "批改中..." : "AI 批改"}
+              </button>
+              {writingMessage ? (
+                <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+                  {writingMessage}
+                </p>
+              ) : null}
             </div>
-          ))}
+          </div>
+
+          <div className="rounded-lg border border-border bg-white p-4">
+            <h3 className="font-semibold text-foreground">批改结果</h3>
+            {writingCorrection ? (
+              <div className="mt-4 space-y-4">
+                <section>
+                  <p className="text-sm font-medium text-muted">更自然写法</p>
+                  <p className="mt-2 rounded-lg bg-panel-strong p-3 text-sm leading-6 text-foreground">
+                    {writingCorrection.correctedText}
+                  </p>
+                </section>
+                <section>
+                  <p className="text-sm font-medium text-muted">反馈</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">{writingCorrection.feedbackZh}</p>
+                </section>
+                <section>
+                  <p className="text-sm font-medium text-muted">重点问题</p>
+                  <ul className="mt-2 space-y-2 text-sm leading-6 text-muted">
+                    {writingCorrection.keyProblems.map((problem) => (
+                      <li key={problem}>{problem}</li>
+                    ))}
+                  </ul>
+                </section>
+                <section>
+                  <p className="text-sm font-medium text-muted">可保存表达</p>
+                  <div className="mt-2 space-y-2">
+                    {writingCorrection.betterExpressions.map((expression) => (
+                      <div key={expression.text} className="rounded-lg border border-border bg-panel-strong p-3">
+                        <p className="text-sm font-semibold text-foreground">{expression.text}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted">{expression.meaningZh}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            ) : (
+              <p className="mt-4 rounded-lg border border-border bg-panel-strong p-4 text-sm leading-6 text-muted">
+                写一句英文后点击批改，系统会给出更自然写法、中文反馈和可保存表达。
+              </p>
+            )}
+          </div>
         </div>
       </section>
     </main>

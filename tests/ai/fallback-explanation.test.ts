@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   createFallbackMaterialExplanation,
-  createFallbackSegmentExplanation
+  createFallbackSegmentExplanation,
+  createFallbackWritingCorrection
 } from "@/lib/ai/fallback-explanation";
 
 describe("createFallbackSegmentExplanation", () => {
@@ -44,5 +45,18 @@ describe("createFallbackSegmentExplanation", () => {
     expect(explanation.segments).toHaveLength(2);
     expect(explanation.segments[0]?.segmentId).toBe("s1");
     expect(explanation.keyExpressions.length).toBeGreaterThan(0);
+  });
+
+  it("creates a local writing correction without an API key", () => {
+    const correction = createFallbackWritingCorrection({
+      promptTitle: "预约短信",
+      prompt: "用英文写一句：我想预约医生。",
+      level: "A1",
+      userText: "I want see doctor."
+    });
+
+    expect(correction.source).toBe("fallback");
+    expect(correction.correctedText).toBe("I want see doctor.");
+    expect(correction.keyProblems.length).toBeGreaterThan(0);
   });
 });

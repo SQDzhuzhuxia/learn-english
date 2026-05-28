@@ -1,5 +1,6 @@
 import { summarizeSyncSnapshot } from "@/lib/sync/sync-snapshot";
-import type { SyncSnapshotPayload } from "@/lib/sync/sync-snapshot";
+import { isSyncableStorageKey } from "@/lib/sync/sync-snapshot";
+import type { SyncSnapshotPayload, SyncableStorageKey } from "@/lib/sync/sync-snapshot";
 
 type SyncError = {
   message: string;
@@ -15,6 +16,9 @@ type SyncMutationValue = Record<string, unknown> | Array<Record<string, unknown>
 type SyncTableClient = {
   upsert?: (values: SyncMutationValue, options?: { onConflict?: string }) => QueryResult;
   insert?: (values: SyncMutationValue) => QueryResult;
+  select?: (columns: string) => {
+    eq: (column: string, value: string) => QueryResult<CloudSyncRecordRow[]>;
+  };
 };
 
 export type CloudSyncClient = {
@@ -25,6 +29,18 @@ export type UploadSyncSnapshotResult = {
   uploadedRecords: number;
   snapshotSaved: boolean;
   totalBytes: number;
+};
+
+export type CloudSyncRecordRow = {
+  storage_key: string;
+  storage_value: string;
+  value_hash: string;
+  server_updated_at?: string;
+};
+
+export type DownloadSyncRecordsResult = {
+  records: Partial<Record<SyncableStorageKey, string>>;
+  downloadedRecords: number;
 };
 
 function assertNoSyncError(result: { error?: SyncError | null }, fallback: string) {
@@ -85,5 +101,35 @@ export async function uploadSyncSnapshot(
     uploadedRecords: recordRows.length,
     snapshotSaved: true,
     totalBytes: summary.totalBytes
+  };
+}
+
+export async function downloadSyncRecords(
+  client: CloudSyncClient,
+  userId: string
+): Promise<DownloadSyncRecordsResult> {
+  const recordsTable = client.from("learning_sync_records");
+
+  if (!recordsTable.select) {
+    throw new Error("云同步 records 表不支持 select。");
+  }
+
+  const result = await recordsTable
+    .select("storage_key,storage_value,value_hash,server_updated_at")
+    .eq("user_id", userId);
+
+  assertNoSyncError(result, "云同步 records 拉取失败。");
+
+  const records = (result.data ?? []).reduce<Partial<Record<SyncableStorageKey, string>>>((nextRecords, row) => {
+    if (isSyncableStorageKey(row.storage_key)) {
+      nextRecords[row.storage_key] = row.storage_value;
+    }
+
+    return nextRecords;
+  }, {});
+
+  return {
+    records,
+    downloadedRecords: Object.keys(records).length
   };
 }

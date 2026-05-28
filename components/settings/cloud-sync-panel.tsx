@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Cloud, LogOut, Mail, RefreshCw, UploadCloud } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
-import { uploadSyncSnapshot } from "@/lib/sync/cloud-sync";
-import { createLocalSyncSnapshot } from "@/lib/sync/local-backup";
+import { downloadSyncRecords, uploadSyncSnapshot } from "@/lib/sync/cloud-sync";
+import type { CloudSyncClient } from "@/lib/sync/cloud-sync";
+import { createLocalSyncSnapshot, restoreSyncRecords } from "@/lib/sync/local-backup";
 
 export function CloudSyncPanel() {
   const config = useMemo(() => getSupabasePublicConfig(), []);
@@ -91,10 +92,38 @@ export function CloudSyncPanel() {
 
     try {
       const snapshot = createLocalSyncSnapshot("browser");
-      const result = await uploadSyncSnapshot(supabase, data.user.id, snapshot);
+      const result = await uploadSyncSnapshot(supabase as unknown as CloudSyncClient, data.user.id, snapshot);
       setMessage(`已上传 ${result.uploadedRecords} 组数据，${result.totalBytes} bytes。`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "云同步上传失败。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDownloadRecords() {
+    if (!supabase || !sessionEmail) {
+      setMessage("请先登录账号。");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data.user) {
+      setLoading(false);
+      setMessage(error?.message ?? "无法读取当前账号。");
+      return;
+    }
+
+    try {
+      const result = await downloadSyncRecords(supabase as unknown as CloudSyncClient, data.user.id);
+      const restoredCount = restoreSyncRecords(result.records);
+      setMessage(`已拉取 ${restoredCount} 组云端数据，刷新页面后生效。`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "云同步拉取失败。");
     } finally {
       setLoading(false);
     }
@@ -115,7 +144,7 @@ export function CloudSyncPanel() {
       </div>
 
       {sessionEmail ? (
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
           <button
             onClick={handleUploadSnapshot}
             disabled={loading}
@@ -123,6 +152,14 @@ export function CloudSyncPanel() {
           >
             {loading ? <RefreshCw className="h-4 w-4" /> : <UploadCloud className="h-4 w-4" />}
             上传快照
+          </button>
+          <button
+            onClick={handleDownloadRecords}
+            disabled={loading}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            <Cloud className="h-4 w-4 text-accent" />
+            拉取云端
           </button>
           <button
             onClick={handleSignOut}

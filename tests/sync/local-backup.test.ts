@@ -3,7 +3,8 @@ import {
   createLocalBackup,
   createLocalSyncSnapshot,
   parseLocalBackup,
-  restoreLocalBackup
+  restoreLocalBackup,
+  restoreSyncRecords
 } from "@/lib/sync/local-backup";
 
 function setupLocalStorage() {
@@ -67,5 +68,16 @@ describe("local backup", () => {
     expect(snapshot.deviceId).toBe("office-browser");
     expect(snapshot.records).toHaveLength(1);
     expect(snapshot.records[0]?.key).toBe("learn-english.materials.v1");
+  });
+
+  it("restores only syncable cloud records", () => {
+    const restoredCount = restoreSyncRecords({
+      "learn-english.materials.v1": "[1]",
+      "learn-english.activity-log.v1": "[2]"
+    });
+
+    expect(restoredCount).toBe(2);
+    expect(window.localStorage.getItem("learn-english.materials.v1")).toBe("[1]");
+    expect(window.localStorage.getItem("learn-english.activity-log.v1")).toBe("[2]");
   });
 });

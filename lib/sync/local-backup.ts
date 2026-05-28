@@ -1,7 +1,7 @@
 "use client";
 
-import { createSyncSnapshotFromRecords } from "@/lib/sync/sync-snapshot";
-import type { SyncSnapshotPayload } from "@/lib/sync/sync-snapshot";
+import { createSyncSnapshotFromRecords, isSyncableStorageKey } from "@/lib/sync/sync-snapshot";
+import type { SyncSnapshotPayload, SyncableStorageKey } from "@/lib/sync/sync-snapshot";
 
 export type LocalBackupPayload = {
   app: "learn-english";
@@ -61,6 +61,23 @@ export function restoreLocalBackup(payload: LocalBackupPayload) {
   }
 
   const entries = Object.entries(payload.records).filter(([key]) => key.startsWith("learn-english."));
+
+  entries.forEach(([key, value]) => {
+    window.localStorage.setItem(key, value);
+  });
+
+  return entries.length;
+}
+
+export function restoreSyncRecords(records: Partial<Record<SyncableStorageKey, string>>) {
+  if (!canUseStorage()) {
+    return 0;
+  }
+
+  const entries = Object.entries(records).filter(
+    (entry): entry is [SyncableStorageKey, string] =>
+      isSyncableStorageKey(entry[0]) && typeof entry[1] === "string"
+  );
 
   entries.forEach(([key, value]) => {
     window.localStorage.setItem(key, value);

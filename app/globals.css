@@ -1,26 +1,26 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f6f8fb;
-  --foreground: #172033;
-  --muted: #64748b;
-  --muted-foreground: #64748b;
+  --background: #f7f7f8;
+  --foreground: #171717;
+  --muted: #6b6b6b;
+  --muted-foreground: #6b6b6b;
   --panel: #ffffff;
-  --panel-strong: #eef3f8;
-  --border: #d7e0ea;
-  --accent: #0f766e;
-  --accent-strong: #0d5f59;
-  --accent-soft: #dff3ef;
-  --ring: #8fd3c9;
+  --panel-strong: #f1f1f1;
+  --border: #e4e4e7;
+  --accent: #10a37f;
+  --accent-strong: #0d8f6f;
+  --accent-soft: #eef8f4;
+  --ring: #c7e7dd;
   --card: #ffffff;
-  --card-foreground: #172033;
+  --card-foreground: #171717;
   --popover: #ffffff;
-  --popover-foreground: #172033;
-  --primary: #0f766e;
+  --popover-foreground: #171717;
+  --primary: #171717;
   --primary-foreground: #ffffff;
-  --secondary: #eef3f8;
-  --secondary-foreground: #273449;
-  --destructive: #dc2626;
+  --secondary: #f1f1f1;
+  --secondary-foreground: #2f2f2f;
+  --destructive: #b42318;
   --destructive-foreground: #ffffff;
 }
 
@@ -46,6 +46,36 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-slate-50: #f7f7f8;
+  --color-slate-200: #e4e4e7;
+  --color-slate-600: #6b6b6b;
+  --color-sky-50: #f7f7f8;
+  --color-sky-200: #e4e4e7;
+  --color-sky-500: #8a8a8a;
+  --color-sky-700: #4b4b4b;
+  --color-sky-800: #3f3f3f;
+  --color-emerald-50: #eef8f4;
+  --color-emerald-100: #e4f4ee;
+  --color-emerald-200: #cbe9dd;
+  --color-emerald-700: #0b7f63;
+  --color-emerald-800: #08634f;
+  --color-emerald-900: #064e3f;
+  --color-amber-50: #f7f4ee;
+  --color-amber-100: #f0e8dc;
+  --color-amber-200: #e1d5c4;
+  --color-amber-500: #a08f76;
+  --color-amber-700: #6f5d43;
+  --color-amber-800: #594a36;
+  --color-amber-900: #403628;
+  --color-rose-50: #f9f4f3;
+  --color-rose-100: #f2e4e2;
+  --color-rose-200: #e8cbc7;
+  --color-rose-600: #b42318;
+  --color-rose-700: #9f1f17;
+  --color-red-50: #f9f4f3;
+  --color-red-100: #f2e4e2;
+  --color-red-200: #e8cbc7;
+  --color-red-700: #9f1f17;
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 

@@ -80,7 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="min-h-screen bg-background text-foreground">
         <aside className="fixed left-0 top-0 hidden h-screen w-72 border-r border-border bg-panel/95 px-4 py-5 shadow-sm lg:block">
           <Link href="/" className="flex items-center gap-3 rounded-lg px-2 py-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-white shadow-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-white shadow-none">
               <Sparkles className="h-5 w-5" />
             </div>
             <div className="min-w-0">
@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   className={cn(
                     "group flex min-h-11 items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition",
                     active
-                      ? "bg-accent text-white shadow-sm"
+                      ? "border border-border bg-panel-strong text-foreground"
                       : "text-muted hover:bg-panel-strong hover:text-foreground"
                   )}
                 >
@@ -170,7 +170,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="pb-20 lg:pb-0">{children}</div>
         </div>
 
-        <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-5 border-t border-border bg-panel/95 px-2 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-5 border-t border-border bg-panel/95 px-2 py-2 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden">
           {navigation.slice(0, 5).map((item) => {
             const active = isActive(pathname, item.href);
 
@@ -180,7 +180,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 href={item.href}
                 className={cn(
                   "flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-semibold transition",
-                  active ? "bg-accent text-white shadow-sm" : "text-muted hover:bg-panel-strong"
+                  active
+                    ? "border border-border bg-panel-strong text-foreground"
+                    : "text-muted hover:bg-panel-strong"
                 )}
               >
                 <item.icon className="h-4 w-4" />

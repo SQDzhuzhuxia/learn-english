@@ -45,6 +45,7 @@ Supabase 登录入口    已完成
 最近同步状态展示     已完成
 UI 技术方案补充      已完成
 shadcn UI 基础设施   已完成
+ChatGPT 风格色调     已完成
 UI Refresh 第一轮    已完成
 UI Refresh 第二轮    已完成
 UI Refresh 第三轮    已完成
@@ -201,6 +202,8 @@ UI Refresh 第三轮    已完成
 - README 已补充项目技术栈
 - 技术方案已明确采用 shadcn/ui + Radix UI + Tailwind CSS + lucide-react
 - 新增 UI 技术方案补充文档
+- UI 色调已调整为接近 ChatGPT 官网的浅灰白、黑灰文字、低饱和绿色强调风格
+- PWA theme color 和图标颜色已同步到新的浅灰白/绿色体系
 - 新增 `components/ui/` 基础 UI 组件
 - 新增 `components.json` shadcn/ui 配置
 - 新增 `lib/utils.ts` 统一 className 合并工具

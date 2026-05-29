@@ -6,7 +6,9 @@ import { ArrowRight, CheckCircle2, Eye, RotateCcw, Volume2 } from "lucide-react"
 import { reviewRatings } from "@/lib/mock-data";
 import {
   getSeedReviewCards,
+  getSeedLearningItems,
   isCardDue,
+  loadLearningItems,
   loadReviewLogs,
   loadReviewCards,
   reviewCard
@@ -17,8 +19,9 @@ import {
   type ReviewQueueFilter
 } from "@/lib/review/review-filters";
 import { summarizeReviewLogs } from "@/lib/review/review-diagnostics";
+import { getReviewCardDetail } from "@/lib/review/review-card-detail";
 import { getReviewQueueStats } from "@/lib/review/review-stats";
-import type { ReviewCardRecord, ReviewLogRecord } from "@/lib/review/types";
+import type { LearningItemRecord, ReviewCardRecord, ReviewLogRecord } from "@/lib/review/types";
 import type { ReviewRating } from "@/lib/review/scheduler";
 
 const cardTypeLabels: Record<ReviewCardRecord["cardType"], string> = {
@@ -80,6 +83,7 @@ function formatDueLabel(card: ReviewCardRecord) {
 }
 
 export function ReviewClient() {
+  const [items, setItems] = useState<LearningItemRecord[]>(() => getSeedLearningItems());
   const [cards, setCards] = useState<ReviewCardRecord[]>(() => getSeedReviewCards());
   const [logs, setLogs] = useState<ReviewLogRecord[]>([]);
   const [activeCardId, setActiveCardId] = useState(cards[0]?.id ?? "");
@@ -97,6 +101,7 @@ export function ReviewClient() {
       }
 
       const loaded = loadReviewCards();
+      setItems(loadLearningItems());
       setCards(loaded);
       setLogs(loadReviewLogs());
       setActiveCardId((current) => current || loaded.find((card) => card.status !== "suspended")?.id || "");
@@ -119,6 +124,10 @@ export function ReviewClient() {
     filteredCards[0];
   const queueStats = useMemo(() => getReviewQueueStats(cards), [cards]);
   const diagnostics = useMemo(() => summarizeReviewLogs(logs), [logs]);
+  const activeCardDetail = useMemo(
+    () => (activeCard ? getReviewCardDetail(activeCard, items, logs) : undefined),
+    [activeCard, items, logs]
+  );
   const typeStats = Object.entries(queueStats.byType).filter(([, count]) => count > 0) as Array<
     [ReviewCardRecord["cardType"], number]
   >;
@@ -387,6 +396,55 @@ export function ReviewClient() {
                 </button>
               ))}
             </div>
+
+            {activeCardDetail ? (
+              <div className="mt-5 border-t border-border pt-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">卡片详情</p>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      {activeCardDetail.item?.text ?? "未找到关联词句"}
+                    </p>
+                  </div>
+                  <Link
+                    href="/notebook"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
+                  >
+                    管理词句
+                    <ArrowRight className="h-4 w-4 text-accent" />
+                  </Link>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <p className="text-xs text-muted">来源材料</p>
+                    <p className="mt-1 text-sm font-medium text-foreground">
+                      {activeCardDetail.item?.sourceMaterialTitle ?? activeCard.source}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">复习次数</p>
+                    <p className="mt-1 text-sm font-medium text-foreground">
+                      {activeCardDetail.reviewCount} 次
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">最近评分</p>
+                    <p className="mt-1 text-sm font-medium text-foreground">
+                      {activeCardDetail.latestRating
+                        ? ratingLabels[activeCardDetail.latestRating]
+                        : "暂无"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">当前状态</p>
+                    <p className="mt-1 text-sm font-medium text-foreground">
+                      {activeCardDetail.statusLabel}
+                      {activeCardDetail.needsAttention ? " · 回炉" : ""}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </article>
         ) : (
           <article className="rounded-lg border border-border bg-panel p-5 shadow-sm">

@@ -13,8 +13,10 @@ import {
   loadReviewCards,
   resetReviewCard,
   restoreReviewCard,
+  restoreReviewCards,
   reviewCard,
-  suspendReviewCard
+  suspendReviewCard,
+  suspendReviewCards
 } from "@/lib/review/review-store";
 import {
   filterReviewCards,
@@ -102,6 +104,7 @@ export function ReviewClient() {
   const [activeCardId, setActiveCardId] = useState(cards[0]?.id ?? "");
   const [queueFilter, setQueueFilter] = useState<ReviewQueueFilter>("all");
   const [cardTypeFilter, setCardTypeFilter] = useState<ReviewCardTypeFilter>("all");
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [isAnswerVisible, setIsAnswerVisible] = useState(false);
 
@@ -138,6 +141,15 @@ export function ReviewClient() {
     () => filterReviewCards(cards, { queue: queueFilter, cardType: cardTypeFilter, logs }),
     [cards, cardTypeFilter, logs, queueFilter]
   );
+  const selectedCardIdSet = useMemo(() => new Set(selectedCardIds), [selectedCardIds]);
+  const selectedCards = useMemo(
+    () => cards.filter((card) => selectedCardIdSet.has(card.id)),
+    [cards, selectedCardIdSet]
+  );
+  const selectedActiveCards = selectedCards.filter((card) => card.status !== "suspended");
+  const selectedPausedCards = selectedCards.filter((card) => card.status === "suspended");
+  const allFilteredCardsSelected =
+    filteredCards.length > 0 && filteredCards.every((card) => selectedCardIdSet.has(card.id));
   const activeCard =
     filteredCards.find((card) => card.id === activeCardId) ??
     filteredCards.find((card) => isCardDue(card)) ??
@@ -152,6 +164,22 @@ export function ReviewClient() {
     [ReviewCardRecord["cardType"], number]
   >;
   const maxDailyReviews = Math.max(1, ...diagnostics.dailyTrend.map((day) => day.reviews));
+
+  function syncReviewState(nextCards: ReviewCardRecord[], nextLogs: ReviewLogRecord[]) {
+    const nextFilteredCards = filterReviewCards(nextCards, {
+      queue: queueFilter,
+      cardType: cardTypeFilter,
+      logs: nextLogs
+    });
+
+    setCards(nextCards);
+    setLogs(nextLogs);
+    setActiveCardId((current) => {
+      const currentCard = nextFilteredCards.find((card) => card.id === current);
+      return currentCard?.id ?? nextFilteredCards.find((card) => isCardDue(card))?.id ?? nextFilteredCards[0]?.id ?? "";
+    });
+    setIsAnswerVisible(false);
+  }
 
   function handleRate(cardId: string, rating: ReviewRating) {
     const updated = reviewCard(cardId, rating);
@@ -193,6 +221,61 @@ export function ReviewClient() {
     if (updated) {
       setMessage("已暂停这张复习卡，可在“暂停”队列中恢复。");
     }
+  }
+
+  function handleToggleSelectCard(cardId: string) {
+    setSelectedCardIds((current) =>
+      current.includes(cardId) ? current.filter((id) => id !== cardId) : [...current, cardId]
+    );
+  }
+
+  function handleToggleSelectFilteredCards() {
+    const filteredCardIds = filteredCards.map((card) => card.id);
+    const filteredCardIdSet = new Set(filteredCardIds);
+
+    setSelectedCardIds((current) => {
+      const currentSet = new Set(current);
+      const isAllSelected =
+        filteredCardIds.length > 0 && filteredCardIds.every((cardId) => currentSet.has(cardId));
+
+      if (isAllSelected) {
+        return current.filter((cardId) => !filteredCardIdSet.has(cardId));
+      }
+
+      return Array.from(new Set([...current, ...filteredCardIds]));
+    });
+  }
+
+  function handleClearCardSelection() {
+    setSelectedCardIds([]);
+  }
+
+  function handleBulkSuspendCards() {
+    const targetIds = selectedActiveCards.map((card) => card.id);
+
+    if (targetIds.length === 0) {
+      setMessage("当前选择里没有可暂停的复习卡。");
+      return;
+    }
+
+    const result = suspendReviewCards(targetIds);
+    syncReviewState(loadReviewCards(), loadReviewLogs());
+    setSelectedCardIds([]);
+    setMessage(`已批量暂停 ${result.suspendedCards} 张复习卡。`);
+  }
+
+  function handleBulkRestoreCards() {
+    const targetIds = selectedPausedCards.map((card) => card.id);
+
+    if (targetIds.length === 0) {
+      setMessage("当前选择里没有可恢复的暂停卡。");
+      return;
+    }
+
+    const result = restoreReviewCards(targetIds);
+    syncReviewState(loadReviewCards(), loadReviewLogs());
+    setSelectedCardIds([]);
+    setMessage(`已批量恢复 ${result.restoredCards} 张复习卡。`);
   }
 
   function handleRestoreCard(cardId: string) {
@@ -622,31 +705,83 @@ export function ReviewClient() {
             <h2 className="text-lg font-semibold text-foreground">复习队列</h2>
             <RotateCcw className="h-5 w-5 text-accent" />
           </div>
+          <div className="mt-4 border-b border-border pb-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-foreground">已选择 {selectedCards.length} 张</p>
+              {selectedCards.length > 0 ? (
+                <button
+                  onClick={handleClearCardSelection}
+                  className="min-h-8 rounded-lg border border-border bg-white px-3 py-1 text-xs font-semibold text-muted hover:bg-panel-strong"
+                >
+                  清空
+                </button>
+              ) : null}
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                onClick={handleToggleSelectFilteredCards}
+                disabled={filteredCards.length === 0}
+                className="min-h-9 rounded-lg border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {allFilteredCardsSelected ? "取消当前队列" : "选择当前队列"}
+              </button>
+              <button
+                onClick={handleBulkSuspendCards}
+                disabled={selectedActiveCards.length === 0}
+                className="min-h-9 rounded-lg border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                批量暂停
+              </button>
+              <button
+                onClick={handleBulkRestoreCards}
+                disabled={selectedPausedCards.length === 0}
+                className="min-h-9 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                批量恢复
+              </button>
+              <p className="flex min-h-9 items-center text-xs leading-5 text-muted">
+                可整理暂时不练的卡片。
+              </p>
+            </div>
+          </div>
           <div className="mt-4 space-y-3">
             {filteredCards.map((card) => (
-              <button
+              <div
                 key={card.id}
-                onClick={() => {
-                  setActiveCardId(card.id);
-                  setIsAnswerVisible(false);
-                }}
-                className={`block w-full rounded-lg border p-3 text-left ${
-                  card.id === activeCard.id ? "border-accent bg-accent-soft" : "border-border bg-white"
+                className={`rounded-lg border p-3 ${
+                  card.id === activeCard?.id ? "border-accent bg-accent-soft" : "border-border bg-white"
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{card.front}</p>
-                    <p className="mt-1 text-xs text-muted">
-                      {cardTypeLabels[card.cardType]} · {card.source}
-                      {card.status === "suspended" ? " · 已暂停" : ""}
-                    </p>
-                  </div>
-                  <span className="shrink-0 rounded-md border border-border bg-white px-2 py-1 text-xs text-muted">
-                    {formatDueLabel(card)}
-                  </span>
+                <div className="flex items-start gap-3">
+                  <label className="flex h-6 w-6 shrink-0 items-center justify-center pt-0.5">
+                    <span className="sr-only">选择复习卡</span>
+                    <input
+                      type="checkbox"
+                      checked={selectedCardIdSet.has(card.id)}
+                      onChange={() => handleToggleSelectCard(card.id)}
+                      className="h-4 w-4 rounded border-border text-accent"
+                    />
+                  </label>
+                  <button
+                    onClick={() => {
+                      setActiveCardId(card.id);
+                      setIsAnswerVisible(false);
+                    }}
+                    className="flex min-w-0 flex-1 items-start justify-between gap-3 text-left"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-foreground">{card.front}</span>
+                      <span className="mt-1 block text-xs text-muted">
+                        {cardTypeLabels[card.cardType]} · {card.source}
+                        {card.status === "suspended" ? " · 已暂停" : ""}
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-md border border-border bg-white px-2 py-1 text-xs text-muted">
+                      {formatDueLabel(card)}
+                    </span>
+                  </button>
                 </div>
-              </button>
+              </div>
             ))}
             {filteredCards.length === 0 ? (
               <p className="rounded-lg border border-dashed border-border bg-white px-3 py-4 text-sm leading-6 text-muted">

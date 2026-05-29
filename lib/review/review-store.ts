@@ -904,6 +904,38 @@ export function suspendReviewCard(cardId: string) {
   return suspendedCard;
 }
 
+export function suspendReviewCards(cardIds: string[]) {
+  const timestamp = nowIso();
+  const targetIds = new Set(cardIds);
+  let suspendedCards = 0;
+
+  if (targetIds.size === 0) {
+    return {
+      suspendedCards
+    };
+  }
+
+  saveReviewCards(
+    loadReviewCards().map((card) => {
+      if (!targetIds.has(card.id) || card.status === "suspended") {
+        return card;
+      }
+
+      suspendedCards += 1;
+
+      return {
+        ...card,
+        status: "suspended",
+        updatedAt: timestamp
+      };
+    })
+  );
+
+  return {
+    suspendedCards
+  };
+}
+
 export function restoreReviewCard(cardId: string) {
   const timestamp = nowIso();
   let restoredCard: ReviewCardRecord | undefined;
@@ -924,6 +956,38 @@ export function restoreReviewCard(cardId: string) {
 
   saveReviewCards(updatedCards);
   return restoredCard;
+}
+
+export function restoreReviewCards(cardIds: string[]) {
+  const timestamp = nowIso();
+  const targetIds = new Set(cardIds);
+  let restoredCards = 0;
+
+  if (targetIds.size === 0) {
+    return {
+      restoredCards
+    };
+  }
+
+  saveReviewCards(
+    loadReviewCards().map((card) => {
+      if (!targetIds.has(card.id) || card.status !== "suspended") {
+        return card;
+      }
+
+      restoredCards += 1;
+
+      return {
+        ...card,
+        status: card.intervalDays > 0 ? "review" : "new",
+        updatedAt: timestamp
+      };
+    })
+  );
+
+  return {
+    restoredCards
+  };
 }
 
 export function resetReviewCard(cardId: string) {

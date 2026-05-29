@@ -11,6 +11,7 @@ import {
   restoreLearningItem,
   restoreLearningItems,
   restoreReviewCard,
+  restoreReviewCards,
   resetReviewCard,
   saveReviewCards,
   saveReviewLogs,
@@ -18,6 +19,7 @@ import {
   saveSegmentAsReviewCard,
   saveWritingItemAsReviewCard,
   suspendReviewCard,
+  suspendReviewCards,
   updateLearningItem
 } from "@/lib/review/review-store";
 import { getSeedMaterials } from "@/lib/content/material-store";
@@ -142,6 +144,37 @@ describe("learning item management", () => {
 
     expect(restoredCard?.status).toBe("new");
     expect(loadReviewCards().find((card) => card.id === "seed-card-appointment")?.status).toBe("new");
+  });
+
+  it("suspends and restores review cards in bulk", () => {
+    loadLearningItems();
+    loadReviewCards();
+
+    const suspendResult = suspendReviewCards([
+      "seed-card-appointment",
+      "seed-card-sore-throat",
+      "missing-card"
+    ]);
+
+    expect(suspendResult).toEqual({
+      suspendedCards: 2
+    });
+    expect(
+      loadReviewCards()
+        .filter((card) => ["seed-card-appointment", "seed-card-sore-throat"].includes(card.id))
+        .every((card) => card.status === "suspended")
+    ).toBe(true);
+
+    const restoreResult = restoreReviewCards(["seed-card-appointment", "seed-card-sore-throat"]);
+
+    expect(restoreResult).toEqual({
+      restoredCards: 2
+    });
+    expect(
+      loadReviewCards()
+        .filter((card) => ["seed-card-appointment", "seed-card-sore-throat"].includes(card.id))
+        .every((card) => card.status === "new")
+    ).toBe(true);
   });
 
   it("resets a review card to new and clears its logs", () => {

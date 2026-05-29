@@ -23,6 +23,13 @@ import {
   setCurrentMaterialId,
   updateTextMaterial
 } from "@/lib/content/material-store";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import type { NewTextMaterialInput, StudyMaterialRecord } from "@/lib/content/types";
 
 function createEditForm(material: StudyMaterialRecord): NewTextMaterialInput {
@@ -155,22 +162,22 @@ export function MaterialLibraryClient() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
       <section className="grid gap-5 lg:grid-cols-[1fr_340px]">
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardContent className="pt-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm font-medium text-accent">材料库</p>
-              <h1 className="mt-2 text-2xl font-semibold text-foreground">可理解输入材料中心</h1>
+              <Badge variant="soft">材料库</Badge>
+              <h1 className="mt-3 text-2xl font-semibold text-foreground">可理解输入材料中心</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
                 先选择略高于当前水平的材料。用户导入材料现在可以编辑和删除。
               </p>
             </div>
-            <Link
-              href="/library/import"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
-            >
-              <FilePlus2 className="h-4 w-4" />
-              导入材料
-            </Link>
+            <Button asChild size="lg">
+              <Link href="/library/import">
+                <FilePlus2 className="h-4 w-4" />
+                导入材料
+              </Link>
+            </Button>
           </div>
 
           {message ? (
@@ -180,102 +187,106 @@ export function MaterialLibraryClient() {
           ) : null}
 
           <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
-            <label className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-white px-3">
+            <label className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-white px-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-ring">
               <Search className="h-4 w-4 text-muted" />
-              <input
-                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted"
+              <Input
+                className="min-h-0 border-0 bg-transparent px-0 py-0 focus:border-0 focus:ring-0"
                 placeholder="搜索材料、场景或关键词"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
             </label>
-            <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground hover:bg-panel-strong">
+            <Button variant="outline" className="min-h-11">
               <Filter className="h-4 w-4 text-accent" />
               {filteredMaterials.length} 篇
-            </button>
+            </Button>
           </div>
 
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
             {materialFilters.map((filter) => (
-              <button
+              <Button
                 key={filter}
+                variant={activeFilter === filter ? "soft" : "outline"}
+                size="sm"
                 onClick={() => setActiveFilter(filter)}
-                className={`min-h-9 shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium ${
-                  activeFilter === filter
-                    ? "border-accent bg-accent-soft text-accent"
-                    : "border-border bg-white text-muted hover:bg-panel-strong"
-                }`}
+                className="shrink-0"
               >
                 {filter}
-              </button>
+              </Button>
             ))}
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">继续学习</h2>
+            <CardTitle className="text-lg">继续学习</CardTitle>
             <Headphones className="h-5 w-5 text-accent" />
           </div>
+          <CardDescription>从当前推荐材料继续你的可理解输入。</CardDescription>
+          </CardHeader>
+          <CardContent>
           {recommended ? (
             <>
-              <p className="mt-3 text-sm leading-6 text-muted">{recommended.summary}</p>
+              <p className="text-sm leading-6 text-muted">{recommended.summary}</p>
               <div className="mt-4 rounded-lg border border-border bg-panel-strong p-4">
                 <p className="text-sm font-semibold text-foreground">{recommended.title}</p>
                 <p className="mt-2 text-xs text-muted">
                   {recommended.type} · {recommended.level} · {recommended.minutes} 分钟
                 </p>
-                <div className="mt-3 h-2 rounded-full bg-white">
-                  <div
-                    className="h-2 rounded-full bg-accent"
-                    style={{ width: `${recommended.progress}%` }}
-                  />
-                </div>
+                <Progress value={recommended.progress} className="mt-3 bg-white" />
               </div>
-              <Link
-                href={`/study/${recommended.id}`}
-                onClick={() => setCurrentMaterialId(recommended.id)}
-                className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-              >
-                继续学习
-                <ArrowRight className="h-4 w-4 text-accent" />
-              </Link>
+              <Button asChild variant="outline" className="mt-4 w-full">
+                <Link
+                  href={`/study/${recommended.id}`}
+                  onClick={() => setCurrentMaterialId(recommended.id)}
+                >
+                  继续学习
+                  <ArrowRight className="h-4 w-4 text-accent" />
+                </Link>
+              </Button>
             </>
           ) : (
             <p className="mt-3 text-sm leading-6 text-muted">暂无材料，先导入一篇文本。</p>
           )}
-        </aside>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filteredMaterials.map((material) => (
-          <article key={material.id} className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+          <Card key={material.id}>
+            <CardContent className="pt-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-medium text-accent">
+                <Badge variant="soft">
                   {material.priority}
-                </span>
+                </Badge>
                 <h2 className="mt-3 text-lg font-semibold text-foreground">{material.title}</h2>
               </div>
               <div className="flex shrink-0 gap-2">
                 {material.source === "user" ? (
                   <>
-                    <button
+                    <Button
+                      variant="outline"
+                      size="icon"
                       onClick={() => handleStartEdit(material)}
-                      className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white text-muted hover:bg-panel-strong hover:text-foreground"
                       aria-label="编辑材料"
                       title="编辑"
                     >
                       <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
                       onClick={() => handleDelete(material)}
-                      className="flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                      className="border-rose-200 text-rose-700 hover:bg-rose-50"
                       aria-label="删除材料"
                       title="删除"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </>
                 ) : (
                   <ClipboardList className="h-5 w-5 shrink-0 text-accent" />
@@ -285,16 +296,16 @@ export function MaterialLibraryClient() {
 
             {editingMaterialId === material.id && editForm ? (
               <div className="mt-5 space-y-3 rounded-lg border border-border bg-panel-strong p-4">
-                <label className="block text-sm font-medium text-foreground">
+                <Label className="block">
                   标题
-                  <input
-                    className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none"
+                  <Input
+                    className="mt-2"
                     value={editForm.title}
                     onChange={(event) => setEditForm({ ...editForm, title: event.target.value })}
                   />
-                </label>
+                </Label>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block text-sm font-medium text-foreground">
+                  <Label className="block">
                     类型
                     <select
                       className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none"
@@ -307,8 +318,8 @@ export function MaterialLibraryClient() {
                       <option>自动化</option>
                       <option>入籍</option>
                     </select>
-                  </label>
-                  <label className="block text-sm font-medium text-foreground">
+                  </Label>
+                  <Label className="block">
                     难度
                     <select
                       className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none"
@@ -320,31 +331,30 @@ export function MaterialLibraryClient() {
                       <option>A2</option>
                       <option>B1</option>
                     </select>
-                  </label>
+                  </Label>
                 </div>
-                <label className="block text-sm font-medium text-foreground">
+                <Label className="block">
                   英文文本
-                  <textarea
-                    className="mt-2 min-h-48 w-full resize-y rounded-lg border border-border bg-white px-3 py-2 text-sm leading-6 text-foreground outline-none"
+                  <Textarea
+                    className="mt-2 min-h-48"
                     value={editForm.contentText}
                     onChange={(event) => setEditForm({ ...editForm, contentText: event.target.value })}
                   />
-                </label>
+                </Label>
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                  <button
+                  <Button
+                    variant="outline"
                     onClick={handleCancelEdit}
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
                   >
                     <CircleX className="h-4 w-4 text-muted" />
                     取消
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => handleSaveEdit(material.id)}
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
                   >
                     <Check className="h-4 w-4" />
                     保存
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -352,18 +362,18 @@ export function MaterialLibraryClient() {
             )}
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
+              <Badge variant="outline">
                 {material.type}
-              </span>
-              <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
+              </Badge>
+              <Badge variant="outline">
                 {material.inputType}
-              </span>
-              <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
+              </Badge>
+              <Badge variant="outline">
                 {material.level}
-              </span>
-              <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
+              </Badge>
+              <Badge variant="outline">
                 {material.source === "user" ? "可编辑" : "内置"}
-              </span>
+              </Badge>
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
@@ -386,12 +396,7 @@ export function MaterialLibraryClient() {
                 <span>学习进度</span>
                 <span>{material.progress}%</span>
               </div>
-              <div className="mt-2 h-2 rounded-full bg-panel-strong">
-                <div
-                  className="h-2 rounded-full bg-accent"
-                  style={{ width: `${material.progress}%` }}
-                />
-              </div>
+              <Progress value={material.progress} className="mt-2" />
             </div>
 
             <div className="mt-4 space-y-2">
@@ -402,36 +407,39 @@ export function MaterialLibraryClient() {
               ))}
             </div>
 
-            <Link
-              href={`/study/${material.id}`}
-              onClick={() => setCurrentMaterialId(material.id)}
-              className="mt-5 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-            >
-              打开材料
-              <ArrowRight className="h-4 w-4 text-accent" />
-            </Link>
-          </article>
+            <Button asChild variant="outline" className="mt-5 w-full">
+              <Link
+                href={`/study/${material.id}`}
+                onClick={() => setCurrentMaterialId(material.id)}
+              >
+                打开材料
+                <ArrowRight className="h-4 w-4 text-accent" />
+              </Link>
+            </Button>
+            </CardContent>
+          </Card>
         ))}
       </section>
 
-      <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+      <Card>
+        <CardContent className="pt-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-medium text-accent">导入入口</p>
+            <Badge variant="soft">导入入口</Badge>
             <h2 className="mt-2 text-lg font-semibold text-foreground">粘贴一段英文文本，自动分句并保存</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
               现在先支持纯文本导入。后续会继续加入字幕、URL、音频转写和云同步。
             </p>
           </div>
-          <Link
-            href="/library/import"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-          >
-            <Upload className="h-4 w-4 text-accent" />
-            准备导入
-          </Link>
+          <Button asChild variant="outline" size="lg">
+            <Link href="/library/import">
+              <Upload className="h-4 w-4 text-accent" />
+              准备导入
+            </Link>
+          </Button>
         </div>
-      </section>
+        </CardContent>
+      </Card>
     </main>
   );
 }

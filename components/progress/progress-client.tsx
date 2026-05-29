@@ -15,6 +15,9 @@ import {
   type WeeklyActivityDay
 } from "@/lib/analytics/progress-store";
 import { loadLearningItems } from "@/lib/review/review-store";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 type ProgressStat = {
   label: string;
@@ -131,11 +134,12 @@ export function ProgressClient() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
       <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardContent className="pt-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-accent">进度</p>
-              <h1 className="mt-2 text-2xl font-semibold text-foreground">本周学习复盘</h1>
+              <Badge variant="soft">进度</Badge>
+              <h1 className="mt-3 text-2xl font-semibold text-foreground">本周学习复盘</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
                 不只看打卡，更看输入量、输出次数、复习完成和真实场景能力。
               </p>
@@ -152,14 +156,18 @@ export function ProgressClient() {
               </div>
             ))}
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">学习比例</h2>
+            <CardTitle className="text-lg">学习比例</CardTitle>
             <TrendingUp className="h-5 w-5 text-accent" />
           </div>
-          <div className="mt-4 space-y-4">
+          <CardDescription>输入、输出和复习要保持可持续配比。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             {viewState.balance.map((item) => (
               <div key={item.label}>
                 <div className="flex items-center justify-between text-sm">
@@ -168,22 +176,22 @@ export function ProgressClient() {
                     {item.value}% · {item.minutes} 分钟
                   </span>
                 </div>
-                <div className="mt-2 h-2 rounded-full bg-panel-strong">
-                  <div className="h-2 rounded-full bg-accent" style={{ width: `${item.value}%` }} />
-                </div>
+                <Progress value={item.value} className="mt-2" />
               </div>
             ))}
-          </div>
-        </aside>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">每日分布</h2>
+            <CardTitle className="text-lg">每日分布</CardTitle>
             <Clock3 className="h-5 w-5 text-accent" />
           </div>
-          <div className="mt-5 space-y-4">
+          </CardHeader>
+          <CardContent className="space-y-4">
             {viewState.timeline.map((day) => {
               const total = day.input + day.output + day.review;
               const width = Math.round((total / maxMinutes) * 100);
@@ -210,15 +218,18 @@ export function ProgressClient() {
                 </div>
               );
             })}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">当前弱项</h2>
+            <CardTitle className="text-lg">当前弱项</CardTitle>
             <AlertCircle className="h-5 w-5 text-accent" />
           </div>
-          <div className="mt-4 space-y-3">
+          <CardDescription>后续会逐步从真实复习和练习记录中生成。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
             {weaknessInsights.map((insight) => (
               <article key={insight.title} className="rounded-lg border border-border bg-white p-4">
                 <h3 className="font-semibold text-foreground">{insight.title}</h3>
@@ -228,16 +239,20 @@ export function ProgressClient() {
                 </p>
               </article>
             ))}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+      <Card>
+        <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">场景能力地图</h2>
+          <CardTitle className="text-lg">场景能力地图</CardTitle>
           <Map className="h-5 w-5 text-accent" />
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <CardDescription>把学习目标落到美国生活、工作和移民场景里。</CardDescription>
+        </CardHeader>
+        <CardContent>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           {scenarioMap.map((scenario) => (
             <div key={scenario.name} className="rounded-lg border border-border bg-white p-4">
               <div className="flex items-center justify-between gap-3">
@@ -247,13 +262,12 @@ export function ProgressClient() {
                 </div>
                 <Activity className="h-4 w-4 shrink-0 text-accent" />
               </div>
-              <div className="mt-3 h-2 rounded-full bg-panel-strong">
-                <div className="h-2 rounded-full bg-accent" style={{ width: `${scenario.progress}%` }} />
-              </div>
+              <Progress value={scenario.progress} className="mt-3" />
             </div>
           ))}
         </div>
-      </section>
+        </CardContent>
+      </Card>
     </main>
   );
 }

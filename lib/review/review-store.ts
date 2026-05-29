@@ -926,6 +926,38 @@ export function restoreReviewCard(cardId: string) {
   return restoredCard;
 }
 
+export function resetReviewCard(cardId: string) {
+  const timestamp = nowIso();
+  let resetCard: ReviewCardRecord | undefined;
+  const logs = loadReviewLogs();
+
+  const updatedCards = loadReviewCards().map((card) => {
+    if (card.id !== cardId) {
+      return card;
+    }
+
+    resetCard = {
+      ...card,
+      dueAt: timestamp,
+      intervalDays: 0,
+      ease: 2.5,
+      status: "new",
+      updatedAt: timestamp
+    };
+
+    return resetCard;
+  });
+  const nextLogs = logs.filter((log) => log.cardId !== cardId);
+
+  saveReviewCards(updatedCards);
+  saveReviewLogs(nextLogs);
+
+  return {
+    card: resetCard,
+    deletedLogs: logs.length - nextLogs.length
+  };
+}
+
 export function deleteLearningItem(itemId: string) {
   const items = loadLearningItems();
   const cards = loadReviewCards();

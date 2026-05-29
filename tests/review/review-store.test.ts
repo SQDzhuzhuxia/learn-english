@@ -7,9 +7,13 @@ import {
   isCardDue,
   loadLearningItems,
   loadReviewCards,
+  loadReviewLogs,
   restoreLearningItem,
   restoreLearningItems,
   restoreReviewCard,
+  resetReviewCard,
+  saveReviewCards,
+  saveReviewLogs,
   saveExpressionAsReviewCard,
   saveSegmentAsReviewCard,
   saveWritingItemAsReviewCard,
@@ -138,6 +142,52 @@ describe("learning item management", () => {
 
     expect(restoredCard?.status).toBe("new");
     expect(loadReviewCards().find((card) => card.id === "seed-card-appointment")?.status).toBe("new");
+  });
+
+  it("resets a review card to new and clears its logs", () => {
+    loadLearningItems();
+    loadReviewCards();
+    saveReviewLogs([
+      {
+        id: "log-1",
+        cardId: "seed-card-appointment",
+        rating: "hard",
+        reviewedAt: "2026-05-29T00:00:00.000Z",
+        nextDueAt: "2026-05-30T00:00:00.000Z"
+      },
+      {
+        id: "log-2",
+        cardId: "seed-card-sore-throat",
+        rating: "good",
+        reviewedAt: "2026-05-29T00:00:00.000Z",
+        nextDueAt: "2026-06-02T00:00:00.000Z"
+      }
+    ]);
+    const card = loadReviewCards().find((record) => record.id === "seed-card-appointment");
+
+    if (!card) {
+      throw new Error("Seed card missing");
+    }
+
+    saveReviewCards([
+      {
+        ...card,
+        status: "review",
+        intervalDays: 4,
+        ease: 2.8,
+        dueAt: "2026-06-02T00:00:00.000Z"
+      },
+      ...loadReviewCards().filter((record) => record.id !== "seed-card-appointment")
+    ]);
+
+    const result = resetReviewCard("seed-card-appointment");
+    const resetCard = loadReviewCards().find((record) => record.id === "seed-card-appointment");
+
+    expect(result.deletedLogs).toBe(1);
+    expect(resetCard?.status).toBe("new");
+    expect(resetCard?.intervalDays).toBe(0);
+    expect(resetCard?.ease).toBe(2.5);
+    expect(loadReviewLogs().map((log) => log.id)).toEqual(["log-2"]);
   });
 
   it("archives, restores, and deletes learning items in bulk", () => {

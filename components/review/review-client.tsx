@@ -11,6 +11,7 @@ import {
   loadLearningItems,
   loadReviewLogs,
   loadReviewCards,
+  resetReviewCard,
   restoreReviewCard,
   reviewCard,
   suspendReviewCard
@@ -206,6 +207,27 @@ export function ReviewClient() {
 
     if (updated) {
       setMessage("已恢复这张复习卡。");
+    }
+  }
+
+  function handleResetCard(cardId: string) {
+    const confirmed = window.confirm("重置后这张卡会变成新卡，并清除它的复习记录，确定继续吗？");
+
+    if (!confirmed) {
+      return;
+    }
+
+    const result = resetReviewCard(cardId);
+    const nextCards = loadReviewCards();
+    const nextLogs = loadReviewLogs();
+
+    setCards(nextCards);
+    setLogs(nextLogs);
+    setActiveCardId(cardId);
+    setIsAnswerVisible(false);
+
+    if (result.card) {
+      setMessage(`已重置为新卡，并清除 ${result.deletedLogs} 条复习记录。`);
     }
   }
 
@@ -565,6 +587,12 @@ export function ReviewClient() {
                       暂停复习卡
                     </button>
                   )}
+                  <button
+                    onClick={() => handleResetCard(activeCard.id)}
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100"
+                  >
+                    重置为新卡
+                  </button>
                 </div>
               </div>
             ) : null}

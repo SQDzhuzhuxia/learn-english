@@ -40,6 +40,7 @@ type CloudTranscription = {
 };
 
 type TranscriptSource = "browser" | "cloud" | "local";
+type RecordingMode = "shadowing" | "retelling";
 
 type SpeechRecognitionResultLike = {
   isFinal: boolean;
@@ -104,6 +105,7 @@ function getPracticeAttemptTypeLabel(type: PracticeAttemptRecord["type"]) {
 
 export function PracticeClient() {
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingMode, setRecordingMode] = useState<RecordingMode | "">("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [audioUrl, setAudioUrl] = useState("");
   const [message, setMessage] = useState("");
@@ -116,6 +118,9 @@ export function PracticeClient() {
   const [retellingFeedback, setRetellingFeedback] = useState<RetellingFeedback | null>(null);
   const [retellingMessage, setRetellingMessage] = useState("");
   const [retellingSaveMessage, setRetellingSaveMessage] = useState("");
+  const [retellingAudioUrl, setRetellingAudioUrl] = useState("");
+  const [retellingTranscriptSource, setRetellingTranscriptSource] = useState<TranscriptSource | "">("");
+  const [isRetellingTranscribing, setIsRetellingTranscribing] = useState(false);
   const [savedRetellingKeys, setSavedRetellingKeys] = useState<Record<string, boolean>>({});
   const [selectedWritingIndex, setSelectedWritingIndex] = useState(0);
   const [writingText, setWritingText] = useState("");
@@ -382,9 +387,13 @@ export function PracticeClient() {
     );
   }
 
-  async function startRecording() {
+  async function startRecording(mode: RecordingMode) {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-      setMessage("当前浏览器不支持录音。");
+      if (mode === "retelling") {
+        setRetellingMessage("当前浏览器不支持录音。");
+      } else {
+        setMessage("当前浏览器不支持录音。");
+      }
       return;
     }
 
@@ -395,14 +404,25 @@ export function PracticeClient() {
       streamRef.current = stream;
       recorderRef.current = recorder;
       startedAtRef.current = getTimestampMs();
+      setRecordingMode(mode);
       setElapsedSeconds(0);
-      setAudioUrl("");
-      setTranscript("");
-      setTranscriptSource("");
-      setIsTranscribing(false);
-      setFeedback(null);
+      if (mode === "retelling") {
+        setRetellingAudioUrl("");
+        setRetellingTranscriptSource("");
+        setIsRetellingTranscribing(false);
+        setRetellingFeedback(null);
+        setRetellingMessage("");
+        setRetellingSaveMessage("");
+        setSavedRetellingKeys({});
+      } else {
+        setAudioUrl("");
+        setTranscript("");
+        setTranscriptSource("");
+        setIsTranscribing(false);
+        setFeedback(null);
+        setMessage("");
+      }
       transcriptRef.current = "";
-      setMessage("");
 
       recorder.addEventListener("dataavailable", (event) => {
         if (event.data.size > 0) {
@@ -411,25 +431,29 @@ export function PracticeClient() {
       });
 
       recorder.addEventListener("stop", () => {
-        void handleRecordingStopped(recorder, stream);
+        void handleRecordingStopped(recorder, stream, mode);
       });
 
       recorder.start();
-      startSpeechRecognition();
+      startSpeechRecognition(mode);
       setIsRecording(true);
     } catch {
-      setMessage("无法打开麦克风，请检查浏览器权限。");
+      if (mode === "retelling") {
+        setRetellingMessage("无法打开麦克风，请检查浏览器权限。");
+      } else {
+        setMessage("无法打开麦克风，请检查浏览器权限。");
+      }
     }
   }
 
-  async function requestCloudTranscription(blob: Blob) {
-    const file = new File([blob], "shadowing.webm", {
+  async function requestCloudTranscription(blob: Blob, prompt: string, fileName: string) {
+    const file = new File([blob], fileName, {
       type: blob.type || "audio/webm"
     });
     const formData = new FormData();
     formData.set("file", file);
     formData.set("language", "en");
-    formData.set("prompt", todayPractice.prompt);
+    formData.set("prompt", prompt);
 
     const response = await fetch("/api/speech/transcribe", {
       method: "POST",
@@ -447,30 +471,99 @@ export function PracticeClient() {
     return payload.transcription;
   }
 
-  async function handleRecordingStopped(recorder: MediaRecorder, stream: MediaStream) {
+  async function handleRecordingStopped(
+    recorder: MediaRecorder,
+    stream: MediaStream,
+    mode: RecordingMode
+  ) {
     const durationSeconds = Math.max(1, Math.floor((getTimestampMs() - startedAtRef.current) / 1000));
     const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
     const nextAudioUrl = URL.createObjectURL(blob);
     let finalTranscript = transcriptRef.current.trim();
     let finalTranscriptSource: TranscriptSource | undefined = finalTranscript ? "browser" : undefined;
 
-    setIsTranscribing(true);
+    if (mode === "retelling") {
+      setIsRetellingTranscribing(true);
+    } else {
+      setIsTranscribing(true);
+    }
 
     try {
-      const cloudTranscription = await requestCloudTranscription(blob);
+      const cloudTranscription = await requestCloudTranscription(
+        blob,
+        mode === "retelling" ? retellingPractice.prompt : todayPractice.prompt,
+        mode === "retelling" ? "retelling.webm" : "shadowing.webm"
+      );
 
       if (cloudTranscription.text.trim()) {
         finalTranscript = cloudTranscription.text.trim();
         finalTranscriptSource = cloudTranscription.source === "local" ? "local" : "cloud";
       } else if (cloudTranscription.error && !finalTranscript) {
-        setMessage(`服务端转写未启用：${cloudTranscription.error}`);
+        if (mode === "retelling") {
+          setRetellingMessage(`服务端转写未启用：${cloudTranscription.error}`);
+        } else {
+          setMessage(`服务端转写未启用：${cloudTranscription.error}`);
+        }
       }
     } catch (error) {
       if (!finalTranscript) {
-        setMessage(error instanceof Error ? error.message : "云端转写失败。");
+        if (mode === "retelling") {
+          setRetellingMessage(error instanceof Error ? error.message : "云端转写失败。");
+        } else {
+          setMessage(error instanceof Error ? error.message : "云端转写失败。");
+        }
       }
     } finally {
-      setIsTranscribing(false);
+      if (mode === "retelling") {
+        setIsRetellingTranscribing(false);
+      } else {
+        setIsTranscribing(false);
+      }
+    }
+
+    if (mode === "retelling") {
+      const nextFeedback = finalTranscript
+        ? createRetellingFeedback({
+            transcript: finalTranscript,
+            keyPoints: retellingPractice.keyPoints,
+            usefulWords: retellingPractice.usefulWords
+          })
+        : null;
+      const attempt = addPracticeAttempt({
+        type: "retelling",
+        prompt: retellingPractice.prompt,
+        materialTitle: retellingPractice.material,
+        durationSeconds,
+        transcript: finalTranscript || undefined,
+        transcriptSource: finalTranscriptSource,
+        score: nextFeedback?.score,
+        feedback: nextFeedback?.tip
+      });
+
+      recordStudyActivity({
+        type: "output",
+        label: `录音复述：${retellingPractice.title}`,
+        minutes: Math.max(1, Math.ceil(durationSeconds / 60)),
+        materialTitle: retellingPractice.material
+      });
+      setRetellingAudioUrl(nextAudioUrl);
+      if (finalTranscript) {
+        setRetellingText(finalTranscript);
+      }
+      setRetellingTranscriptSource(finalTranscript ? finalTranscriptSource ?? "" : "");
+      setRetellingFeedback(nextFeedback);
+      setRetellingSaveMessage("");
+      setSavedRetellingKeys({});
+      setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
+      setRetellingMessage(
+        finalTranscript
+          ? `已保存本次录音复述和${getTranscriptSourceLabel(finalTranscriptSource ?? "browser")}。`
+          : "已保存本次录音复述记录。"
+      );
+      stream.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      setRecordingMode("");
+      return;
     }
 
     const nextFeedback = finalTranscript
@@ -505,6 +598,7 @@ export function PracticeClient() {
     );
     stream.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    setRecordingMode("");
   }
 
   function stopRecording() {
@@ -513,7 +607,7 @@ export function PracticeClient() {
     setIsRecording(false);
   }
 
-  function startSpeechRecognition() {
+  function startSpeechRecognition(mode: RecordingMode) {
     if (typeof window === "undefined") {
       return;
     }
@@ -537,7 +631,11 @@ export function PracticeClient() {
       }
 
       transcriptRef.current = nextTranscript.trim();
-      setTranscript(transcriptRef.current);
+      if (mode === "retelling") {
+        setRetellingText(transcriptRef.current);
+      } else {
+        setTranscript(transcriptRef.current);
+      }
     };
     recognition.onerror = () => {
       recognitionRef.current = null;
@@ -550,6 +648,9 @@ export function PracticeClient() {
       recognitionRef.current = null;
     }
   }
+
+  const isShadowingRecording = isRecording && recordingMode === "shadowing";
+  const isRetellingRecording = isRecording && recordingMode === "retelling";
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
@@ -589,10 +690,10 @@ export function PracticeClient() {
               <div className="rounded-lg border border-border bg-white p-3">
                 <p className="text-sm font-medium text-muted">录音计时</p>
                 <p className="mt-1 text-2xl font-semibold text-foreground">
-                  {formatSeconds(elapsedSeconds)}
+                  {isShadowingRecording ? formatSeconds(elapsedSeconds) : "0:00"}
                 </p>
               </div>
-              {isRecording ? (
+              {isShadowingRecording ? (
                 <Button
                   variant="destructive"
                   size="lg"
@@ -604,7 +705,8 @@ export function PracticeClient() {
               ) : (
                 <Button
                   size="lg"
-                  onClick={startRecording}
+                  onClick={() => startRecording("shadowing")}
+                  disabled={isRecording}
                 >
                   <Mic className="h-4 w-4" />
                   开始录音
@@ -693,7 +795,7 @@ export function PracticeClient() {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">跟读步骤</CardTitle>
-            {isRecording ? <MicOff className="h-5 w-5 text-rose-600" /> : <Mic className="h-5 w-5 text-accent" />}
+            {isShadowingRecording ? <MicOff className="h-5 w-5 text-rose-600" /> : <Mic className="h-5 w-5 text-accent" />}
           </div>
           <CardDescription>先低压力模仿，不急着自由发挥。</CardDescription>
           </CardHeader>
@@ -784,6 +886,44 @@ export function PracticeClient() {
                 className="min-h-32"
                 placeholder="Retell it in simple English..."
               />
+              <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                <div className="rounded-lg border border-border bg-panel-strong p-3">
+                  <p className="text-sm font-medium text-muted">复述录音计时</p>
+                  <p className="mt-1 text-xl font-semibold text-foreground">
+                    {isRetellingRecording ? formatSeconds(elapsedSeconds) : "0:00"}
+                  </p>
+                </div>
+                {isRetellingRecording ? (
+                  <Button variant="destructive" onClick={stopRecording}>
+                    <Square className="h-4 w-4" />
+                    停止复述录音
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => startRecording("retelling")}
+                    disabled={isRecording}
+                  >
+                    <Mic className="h-4 w-4 text-accent" />
+                    录音复述
+                  </Button>
+                )}
+              </div>
+              {retellingAudioUrl ? (
+                <audio className="mt-3 w-full" controls src={retellingAudioUrl}>
+                  <track kind="captions" />
+                </audio>
+              ) : null}
+              {retellingTranscriptSource ? (
+                <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-muted">
+                  {getTranscriptSourceLabel(retellingTranscriptSource)}已填入上方文本框。
+                </p>
+              ) : null}
+              {isRetellingTranscribing ? (
+                <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+                  正在请求服务端转写复述录音...
+                </p>
+              ) : null}
               <Button onClick={handleEvaluateRetelling} className="mt-3 w-full">
                 <ClipboardCheck className="h-4 w-4" />
                 保存并反馈复述

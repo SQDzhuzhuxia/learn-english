@@ -443,6 +443,21 @@ export function ReviewClient() {
                     </p>
                   </div>
                 </div>
+                <div className="mt-4 border-l-2 border-accent pl-3">
+                  <p className="text-xs font-medium text-accent">
+                    {activeCardDetail.needsAttention ? "回炉建议" : "练习建议"}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-muted">{activeCardDetail.suggestion}</p>
+                  {activeCardDetail.sourceStudyHref ? (
+                    <Link
+                      href={activeCardDetail.sourceStudyHref}
+                      className="mt-3 inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
+                    >
+                      回到原材料
+                      <ArrowRight className="h-4 w-4 text-accent" />
+                    </Link>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </article>

@@ -71,6 +71,8 @@ describe("getReviewCardDetail", () => {
     expect(detail.latestReviewedAt).toBe("2026-05-29T00:00:00.000Z");
     expect(detail.needsAttention).toBe(true);
     expect(detail.statusLabel).toBe("复习中");
+    expect(detail.sourceStudyHref).toBe("/study/doctor-visit");
+    expect(detail.suggestion).toContain("原句");
   });
 
   it("handles cards without matching items or logs", () => {
@@ -81,5 +83,17 @@ describe("getReviewCardDetail", () => {
     expect(detail.latestRating).toBeUndefined();
     expect(detail.needsAttention).toBe(false);
     expect(detail.statusLabel).toBe("新卡");
+    expect(detail.sourceStudyHref).toBeUndefined();
+    expect(detail.suggestion).toContain("短频快");
+  });
+
+  it("does not link writing-only items back to study materials", () => {
+    const detail = getReviewCardDetail(
+      createCard(),
+      [createItem({ sourceMaterialId: "writing-self-introduction" })],
+      []
+    );
+
+    expect(detail.sourceStudyHref).toBeUndefined();
   });
 });

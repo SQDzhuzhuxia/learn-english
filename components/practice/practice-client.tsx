@@ -91,6 +91,17 @@ function getTranscriptSourceLabel(source: TranscriptSource) {
   return source === "cloud" ? "云端转写" : "浏览器转写";
 }
 
+function getPracticeAttemptTypeLabel(type: PracticeAttemptRecord["type"]) {
+  const labels: Record<PracticeAttemptRecord["type"], string> = {
+    shadowing: "跟读",
+    retelling: "复述",
+    writing: "写作",
+    roleplay: "角色"
+  };
+
+  return labels[type];
+}
+
 export function PracticeClient() {
   const [isRecording, setIsRecording] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -870,7 +881,12 @@ export function PracticeClient() {
           <CardContent className="space-y-3">
             {attempts.slice(0, 4).map((attempt) => (
               <div key={attempt.id} className="rounded-lg border border-border bg-white p-4">
-                <p className="text-sm font-semibold text-foreground">{attempt.prompt}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-semibold text-foreground">{attempt.prompt}</p>
+                  <Badge variant="outline" className="shrink-0">
+                    {getPracticeAttemptTypeLabel(attempt.type)}
+                  </Badge>
+                </div>
                 <p className="mt-2 text-xs text-muted">
                   {attempt.materialTitle} · {formatSeconds(attempt.durationSeconds)}
                 </p>

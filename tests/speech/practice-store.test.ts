@@ -38,4 +38,22 @@ describe("practice-store", () => {
     expect(attempts[0]?.prompt).toContain("appointment");
     expect(attempts[0]?.score).toBe(100);
   });
+
+  it("saves local retelling attempts", () => {
+    const attempt = addPracticeAttempt({
+      type: "retelling",
+      prompt: "Retell the doctor appointment in simple English.",
+      materialTitle: "A Visit to the Doctor",
+      durationSeconds: 45,
+      transcript: "I need to make an appointment with a doctor.",
+      score: 72,
+      feedback: "大意基本到位。"
+    });
+
+    const attempts = loadPracticeAttempts();
+
+    expect(attempt.status).toBe("transcribed");
+    expect(attempts[0]?.type).toBe("retelling");
+    expect(attempts[0]?.feedback).toContain("大意");
+  });
 });

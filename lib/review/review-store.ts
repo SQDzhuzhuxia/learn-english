@@ -882,6 +882,50 @@ export function restoreLearningItems(itemIds: string[]) {
   };
 }
 
+export function suspendReviewCard(cardId: string) {
+  const timestamp = nowIso();
+  let suspendedCard: ReviewCardRecord | undefined;
+
+  const updatedCards = loadReviewCards().map((card) => {
+    if (card.id !== cardId || card.status === "suspended") {
+      return card;
+    }
+
+    suspendedCard = {
+      ...card,
+      status: "suspended",
+      updatedAt: timestamp
+    };
+
+    return suspendedCard;
+  });
+
+  saveReviewCards(updatedCards);
+  return suspendedCard;
+}
+
+export function restoreReviewCard(cardId: string) {
+  const timestamp = nowIso();
+  let restoredCard: ReviewCardRecord | undefined;
+
+  const updatedCards = loadReviewCards().map((card) => {
+    if (card.id !== cardId || card.status !== "suspended") {
+      return card;
+    }
+
+    restoredCard = {
+      ...card,
+      status: card.intervalDays > 0 ? "review" : "new",
+      updatedAt: timestamp
+    };
+
+    return restoredCard;
+  });
+
+  saveReviewCards(updatedCards);
+  return restoredCard;
+}
+
 export function deleteLearningItem(itemId: string) {
   const items = loadLearningItems();
   const cards = loadReviewCards();

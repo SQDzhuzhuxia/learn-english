@@ -11,7 +11,9 @@ import {
   loadLearningItems,
   loadReviewLogs,
   loadReviewCards,
-  reviewCard
+  restoreReviewCard,
+  reviewCard,
+  suspendReviewCard
 } from "@/lib/review/review-store";
 import {
   filterReviewCards,
@@ -37,7 +39,8 @@ const queueFilterOptions: Array<{ id: ReviewQueueFilter; label: string }> = [
   { id: "due", label: "到期" },
   { id: "new", label: "新卡" },
   { id: "future", label: "未来" },
-  { id: "attention", label: "回炉" }
+  { id: "attention", label: "回炉" },
+  { id: "paused", label: "暂停" }
 ];
 
 const cardTypeFilterOptions: Array<{ id: ReviewCardTypeFilter; label: string }> = [
@@ -171,6 +174,41 @@ export function ReviewClient() {
     }
   }
 
+  function handleSuspendCard(cardId: string) {
+    const updated = suspendReviewCard(cardId);
+    const nextCards = loadReviewCards();
+    const nextLogs = loadReviewLogs();
+    const nextFilteredCards = filterReviewCards(nextCards, {
+      queue: queueFilter,
+      cardType: cardTypeFilter,
+      logs: nextLogs
+    });
+
+    setCards(nextCards);
+    setLogs(nextLogs);
+    setIsAnswerVisible(false);
+    setActiveCardId(nextFilteredCards.find((card) => card.id !== cardId)?.id ?? nextFilteredCards[0]?.id ?? "");
+
+    if (updated) {
+      setMessage("已暂停这张复习卡，可在“暂停”队列中恢复。");
+    }
+  }
+
+  function handleRestoreCard(cardId: string) {
+    const updated = restoreReviewCard(cardId);
+    const nextCards = loadReviewCards();
+    const nextLogs = loadReviewLogs();
+
+    setCards(nextCards);
+    setLogs(nextLogs);
+    setActiveCardId(cardId);
+    setIsAnswerVisible(false);
+
+    if (updated) {
+      setMessage("已恢复这张复习卡。");
+    }
+  }
+
   function handleSpeakCard(card: ReviewCardRecord) {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       setMessage("当前浏览器不支持本地朗读。");
@@ -185,7 +223,7 @@ export function ReviewClient() {
     window.speechSynthesis.speak(utterance);
   }
 
-  if (visibleCards.length === 0) {
+  if (cards.length === 0) {
     return (
       <main className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
         <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
@@ -214,7 +252,7 @@ export function ReviewClient() {
             所有卡片都来自你学习过的真实材料。评分后会自动安排下一次复习。
           </p>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-4">
             <div className="rounded-lg border border-border bg-white p-4">
               <p className="text-2xl font-semibold text-foreground">{dueCards.length}</p>
               <p className="mt-1 text-xs text-muted">今日到期</p>
@@ -226,6 +264,10 @@ export function ReviewClient() {
             <div className="rounded-lg border border-border bg-white p-4">
               <p className="text-2xl font-semibold text-foreground">{queueStats.total}</p>
               <p className="mt-1 text-xs text-muted">总卡片</p>
+            </div>
+            <div className="rounded-lg border border-border bg-white p-4">
+              <p className="text-2xl font-semibold text-foreground">{queueStats.suspended}</p>
+              <p className="mt-1 text-xs text-muted">已暂停</p>
             </div>
           </div>
 
@@ -245,7 +287,7 @@ export function ReviewClient() {
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <div>
               <p className="text-xs font-medium text-muted">队列筛选</p>
-              <div className="mt-2 grid grid-cols-5 gap-1 rounded-lg border border-border bg-white p-1">
+              <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-border bg-white p-1 sm:grid-cols-6">
                 {queueFilterOptions.map((option) => (
                   <button
                     key={option.id}
@@ -383,7 +425,20 @@ export function ReviewClient() {
               <p className="mt-4 text-sm leading-6 text-muted">{activeCard.example}</p>
             </div>
 
-            {isAnswerVisible ? (
+            {activeCard.status === "suspended" ? (
+              <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-semibold text-amber-800">这张卡已暂停</p>
+                <p className="mt-2 text-sm leading-6 text-amber-800">
+                  暂停卡不会进入日常复习队列。恢复后会按照原来的间隔重新进入复习。
+                </p>
+                <button
+                  onClick={() => handleRestoreCard(activeCard.id)}
+                  className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
+                >
+                  恢复这张卡
+                </button>
+              </div>
+            ) : isAnswerVisible ? (
               <div className="mt-5 rounded-lg border border-border bg-white p-4">
                 <p className="text-sm font-medium text-muted">答案</p>
                 <p className="mt-2 text-lg font-semibold text-foreground">{activeCard.back}</p>
@@ -399,19 +454,21 @@ export function ReviewClient() {
               </button>
             )}
 
-            <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
-              {reviewRatings.map((rating) => (
-                <button
-                  key={rating.id}
-                  disabled={!isAnswerVisible}
-                  onClick={() => handleRate(activeCard.id, rating.id as ReviewRating)}
-                  className={`min-h-16 rounded-lg border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 ${rating.tone}`}
-                >
-                  <span className="block">{rating.label}</span>
-                  <span className="mt-1 block text-xs font-medium opacity-80">{rating.next}</span>
-                </button>
-              ))}
-            </div>
+            {activeCard.status !== "suspended" ? (
+              <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
+                {reviewRatings.map((rating) => (
+                  <button
+                    key={rating.id}
+                    disabled={!isAnswerVisible}
+                    onClick={() => handleRate(activeCard.id, rating.id as ReviewRating)}
+                    className={`min-h-16 rounded-lg border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 ${rating.tone}`}
+                  >
+                    <span className="block">{rating.label}</span>
+                    <span className="mt-1 block text-xs font-medium opacity-80">{rating.next}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
             {activeCardDetail ? (
               <div className="mt-5 border-t border-border pt-5">
@@ -492,6 +549,23 @@ export function ReviewClient() {
                     </div>
                   </div>
                 ) : null}
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
+                  {activeCard.status === "suspended" ? (
+                    <button
+                      onClick={() => handleRestoreCard(activeCard.id)}
+                      className="inline-flex min-h-10 items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
+                    >
+                      恢复复习卡
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleSuspendCard(activeCard.id)}
+                      className="inline-flex min-h-10 items-center justify-center rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
+                    >
+                      暂停复习卡
+                    </button>
+                  )}
+                </div>
               </div>
             ) : null}
           </article>
@@ -537,6 +611,7 @@ export function ReviewClient() {
                     <p className="text-sm font-medium text-foreground">{card.front}</p>
                     <p className="mt-1 text-xs text-muted">
                       {cardTypeLabels[card.cardType]} · {card.source}
+                      {card.status === "suspended" ? " · 已暂停" : ""}
                     </p>
                   </div>
                   <span className="shrink-0 rounded-md border border-border bg-white px-2 py-1 text-xs text-muted">

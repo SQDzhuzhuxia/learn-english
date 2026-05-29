@@ -1,7 +1,7 @@
 import { isCardDue } from "@/lib/review/review-store";
 import type { ReviewCardRecord, ReviewCardType, ReviewLogRecord } from "@/lib/review/types";
 
-export type ReviewQueueFilter = "all" | "due" | "new" | "future" | "attention";
+export type ReviewQueueFilter = "all" | "due" | "new" | "future" | "attention" | "paused";
 export type ReviewCardTypeFilter = ReviewCardType | "all";
 
 export type ReviewFilterOptions = {
@@ -29,6 +29,13 @@ export function filterReviewCards(cards: ReviewCardRecord[], options: ReviewFilt
   const referenceDate = options.referenceDate ?? new Date();
 
   return cards.filter((card) => {
+    if (options.queue === "paused") {
+      return (
+        card.status === "suspended" &&
+        (options.cardType === "all" || card.cardType === options.cardType)
+      );
+    }
+
     if (card.status === "suspended") {
       return false;
     }

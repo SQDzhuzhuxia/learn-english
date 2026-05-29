@@ -85,6 +85,19 @@ describe("filterReviewCards", () => {
     ).toEqual(["future-listening"]);
   });
 
+  it("filters paused cards without mixing them into active queues", () => {
+    expect(
+      filterReviewCards(cards, { queue: "paused", cardType: "all", referenceDate }).map(
+        (card) => card.id
+      )
+    ).toEqual(["suspended-speaking"]);
+    expect(
+      filterReviewCards(cards, { queue: "all", cardType: "all", referenceDate }).map(
+        (card) => card.id
+      )
+    ).not.toContain("suspended-speaking");
+  });
+
   it("combines queue and card type filters", () => {
     expect(
       filterReviewCards(cards, { queue: "due", cardType: "production", referenceDate }).map(

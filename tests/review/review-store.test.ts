@@ -9,9 +9,11 @@ import {
   loadReviewCards,
   restoreLearningItem,
   restoreLearningItems,
+  restoreReviewCard,
   saveExpressionAsReviewCard,
   saveSegmentAsReviewCard,
   saveWritingItemAsReviewCard,
+  suspendReviewCard,
   updateLearningItem
 } from "@/lib/review/review-store";
 import { getSeedMaterials } from "@/lib/content/material-store";
@@ -118,6 +120,24 @@ describe("learning item management", () => {
     expect(result.deletedCards).toBe(1);
     expect(loadLearningItems().some((record) => record.id === "seed-item-spell-name")).toBe(false);
     expect(loadReviewCards().some((record) => record.learningItemId === "seed-item-spell-name")).toBe(false);
+  });
+
+  it("suspends and restores a single review card without archiving its learning item", () => {
+    loadLearningItems();
+    loadReviewCards();
+
+    const suspendedCard = suspendReviewCard("seed-card-appointment");
+
+    expect(suspendedCard?.status).toBe("suspended");
+    expect(loadLearningItems().find((item) => item.id === "seed-item-appointment")?.status).toBe("active");
+    expect(loadReviewCards().find((card) => card.id === "seed-card-appointment")?.status).toBe(
+      "suspended"
+    );
+
+    const restoredCard = restoreReviewCard("seed-card-appointment");
+
+    expect(restoredCard?.status).toBe("new");
+    expect(loadReviewCards().find((card) => card.id === "seed-card-appointment")?.status).toBe("new");
   });
 
   it("archives, restores, and deletes learning items in bulk", () => {

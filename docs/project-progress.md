@@ -39,6 +39,8 @@ Supabase 登录入口    已完成
 云同步安全拉取预案   已完成
 云同步自动上传开关   已完成
 UI 技术方案补充      已完成
+shadcn UI 基础设施   已完成
+UI Refresh 第一轮    进行中
 复习队列统计增强     已完成
 复习队列筛选         已完成
 词句批量管理         已完成
@@ -100,6 +102,7 @@ UI 技术方案补充      已完成
 | Sprint 3N | 已完成 | 设置页支持云端差异检查，拉取时按合并预案只恢复云端新增或变化数据 |
 | Sprint 3O | 已完成 | 设置页支持自动上传开关，开启后登录状态下自动上传变化快照 |
 | Sprint 3P | 已完成 | 明确 shadcn/ui + Radix UI + Tailwind CSS + lucide-react 作为 UI 方案 |
+| Sprint 3Q | 进行中 | 接入 shadcn 风格基础组件，重构全局布局、设置页云同步区和复习页首屏 |
 | Sprint 3 | 进行中 | 复习系统增强、更多卡片类型、学习项管理 |
 | Sprint 4 | 未开始 | 跟读、复述、写作练习真实闭环 |
 | Sprint 5 | 未开始 | 同步冲突高级合并、离线音频缓存、AI 请求队列和跨端体验打磨 |
@@ -176,6 +179,12 @@ UI 技术方案补充      已完成
 - README 已补充项目技术栈
 - 技术方案已明确采用 shadcn/ui + Radix UI + Tailwind CSS + lucide-react
 - 新增 UI 技术方案补充文档
+- 新增 `components/ui/` 基础 UI 组件
+- 新增 `components.json` shadcn/ui 配置
+- 新增 `lib/utils.ts` 统一 className 合并工具
+- 全局布局开始切换到统一 Button、Badge、Tooltip 等基础组件
+- 设置页云同步区域开始切换到 Card、Input、Switch、Button 等基础组件
+- 复习页首屏统计、筛选器、诊断和队列区域开始 UI Refresh
 - 复习页展示当前复习队列中新卡、到期卡、活跃总卡片和卡片类型分布
 - 复习页支持按全部、到期、新卡、未来筛选复习队列
 - 复习页支持按回炉队列优先复习最近忘了或困难的卡片
@@ -225,6 +234,6 @@ UI 技术方案补充      已完成
 
 当前下一步：
 
-1. 接入 shadcn/ui 基础设施。
-2. 执行第一轮 UI Refresh：全局布局、设置页、复习页。
+1. 完成复习页当前卡片区域 UI Refresh。
+2. 继续重构设置页数据策略区域和今日页。
 3. 增加同步确认 UI 和最近同步状态展示。

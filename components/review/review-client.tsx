@@ -3,6 +3,13 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, CheckCircle2, Eye, RotateCcw, Volume2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { reviewRatings } from "@/lib/mock-data";
 import {
   getSeedReviewCards,
@@ -338,18 +345,21 @@ export function ReviewClient() {
   if (cards.length === 0) {
     return (
       <main className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-        <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <p className="text-sm font-medium text-accent">复习</p>
-          <h1 className="mt-2 text-2xl font-semibold text-foreground">暂无复习卡</h1>
-          <p className="mt-3 text-sm leading-6 text-muted">先去学习页保存句子，就会自动生成复习卡。</p>
-          <Link
-            href="/study"
-            className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
-          >
-            回到学习材料
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </section>
+        <Card>
+          <CardHeader>
+            <Badge variant="soft" className="w-fit">复习</Badge>
+            <CardTitle className="text-2xl">暂无复习卡</CardTitle>
+            <CardDescription>先去学习页保存句子，就会自动生成复习卡。</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/study">
+                回到学习材料
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </main>
     );
   }
@@ -357,129 +367,128 @@ export function ReviewClient() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
       <section className="grid gap-5 lg:grid-cols-[1fr_320px]">
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <p className="text-sm font-medium text-accent">复习</p>
-          <h1 className="mt-2 text-2xl font-semibold text-foreground">今日到期词句</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-            所有卡片都来自你学习过的真实材料。评分后会自动安排下一次复习。
-          </p>
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b border-border bg-panel">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <Badge variant="soft" className="w-fit">复习</Badge>
+                <CardTitle className="mt-3 text-2xl">今日到期词句</CardTitle>
+                <CardDescription className="mt-2 max-w-3xl">
+                  所有卡片都来自你学习过的真实材料。评分后会自动安排下一次复习。
+                </CardDescription>
+              </div>
+              <Badge variant={dueCards.length > 0 ? "warning" : "success"} className="w-fit">
+                {dueCards.length > 0 ? "需要复习" : "今日清爽"}
+              </Badge>
+            </div>
+          </CardHeader>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-4">
-            <div className="rounded-lg border border-border bg-white p-4">
-              <p className="text-2xl font-semibold text-foreground">{dueCards.length}</p>
-              <p className="mt-1 text-xs text-muted">今日到期</p>
-            </div>
-            <div className="rounded-lg border border-border bg-white p-4">
-              <p className="text-2xl font-semibold text-foreground">{queueStats.new}</p>
-              <p className="mt-1 text-xs text-muted">新卡</p>
-            </div>
-            <div className="rounded-lg border border-border bg-white p-4">
-              <p className="text-2xl font-semibold text-foreground">{queueStats.total}</p>
-              <p className="mt-1 text-xs text-muted">总卡片</p>
-            </div>
-            <div className="rounded-lg border border-border bg-white p-4">
-              <p className="text-2xl font-semibold text-foreground">{queueStats.suspended}</p>
-              <p className="mt-1 text-xs text-muted">已暂停</p>
-            </div>
-          </div>
-
-          {typeStats.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {typeStats.map(([cardType, count]) => (
-                <span
-                  key={cardType}
-                  className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted"
-                >
-                  {cardTypeLabels[cardType]} {count}
-                </span>
+          <CardContent className="pt-5">
+            <div className="grid gap-3 sm:grid-cols-4">
+              {[
+                ["今日到期", dueCards.length],
+                ["新卡", queueStats.new],
+                ["总卡片", queueStats.total],
+                ["已暂停", queueStats.suspended]
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-border bg-white p-4">
+                  <p className="text-2xl font-semibold text-foreground">{value}</p>
+                  <p className="mt-1 text-xs font-medium text-muted">{label}</p>
+                </div>
               ))}
             </div>
-          ) : null}
 
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
-            <div>
-              <p className="text-xs font-medium text-muted">队列筛选</p>
-              <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-border bg-white p-1 sm:grid-cols-6">
-                {queueFilterOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => {
-                      setQueueFilter(option.id);
-                      setIsAnswerVisible(false);
-                    }}
-                    className={`min-h-9 rounded-md px-2 text-xs font-semibold ${
-                      queueFilter === option.id
-                        ? "bg-accent text-white"
-                        : "text-muted hover:bg-panel-strong"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
+            {typeStats.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {typeStats.map(([cardType, count]) => (
+                  <Badge key={cardType} variant="outline">
+                    {cardTypeLabels[cardType]} {count}
+                  </Badge>
                 ))}
+              </div>
+            ) : null}
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold text-muted">队列筛选</p>
+                <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-border bg-white p-1 sm:grid-cols-6">
+                  {queueFilterOptions.map((option) => (
+                    <Button
+                      key={option.id}
+                      onClick={() => {
+                        setQueueFilter(option.id);
+                        setIsAnswerVisible(false);
+                      }}
+                      variant={queueFilter === option.id ? "default" : "ghost"}
+                      size="sm"
+                      className="px-2"
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-muted">卡片类型</p>
+                <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-border bg-white p-1 sm:grid-cols-6">
+                  {cardTypeFilterOptions.map((option) => (
+                    <Button
+                      key={option.id}
+                      onClick={() => {
+                        setCardTypeFilter(option.id);
+                        setIsAnswerVisible(false);
+                      }}
+                      disabled={option.id !== "all" && queueStats.byType[option.id] === 0}
+                      variant={cardTypeFilter === option.id ? "default" : "ghost"}
+                      size="sm"
+                      className="px-2 disabled:opacity-35"
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div>
-              <p className="text-xs font-medium text-muted">卡片类型</p>
-              <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-border bg-white p-1 sm:grid-cols-6">
-                {cardTypeFilterOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => {
-                      setCardTypeFilter(option.id);
-                      setIsAnswerVisible(false);
-                    }}
-                    disabled={option.id !== "all" && queueStats.byType[option.id] === 0}
-                    className={`min-h-9 rounded-md px-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-35 ${
-                      cardTypeFilter === option.id
-                        ? "bg-accent text-white"
-                        : "text-muted hover:bg-panel-strong"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+            {message ? (
+              <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                {message}
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle>复习原则</CardTitle>
+              <CheckCircle2 className="h-5 w-5 text-accent" />
             </div>
-          </div>
-
-          {message ? (
-            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              {message}
-            </p>
-          ) : null}
-        </div>
-
-        <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">复习原则</h2>
-            <CheckCircle2 className="h-5 w-5 text-accent" />
-          </div>
-          <p className="mt-3 text-sm leading-6 text-muted">
-            看到英文能理解，听到能反应，最后再尝试看中文说英文。忘了也没关系，系统会安排更近的复习。
-          </p>
-          <Link
-            href="/study"
-            className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-          >
-            回到学习材料
-            <ArrowRight className="h-4 w-4 text-accent" />
-          </Link>
-          <div className="mt-5 border-t border-border pt-4">
+            <CardDescription>
+              看到英文能理解，听到能反应，最后再尝试看中文说英文。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/study">
+                回到学习材料
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Separator className="my-5" />
             <h3 className="text-sm font-semibold text-foreground">复习诊断</h3>
             <div className="mt-3 grid grid-cols-3 gap-3">
-              <div className="border-l border-border pl-3">
-                <p className="text-lg font-semibold text-foreground">{diagnostics.recentReviews}</p>
-                <p className="mt-1 text-xs text-muted">近 7 天</p>
-              </div>
-              <div className="border-l border-border pl-3">
-                <p className="text-lg font-semibold text-foreground">{diagnostics.successRate}%</p>
-                <p className="mt-1 text-xs text-muted">顺利率</p>
-              </div>
-              <div className="border-l border-border pl-3">
-                <p className="text-lg font-semibold text-foreground">{diagnostics.attentionCount}</p>
-                <p className="mt-1 text-xs text-muted">需回炉</p>
-              </div>
+              {[
+                ["近 7 天", diagnostics.recentReviews],
+                ["顺利率", `${diagnostics.successRate}%`],
+                ["需回炉", diagnostics.attentionCount]
+              ].map(([label, value]) => (
+                <div key={label} className="border-l border-border pl-3">
+                  <p className="text-lg font-semibold text-foreground">{value}</p>
+                  <p className="mt-1 text-xs text-muted">{label}</p>
+                </div>
+              ))}
             </div>
             <p className="mt-3 text-sm leading-6 text-muted">{diagnostics.message}</p>
             <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted">
@@ -494,18 +503,13 @@ export function ReviewClient() {
               {diagnostics.dailyTrend.map((day) => (
                 <div key={day.day} className="grid grid-cols-[36px_1fr_24px] items-center gap-2 text-xs">
                   <span className="text-muted">{day.day}</span>
-                  <span className="h-2 overflow-hidden rounded-full bg-panel-strong">
-                    <span
-                      className="block h-full rounded-full bg-accent"
-                      style={{ width: `${Math.max(6, (day.reviews / maxDailyReviews) * 100)}%` }}
-                    />
-                  </span>
+                  <Progress value={Math.max(6, (day.reviews / maxDailyReviews) * 100)} />
                   <span className="text-right font-medium text-foreground">{day.reviews}</span>
                 </div>
               ))}
             </div>
-          </div>
-        </aside>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1fr_320px]">
@@ -739,68 +743,69 @@ export function ReviewClient() {
           </article>
         )}
 
-        <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">复习队列</h2>
-            <RotateCcw className="h-5 w-5 text-accent" />
-          </div>
-          <div className="mt-4 border-b border-border pb-4">
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle>复习队列</CardTitle>
+              <RotateCcw className="h-5 w-5 text-accent" />
+            </div>
+            <CardDescription>当前筛选下的卡片和批量管理。</CardDescription>
+          </CardHeader>
+          <CardContent>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-medium text-foreground">已选择 {selectedCards.length} 张</p>
               {selectedCards.length > 0 ? (
-                <button
-                  onClick={handleClearCardSelection}
-                  className="min-h-8 rounded-lg border border-border bg-white px-3 py-1 text-xs font-semibold text-muted hover:bg-panel-strong"
-                >
+                <Button onClick={handleClearCardSelection} variant="ghost" size="sm">
                   清空
-                </button>
+                </Button>
               ) : null}
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <button
+              <Button
                 onClick={handleToggleSelectFilteredCards}
                 disabled={filteredCards.length === 0}
-                className="min-h-9 rounded-lg border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-45"
+                variant="outline"
+                size="sm"
               >
                 {allFilteredCardsSelected ? "取消当前队列" : "选择当前队列"}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleBulkSuspendCards}
                 disabled={selectedActiveCards.length === 0}
-                className="min-h-9 rounded-lg border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-45"
+                variant="outline"
+                size="sm"
               >
                 批量暂停
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleBulkRestoreCards}
                 disabled={selectedPausedCards.length === 0}
-                className="min-h-9 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-45"
+                size="sm"
               >
                 批量恢复
-              </button>
+              </Button>
               <p className="flex min-h-9 items-center text-xs leading-5 text-muted">
                 可整理暂时不练的卡片。
               </p>
             </div>
-          </div>
-          <div className="mt-4 space-y-3">
+            <Separator className="my-4" />
+          <div className="space-y-3">
             {filteredCards.map((card) => (
               <div
                 key={card.id}
-                className={`rounded-lg border p-3 ${
+                className={cn(
+                  "rounded-lg border p-3 transition-colors",
                   card.id === activeCard?.id ? "border-accent bg-accent-soft" : "border-border bg-white"
-                }`}
+                )}
               >
                 <div className="flex items-start gap-3">
-                  <label className="flex h-6 w-6 shrink-0 items-center justify-center pt-0.5">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center pt-0.5">
                     <span className="sr-only">选择复习卡</span>
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedCardIdSet.has(card.id)}
-                      onChange={() => handleToggleSelectCard(card.id)}
-                      className="h-4 w-4 rounded border-border text-accent"
+                      onCheckedChange={() => handleToggleSelectCard(card.id)}
                     />
-                  </label>
+                  </div>
                   <button
                     onClick={() => {
                       setActiveCardId(card.id);
@@ -815,9 +820,9 @@ export function ReviewClient() {
                         {card.status === "suspended" ? " · 已暂停" : ""}
                       </span>
                     </span>
-                    <span className="shrink-0 rounded-md border border-border bg-white px-2 py-1 text-xs text-muted">
+                    <Badge variant={card.status === "suspended" ? "warning" : "outline"} className="shrink-0">
                       {formatDueLabel(card)}
-                    </span>
+                    </Badge>
                   </button>
                 </div>
               </div>
@@ -828,7 +833,8 @@ export function ReviewClient() {
               </p>
             ) : null}
           </div>
-        </aside>
+          </CardContent>
+        </Card>
       </section>
     </main>
   );

@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Cloud, LogOut, Mail, RefreshCw, UploadCloud } from "lucide-react";
+import { CheckCircle2, Cloud, LogOut, Mail, RefreshCw, UploadCloud } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 import {
@@ -196,100 +203,96 @@ export function CloudSyncPanel() {
   }
 
   return (
-    <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
-          <Cloud className="h-5 w-5" />
+    <Card>
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
+              <Cloud className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle>云同步账号</CardTitle>
+              <CardDescription>
+                {sessionEmail || (config.configured ? "可登录" : "未配置")}
+              </CardDescription>
+            </div>
+          </div>
+          <Badge variant={sessionEmail ? "success" : config.configured ? "outline" : "warning"}>
+            {sessionEmail ? "已登录" : config.configured ? "待登录" : "未配置"}
+          </Badge>
         </div>
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">云同步账号</h2>
-          <p className="mt-1 text-sm text-muted">
-            {sessionEmail || (config.configured ? "可登录" : "未配置")}
-          </p>
-        </div>
-      </div>
+      </CardHeader>
 
-      {sessionEmail ? (
-        <div className="mt-4 grid gap-2 sm:grid-cols-4">
-          <button
-            onClick={handleUploadSnapshot}
-            disabled={loading}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {loading ? <RefreshCw className="h-4 w-4" /> : <UploadCloud className="h-4 w-4" />}
-            上传快照
-          </button>
-          <button
-            onClick={handleDownloadRecords}
-            disabled={loading}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <Cloud className="h-4 w-4 text-accent" />
-            拉取云端
-          </button>
-          <button
-            onClick={handleCheckRemoteChanges}
-            disabled={loading}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <RefreshCw className="h-4 w-4 text-accent" />
-            检查差异
-          </button>
-          <button
-            onClick={handleSignOut}
-            disabled={loading}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <LogOut className="h-4 w-4 text-accent" />
-            退出登录
-          </button>
-        </div>
-      ) : (
-        <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
-          <input
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            disabled={!config.configured || loading}
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            className="min-h-10 rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground outline-none focus:border-accent disabled:cursor-not-allowed disabled:bg-panel-strong"
-          />
-          <button
-            onClick={handleSendMagicLink}
-            disabled={!config.configured || loading}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {loading ? <RefreshCw className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
-            邮件登录
-          </button>
-        </div>
-      )}
+      <CardContent>
+        {sessionEmail ? (
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <Button onClick={handleUploadSnapshot} disabled={loading}>
+              {loading ? <RefreshCw className="h-4 w-4" /> : <UploadCloud className="h-4 w-4" />}
+              上传快照
+            </Button>
+            <Button onClick={handleDownloadRecords} disabled={loading} variant="outline">
+              <Cloud className="h-4 w-4" />
+              拉取云端
+            </Button>
+            <Button onClick={handleCheckRemoteChanges} disabled={loading} variant="outline">
+              <RefreshCw className="h-4 w-4" />
+              检查差异
+            </Button>
+            <Button onClick={handleSignOut} disabled={loading} variant="secondary">
+              <LogOut className="h-4 w-4" />
+              退出登录
+            </Button>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            <Label htmlFor="cloud-sync-email">登录邮箱</Label>
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <Input
+                id="cloud-sync-email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                disabled={!config.configured || loading}
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+              />
+              <Button onClick={handleSendMagicLink} disabled={!config.configured || loading}>
+                {loading ? <RefreshCw className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
+                邮件登录
+              </Button>
+            </div>
+          </div>
+        )}
 
-      <div className="mt-4 border-t border-border pt-4">
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
+        <Separator className="my-5" />
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-panel-strong text-accent">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">自动上传变化快照</p>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                登录后会在回到前台、恢复在线和固定间隔时上传变化数据；本地学习不受同步失败影响。
+              </p>
+            </div>
+          </div>
+          <Switch
             checked={autoSyncEnabled}
             disabled={!config.configured || loading}
-            onChange={(event) => handleToggleAutoSync(event.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-border text-accent disabled:cursor-not-allowed"
+            onCheckedChange={handleToggleAutoSync}
+            aria-label="自动上传变化快照"
           />
-          <span>
-            <span className="block text-sm font-semibold text-foreground">自动上传变化快照</span>
-            <span className="mt-1 block text-sm leading-6 text-muted">
-              登录后会在回到前台、恢复在线和固定间隔时上传变化数据；本地学习不受同步失败影响。
-            </span>
-          </span>
-        </label>
-      </div>
+        </div>
 
-      {message ? (
-        <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
-          {message}
-        </p>
-      ) : null}
-    </section>
+        {message ? (
+          <p className="mt-5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm leading-6 text-sky-800">
+            {message}
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }

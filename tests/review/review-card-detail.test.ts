@@ -67,6 +67,7 @@ describe("getReviewCardDetail", () => {
 
     expect(detail.item?.text).toBe("make an appointment");
     expect(detail.reviewCount).toBe(2);
+    expect(detail.recentLogs.map((log) => log.id)).toEqual(["latest", "old"]);
     expect(detail.latestRating).toBe("hard");
     expect(detail.latestReviewedAt).toBe("2026-05-29T00:00:00.000Z");
     expect(detail.needsAttention).toBe(true);
@@ -80,6 +81,7 @@ describe("getReviewCardDetail", () => {
 
     expect(detail.item).toBeUndefined();
     expect(detail.reviewCount).toBe(0);
+    expect(detail.recentLogs).toEqual([]);
     expect(detail.latestRating).toBeUndefined();
     expect(detail.needsAttention).toBe(false);
     expect(detail.statusLabel).toBe("新卡");
@@ -95,5 +97,21 @@ describe("getReviewCardDetail", () => {
     );
 
     expect(detail.sourceStudyHref).toBeUndefined();
+  });
+
+  it("keeps only the three newest review logs in detail history", () => {
+    const detail = getReviewCardDetail(
+      createCard(),
+      [createItem()],
+      [
+        createLog({ id: "1", reviewedAt: "2026-05-26T00:00:00.000Z" }),
+        createLog({ id: "2", reviewedAt: "2026-05-27T00:00:00.000Z" }),
+        createLog({ id: "3", reviewedAt: "2026-05-28T00:00:00.000Z" }),
+        createLog({ id: "4", reviewedAt: "2026-05-29T00:00:00.000Z" })
+      ]
+    );
+
+    expect(detail.reviewCount).toBe(4);
+    expect(detail.recentLogs.map((log) => log.id)).toEqual(["4", "3", "2"]);
   });
 });

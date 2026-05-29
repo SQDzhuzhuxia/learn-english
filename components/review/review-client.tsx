@@ -82,6 +82,15 @@ function formatDueLabel(card: ReviewCardRecord) {
   return `${Math.ceil(diffHours / 24)} 天后`;
 }
 
+function formatReviewDateLabel(value: string) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
 export function ReviewClient() {
   const [items, setItems] = useState<LearningItemRecord[]>(() => getSeedLearningItems());
   const [cards, setCards] = useState<ReviewCardRecord[]>(() => getSeedReviewCards());
@@ -458,6 +467,24 @@ export function ReviewClient() {
                     </Link>
                   ) : null}
                 </div>
+                {activeCardDetail.recentLogs.length > 0 ? (
+                  <div className="mt-4 border-t border-border pt-4">
+                    <p className="text-sm font-semibold text-foreground">最近复习记录</p>
+                    <div className="mt-3 space-y-2">
+                      {activeCardDetail.recentLogs.map((log) => (
+                        <div
+                          key={log.id}
+                          className="flex items-center justify-between gap-3 text-sm text-muted"
+                        >
+                          <span>{formatReviewDateLabel(log.reviewedAt)}</span>
+                          <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-foreground">
+                            {ratingLabels[log.rating]}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </article>

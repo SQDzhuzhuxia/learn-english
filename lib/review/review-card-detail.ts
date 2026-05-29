@@ -5,6 +5,7 @@ export type ReviewCardDetail = {
   card: ReviewCardRecord;
   item?: LearningItemRecord;
   reviewCount: number;
+  recentLogs: ReviewLogRecord[];
   latestRating?: ReviewRating;
   latestReviewedAt?: string;
   needsAttention: boolean;
@@ -52,7 +53,9 @@ export function getReviewCardDetail(
   logs: ReviewLogRecord[]
 ): ReviewCardDetail {
   const item = items.find((record) => record.id === card.learningItemId);
-  const cardLogs = logs.filter((log) => log.cardId === card.id);
+  const cardLogs = logs
+    .filter((log) => log.cardId === card.id)
+    .sort((left, right) => new Date(right.reviewedAt).getTime() - new Date(left.reviewedAt).getTime());
   const latestLog = getLatestLog(cardLogs);
   const latestRating = latestLog?.rating;
   const needsAttention = latestRating === "again" || latestRating === "hard";
@@ -63,6 +66,7 @@ export function getReviewCardDetail(
     card,
     item,
     reviewCount: cardLogs.length,
+    recentLogs: cardLogs.slice(0, 3),
     latestRating,
     latestReviewedAt: latestLog?.reviewedAt,
     needsAttention,

@@ -7,6 +7,7 @@ import { uploadSyncSnapshot } from "@/lib/sync/cloud-sync";
 import {
   createSyncSnapshotFingerprint,
   loadAutoSyncPreference,
+  saveCloudSyncLastEvent,
   saveAutoSyncUploadState,
   shouldUploadSyncSnapshot
 } from "@/lib/sync/auto-sync";
@@ -52,7 +53,14 @@ export function CloudAutoSync() {
         }
 
         await uploadSyncSnapshot(client as unknown as CloudSyncClient, data.user.id, snapshot);
-        saveAutoSyncUploadState(fingerprint);
+        const uploadedAt = new Date().toISOString();
+        saveAutoSyncUploadState(fingerprint, uploadedAt);
+        saveCloudSyncLastEvent({
+          type: "auto-upload",
+          message: `自动上传 ${snapshot.records.length} 组变化快照。`,
+          occurredAt: uploadedAt,
+          recordCount: snapshot.records.length
+        });
       } catch {
         // Auto sync should never interrupt local learning.
       } finally {

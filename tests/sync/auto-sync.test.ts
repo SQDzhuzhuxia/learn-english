@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createSyncSnapshotFingerprint,
+  loadAutoSyncUploadState,
   loadAutoSyncPreference,
+  loadCloudSyncLastEvent,
+  saveCloudSyncLastEvent,
   saveAutoSyncPreference,
   saveAutoSyncUploadState,
   shouldUploadSyncSnapshot
@@ -72,7 +75,31 @@ describe("auto sync preferences", () => {
   it("skips upload when the latest fingerprint already synced", () => {
     saveAutoSyncUploadState("hash-1", "2026-05-29T00:00:00.000Z");
 
+    expect(loadAutoSyncUploadState()).toEqual({
+      fingerprint: "hash-1",
+      uploadedAt: "2026-05-29T00:00:00.000Z"
+    });
     expect(shouldUploadSyncSnapshot("hash-1")).toBe(false);
     expect(shouldUploadSyncSnapshot("hash-2")).toBe(true);
+  });
+
+  it("stores the latest cloud sync event", () => {
+    expect(loadCloudSyncLastEvent()).toBeNull();
+
+    saveCloudSyncLastEvent({
+      type: "manual-upload",
+      message: "已上传 3 组数据。",
+      occurredAt: "2026-05-29T00:00:00.000Z",
+      recordCount: 3,
+      totalBytes: 120
+    });
+
+    expect(loadCloudSyncLastEvent()).toEqual({
+      type: "manual-upload",
+      message: "已上传 3 组数据。",
+      occurredAt: "2026-05-29T00:00:00.000Z",
+      recordCount: 3,
+      totalBytes: 120
+    });
   });
 });

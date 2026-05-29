@@ -29,6 +29,7 @@ import {
   updateLearningItem
 } from "@/lib/review/review-store";
 import { isCardDue } from "@/lib/review/review-store";
+import { createReviewCardHref } from "@/lib/review/review-links";
 import type { LearningItemRecord, ReviewCardRecord } from "@/lib/review/types";
 
 const filters = ["全部", "到期", "新卡", "句子", "短语", "归档"];
@@ -585,7 +586,7 @@ export function NotebookClient() {
                     <p className="text-sm text-muted">来源：{item.sourceMaterialTitle}</p>
                     {card && card.status !== "suspended" ? (
                       <Link
-                        href="/review"
+                        href={createReviewCardHref(card.id)}
                         className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
                       >
                         查看复习卡

@@ -110,10 +110,17 @@ export function ReviewClient() {
       }
 
       const loaded = loadReviewCards();
+      const requestedCardId =
+        typeof window === "undefined" ? undefined : new URLSearchParams(window.location.search).get("card");
       setItems(loadLearningItems());
       setCards(loaded);
       setLogs(loadReviewLogs());
-      setActiveCardId((current) => current || loaded.find((card) => card.status !== "suspended")?.id || "");
+      setActiveCardId(
+        (current) =>
+          requestedCardId && loaded.some((card) => card.id === requestedCardId && card.status !== "suspended")
+            ? requestedCardId
+            : current || loaded.find((card) => card.status !== "suspended")?.id || ""
+      );
     });
 
     return () => {

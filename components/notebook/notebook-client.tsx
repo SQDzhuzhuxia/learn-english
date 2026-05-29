@@ -30,6 +30,14 @@ import {
 } from "@/lib/review/review-store";
 import { isCardDue } from "@/lib/review/review-store";
 import { createReviewCardHref } from "@/lib/review/review-links";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import type { LearningItemRecord, ReviewCardRecord } from "@/lib/review/types";
 
 const filters = ["全部", "到期", "新卡", "句子", "短语", "归档"];
@@ -295,22 +303,22 @@ export function NotebookClient() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
       <section className="grid gap-5 lg:grid-cols-[1fr_340px]">
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardContent className="pt-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm font-medium text-accent">词句本</p>
-              <h1 className="mt-2 text-2xl font-semibold text-foreground">个人英语资产库</h1>
+              <Badge variant="soft">词句本</Badge>
+              <h1 className="mt-3 text-2xl font-semibold text-foreground">个人英语资产库</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
                 这里沉淀你从真实材料中保存的词、短语、句子和错误表达。后续 AI 解释、复习和输出训练都会围绕它展开。
               </p>
             </div>
-            <Link
-              href="/review"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
-            >
-              <RotateCcw className="h-4 w-4" />
-              去复习
-            </Link>
+            <Button asChild size="lg">
+              <Link href="/review">
+                <RotateCcw className="h-4 w-4" />
+                去复习
+              </Link>
+            </Button>
           </div>
 
           {message ? (
@@ -320,93 +328,99 @@ export function NotebookClient() {
           ) : null}
 
           <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
-            <label className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-white px-3">
+            <label className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-white px-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-ring">
               <Search className="h-4 w-4 text-muted" />
-              <input
-                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted"
+              <Input
+                className="min-h-0 border-0 bg-transparent px-0 py-0 focus:border-0 focus:ring-0"
                 placeholder="搜索词句、来源材料或上下文"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
             </label>
-            <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground hover:bg-panel-strong">
+            <Button variant="outline" className="min-h-11">
               <Filter className="h-4 w-4 text-accent" />
               {filteredItems.length} 条
-            </button>
+            </Button>
           </div>
 
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
             {filters.map((filter) => (
-              <button
+              <Button
                 key={filter}
+                variant={activeFilter === filter ? "soft" : "outline"}
+                size="sm"
                 onClick={() => setActiveFilter(filter)}
-                className={`min-h-9 shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium ${
-                  activeFilter === filter
-                    ? "border-accent bg-accent-soft text-accent"
-                    : "border-border bg-white text-muted hover:bg-panel-strong"
-                }`}
+                className="shrink-0"
               >
                 {filter}
-              </button>
+              </Button>
             ))}
           </div>
 
           {filteredItems.length > 0 ? (
-            <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <Separator className="lg:hidden" />
               <p className="text-sm text-muted">
                 已选择 <span className="font-semibold text-foreground">{selectedItems.length}</span> 条
               </p>
               <div className="flex flex-wrap gap-2">
-                <button
+                <Button
+                  variant="outline"
                   onClick={handleToggleSelectFiltered}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
                 >
                   <Check className="h-4 w-4 text-accent" />
                   {allFilteredSelected ? "取消当前结果" : "选择当前结果"}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => setSelectedItemIds([])}
                   disabled={selectedItems.length === 0}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   <CircleX className="h-4 w-4 text-muted" />
                   清空选择
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={handleBulkArchive}
                   disabled={selectedActiveItems.length === 0}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   <Archive className="h-4 w-4 text-muted" />
                   批量归档
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={handleBulkRestore}
                   disabled={selectedArchivedItems.length === 0}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45"
+                  className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                 >
                   <ArchiveRestore className="h-4 w-4" />
                   批量恢复
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={handleBulkDelete}
                   disabled={selectedItems.length === 0}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-45"
+                  className="border-rose-200 text-rose-700 hover:bg-rose-50"
                 >
                   <Trash2 className="h-4 w-4" />
                   批量删除
-                </button>
+                </Button>
               </div>
             </div>
           ) : null}
-        </div>
+          </CardContent>
+        </Card>
 
-        <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">词句概览</h2>
+            <CardTitle className="text-lg">词句概览</CardTitle>
             <BookMarked className="h-5 w-5 text-accent" />
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <CardDescription>复习队列会随着保存、归档、恢复自动同步。</CardDescription>
+          </CardHeader>
+          <CardContent>
+          <div className="grid grid-cols-2 gap-2">
             <div className="rounded-lg border border-border bg-white p-3">
               <p className="text-2xl font-semibold text-foreground">{activeCount}</p>
               <p className="mt-1 text-xs text-muted">活跃词句</p>
@@ -427,7 +441,8 @@ export function NotebookClient() {
           <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-800">
             词句修改会同步更新关联复习卡；归档会暂停复习，恢复后会重新进入队列。
           </p>
-        </aside>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -436,72 +451,77 @@ export function NotebookClient() {
           const card = cards.find((reviewCard) => reviewCard.learningItemId === item.id);
 
           return (
-            <article key={item.id} className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+            <Card key={item.id}>
+              <CardContent className="pt-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex gap-3">
-                  <label className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center">
-                    <input
-                      type="checkbox"
+                  <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center">
+                    <Checkbox
                       checked={selectedItemIds.includes(item.id)}
-                      onChange={() => handleToggleSelect(item.id)}
-                      className="h-4 w-4 rounded border-border text-accent"
+                      onCheckedChange={() => handleToggleSelect(item.id)}
                       aria-label={`选择词句：${item.text}`}
                     />
-                  </label>
+                  </div>
                   <div>
                     <div className="flex flex-wrap gap-2">
-                      <span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-medium text-accent">
+                      <Badge variant="soft">
                         {getTypeLabel(item.type)}
-                      </span>
-                      <span className={`rounded-md border px-2 py-1 text-xs font-medium ${reviewState.tone}`}>
+                      </Badge>
+                      <Badge variant="outline" className={reviewState.tone}>
                         {reviewState.label}
-                      </span>
+                      </Badge>
                     </div>
                     <h2 className="mt-3 text-lg font-semibold leading-7 text-foreground">{item.text}</h2>
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button
+                  <Button
+                    variant="outline"
+                    size="icon"
                     onClick={() => handleStartEdit(item)}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white text-muted hover:bg-panel-strong hover:text-foreground"
                     aria-label="编辑词句"
                     title="编辑"
                   >
                     <Pencil className="h-4 w-4" />
-                  </button>
+                  </Button>
                   {item.status === "archived" ? (
-                    <button
+                    <Button
+                      variant="outline"
+                      size="icon"
                       onClick={() => handleRestore(item.id)}
-                      className="flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                      className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                       aria-label="恢复词句"
                       title="恢复"
                     >
                       <ArchiveRestore className="h-4 w-4" />
-                    </button>
+                    </Button>
                   ) : (
-                    <button
+                    <Button
+                      variant="outline"
+                      size="icon"
                       onClick={() => handleArchive(item.id)}
-                      className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white text-muted hover:bg-panel-strong hover:text-foreground"
                       aria-label="归档词句"
                       title="归档"
                     >
                       <Archive className="h-4 w-4" />
-                    </button>
+                    </Button>
                   )}
-                  <button
+                  <Button
+                    variant="outline"
+                    size="icon"
                     onClick={() => handleDelete(item.id)}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                    className="border-rose-200 text-rose-700 hover:bg-rose-50"
                     aria-label="删除词句"
                     title="删除"
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               {editingItemId === item.id && editForm ? (
                 <div className="mt-5 space-y-3 rounded-lg border border-border bg-panel-strong p-4">
-                  <label className="block text-sm font-medium text-foreground">
+                  <Label className="block">
                     类型
                     <select
                       className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none"
@@ -516,56 +536,55 @@ export function NotebookClient() {
                         </option>
                       ))}
                     </select>
-                  </label>
-                  <label className="block text-sm font-medium text-foreground">
+                  </Label>
+                  <Label className="block">
                     词句
-                    <textarea
-                      className="mt-2 min-h-24 w-full resize-y rounded-lg border border-border bg-white px-3 py-2 text-sm leading-6 text-foreground outline-none"
+                    <Textarea
+                      className="mt-2 min-h-24"
                       value={editForm.text}
                       onChange={(event) => setEditForm({ ...editForm, text: event.target.value })}
                     />
-                  </label>
+                  </Label>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="block text-sm font-medium text-foreground">
+                    <Label className="block">
                       中文解释
-                      <input
-                        className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none"
+                      <Input
+                        className="mt-2"
                         value={editForm.meaningZh}
                         onChange={(event) => setEditForm({ ...editForm, meaningZh: event.target.value })}
                       />
-                    </label>
-                    <label className="block text-sm font-medium text-foreground">
+                    </Label>
+                    <Label className="block">
                       英文解释
-                      <input
-                        className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none"
+                      <Input
+                        className="mt-2"
                         value={editForm.meaningEn}
                         onChange={(event) => setEditForm({ ...editForm, meaningEn: event.target.value })}
                       />
-                    </label>
+                    </Label>
                   </div>
-                  <label className="block text-sm font-medium text-foreground">
+                  <Label className="block">
                     上下文
-                    <textarea
-                      className="mt-2 min-h-24 w-full resize-y rounded-lg border border-border bg-white px-3 py-2 text-sm leading-6 text-foreground outline-none"
+                    <Textarea
+                      className="mt-2 min-h-24"
                       value={editForm.contextText}
                       onChange={(event) => setEditForm({ ...editForm, contextText: event.target.value })}
                     />
-                  </label>
+                  </Label>
                   <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                    <button
+                    <Button
+                      variant="outline"
                       onClick={handleCancelEdit}
-                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
                     >
                       <CircleX className="h-4 w-4 text-muted" />
                       取消
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => handleSaveEdit(item.id)}
-                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
                     >
                       <Check className="h-4 w-4" />
                       保存
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -585,33 +604,34 @@ export function NotebookClient() {
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-muted">来源：{item.sourceMaterialTitle}</p>
                     {card && card.status !== "suspended" ? (
-                      <Link
-                        href={createReviewCardHref(card.id)}
-                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-                      >
-                        查看复习卡
-                        <ArrowRight className="h-4 w-4 text-accent" />
-                      </Link>
+                      <Button asChild variant="outline">
+                        <Link href={createReviewCardHref(card.id)}>
+                          查看复习卡
+                          <ArrowRight className="h-4 w-4 text-accent" />
+                        </Link>
+                      </Button>
                     ) : null}
                   </div>
                 </>
               )}
-            </article>
+              </CardContent>
+            </Card>
           );
         })}
       </section>
 
       {filteredItems.length === 0 ? (
-        <section className="rounded-lg border border-border bg-panel p-5 text-center shadow-sm">
-          <p className="text-sm text-muted">没有匹配的词句。可以回到学习页保存当前句。</p>
-          <Link
-            href="/study"
-            className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
-          >
-            去学习
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </section>
+        <Card>
+          <CardContent className="pt-5 text-center">
+            <p className="text-sm text-muted">没有匹配的词句。可以回到学习页保存当前句。</p>
+            <Button asChild className="mt-4">
+              <Link href="/study">
+                去学习
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : null}
     </main>
   );

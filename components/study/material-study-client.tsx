@@ -29,6 +29,11 @@ import {
   updateMaterialProgress
 } from "@/lib/content/material-store";
 import { saveExpressionAsReviewCard, saveSegmentAsReviewCard } from "@/lib/review/review-store";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import type { StudyMaterialRecord } from "@/lib/content/types";
 import type { AiMaterialExplanation, AiSegmentExplanation } from "@/lib/ai/types";
 
@@ -416,18 +421,23 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
   if (!material || !current) {
     return (
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-        <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <p className="text-sm font-medium text-accent">学习</p>
-          <h1 className="mt-2 text-2xl font-semibold text-foreground">没有找到材料</h1>
-          <p className="mt-3 text-sm leading-6 text-muted">请先回到材料库选择或导入一篇文本。</p>
-          <Link
-            href="/library"
-            className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            回到材料库
-          </Link>
-        </section>
+        <Card>
+          <CardHeader>
+            <Badge variant="soft" className="w-fit">
+              学习
+            </Badge>
+            <CardTitle>没有找到材料</CardTitle>
+            <CardDescription>请先回到材料库选择或导入一篇文本。</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/library">
+                <ArrowLeft className="h-4 w-4" />
+                回到材料库
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </main>
     );
   }
@@ -435,16 +445,16 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8">
       <section className="flex flex-col gap-5">
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardContent className="pt-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <Link
-                href="/library"
-                className="inline-flex items-center gap-2 text-sm font-medium text-accent"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                材料库
-              </Link>
+              <Button asChild variant="link" className="h-auto p-0">
+                <Link href="/library">
+                  <ArrowLeft className="h-4 w-4" />
+                  材料库
+                </Link>
+              </Button>
               <p className="mt-4 text-sm font-medium text-accent">
                 {material.type} · {material.inputType}
               </p>
@@ -471,42 +481,43 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
             </div>
           </div>
 
-          <div className="mt-5 h-2 rounded-full bg-panel-strong">
-            <div
-              className="h-2 rounded-full bg-accent"
-              style={{ width: `${material.progress}%` }}
-            />
-          </div>
-        </div>
+          <Progress value={material.progress} className="mt-5" />
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-medium text-accent">当前句</p>
-              <h2 className="mt-2 text-lg font-semibold text-foreground">先听懂，再保存</h2>
+              <Badge variant="soft">当前句</Badge>
+              <CardTitle className="mt-3 text-lg">先听懂，再保存</CardTitle>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => moveTo(currentOrder - 1)}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white hover:bg-panel-strong"
                 aria-label="上一句"
               >
                 <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-white hover:bg-accent-strong" aria-label="播放">
+              </Button>
+              <Button size="icon" aria-label="播放">
                 <Play className="h-4 w-4" />
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => moveTo(currentOrder + 1)}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white hover:bg-panel-strong"
                 aria-label="下一句"
               >
                 <ChevronRight className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           </div>
+          </CardHeader>
 
-          <div className="mt-5 rounded-lg border border-accent bg-accent-soft p-5">
+          <CardContent>
+          <div className="rounded-lg border border-accent bg-accent-soft p-5">
             <p className="text-xl font-semibold leading-9 text-foreground">{current.text}</p>
             {current.translation ? (
               <p className="mt-3 text-sm leading-6 text-muted">{current.translation}</p>
@@ -523,25 +534,25 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground hover:bg-panel-strong">
+            <Button variant="outline">
               <Volume2 className="h-4 w-4 text-accent" />
               慢速
-            </button>
-            <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground hover:bg-panel-strong">
+            </Button>
+            <Button variant="outline">
               <Repeat2 className="h-4 w-4 text-accent" />
               循环
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
               onClick={handleSaveCurrentSentence}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground hover:bg-panel-strong"
             >
               <BookmarkPlus className="h-4 w-4 text-accent" />
               保存
-            </button>
-            <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground hover:bg-panel-strong">
+            </Button>
+            <Button variant="outline">
               <Mic className="h-4 w-4 text-accent" />
               跟读
-            </button>
+            </Button>
           </div>
 
           {saveMessage ? (
@@ -549,14 +560,17 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
               {saveMessage}
             </p>
           ) : null}
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">逐句列表</h2>
+            <CardTitle className="text-lg">逐句列表</CardTitle>
             <Headphones className="h-5 w-5 text-accent" />
           </div>
-          <div className="mt-4 space-y-3">
+          </CardHeader>
+          <CardContent className="space-y-3">
             {material.segments.map((segment) => (
               <button
                 key={segment.id}
@@ -581,17 +595,20 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                 </div>
               </button>
             ))}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </section>
 
       <aside className="flex flex-col gap-5">
-        <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">AI 解释</h2>
+            <CardTitle className="text-lg">AI 解释</CardTitle>
             <Languages className="h-5 w-5 text-accent" />
           </div>
-          <p className="mt-4 rounded-lg border border-border bg-panel-strong p-3 text-sm leading-6 text-foreground">
+          </CardHeader>
+          <CardContent>
+          <p className="rounded-lg border border-border bg-panel-strong p-3 text-sm leading-6 text-foreground">
             {material.source === "seed" ? aiExplanation.sentence : current.text}
           </p>
 
@@ -621,10 +638,10 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
           ) : (
             <div className="mt-4 space-y-4">
               <div className="grid gap-2">
-                <button
+                <Button
                   onClick={handleGenerateAiExplanation}
                   disabled={aiState.status === "loading" || aiBatchState.status === "loading"}
-                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
+                  className="w-full"
                 >
                   {aiState.status === "loading" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -634,11 +651,12 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                     <Sparkles className="h-4 w-4" />
                   )}
                   {aiState.explanation ? "重新生成当前句" : "生成当前句解释"}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={handleGenerateMaterialExplanation}
                   disabled={aiState.status === "loading" || aiBatchState.status === "loading"}
-                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
+                  className="w-full"
                 >
                   {aiBatchState.status === "loading" ? (
                     <Loader2 className="h-4 w-4 animate-spin text-accent" />
@@ -646,7 +664,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                     <Sparkles className="h-4 w-4 text-accent" />
                   )}
                   批量解释整篇
-                </button>
+                </Button>
               </div>
 
               {aiState.message ? (
@@ -674,13 +692,15 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                     <div className="mt-2 space-y-2">
                       <p className="text-xs opacity-90">{aiBatchState.materialExplanation.summaryZh}</p>
                       {aiBatchState.materialExplanation.keyExpressions.length > 0 ? (
-                        <button
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={handleSaveMaterialExpressions}
-                          className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                          className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                         >
                           <BookmarkPlus className="h-3.5 w-3.5" />
                           保存整篇重点表达
-                        </button>
+                        </Button>
                       ) : null}
                     </div>
                   ) : null}
@@ -724,23 +744,30 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
               )}
             </div>
           )}
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground">可保存表达</h2>
-          <div className="mt-4 space-y-3">
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">可保存表达</CardTitle>
+            <CardDescription>把当前材料里的高频表达沉淀到复习系统。</CardDescription>
+          </CardHeader>
+          <CardContent>
+          <div className="space-y-3">
             {savableExpressions.map((expression) => (
               <div key={expression.text} className="rounded-lg border border-border bg-white p-3">
                 <div className="flex items-start justify-between gap-3">
                   <p className="min-w-0 text-sm font-semibold text-foreground">{expression.text}</p>
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleSaveExpression(expression)}
-                    className="inline-flex min-h-8 shrink-0 items-center justify-center gap-1 rounded-lg border border-border bg-white px-2 text-xs font-semibold text-foreground hover:bg-panel-strong"
+                    className="h-8 shrink-0 px-2 text-xs"
                     aria-label={`保存表达 ${expression.text}`}
                   >
                     <BookmarkPlus className="h-3.5 w-3.5 text-accent" />
                     保存
-                  </button>
+                  </Button>
                 </div>
                 <p className="mt-1 text-sm text-muted">{expression.meaning}</p>
                 <p className="mt-2 text-xs leading-5 text-muted">{expression.example}</p>
@@ -758,14 +785,12 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
               : aiState.explanation?.shadowingTip ??
                 "用户导入材料已能学习和保存进度；生成 AI 解释后会自动补充跟读建议和重点表达。"}
           </p>
-          <Link
-            href="/review"
-            onClick={handleSaveCurrentSentence}
-            className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
-          >
-            保存并生成复习卡
-          </Link>
-        </section>
+          <Separator className="my-4" />
+          <Button asChild className="w-full" onClick={handleSaveCurrentSentence}>
+            <Link href="/review">保存并生成复习卡</Link>
+          </Button>
+          </CardContent>
+        </Card>
       </aside>
     </main>
   );

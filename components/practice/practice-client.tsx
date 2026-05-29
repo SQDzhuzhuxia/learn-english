@@ -22,6 +22,11 @@ import {
 } from "@/lib/speech/practice-store";
 import { createShadowingFeedback, type ShadowingFeedback } from "@/lib/speech/shadowing-feedback";
 import { saveWritingItemAsReviewCard } from "@/lib/review/review-store";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import type { AiSegmentExpression, AiWritingCorrection } from "@/lib/ai/types";
 
 type CloudTranscription = {
@@ -434,27 +439,32 @@ export function PracticeClient() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
       <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <p className="text-sm font-medium text-accent">练习</p>
-          <h1 className="mt-2 text-2xl font-semibold text-foreground">输出能力训练台</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+        <Card>
+          <CardHeader className="pb-4">
+            <Badge variant="soft" className="w-fit">
+              练习
+            </Badge>
+            <CardTitle className="text-2xl">输出能力训练台</CardTitle>
+            <CardDescription className="max-w-3xl">
             输出不追求多，而是紧跟今天已经听懂读懂的材料：先跟读，再复述，最后写一两句。
-          </p>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
 
-          <div className="mt-5 rounded-lg border border-accent bg-accent-soft p-5">
+          <div className="rounded-lg border border-accent bg-accent-soft p-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <p className="text-sm font-medium text-accent">今日推荐</p>
+                <Badge variant="default">今日推荐</Badge>
                 <h2 className="mt-2 text-xl font-semibold text-foreground">{todayPractice.title}</h2>
                 <p className="mt-2 text-sm leading-6 text-muted">{todayPractice.target}</p>
               </div>
-              <button
+              <Button
                 onClick={playPrompt}
-                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
+                className="shrink-0"
               >
                 <Volume2 className="h-4 w-4" />
                 播放原句
-              </button>
+              </Button>
             </div>
             <p className="mt-4 rounded-lg border border-border bg-white p-3 text-base font-semibold leading-7 text-foreground">
               {todayPractice.prompt}
@@ -468,21 +478,22 @@ export function PracticeClient() {
                 </p>
               </div>
               {isRecording ? (
-                <button
+                <Button
+                  variant="destructive"
+                  size="lg"
                   onClick={stopRecording}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
                 >
                   <Square className="h-4 w-4" />
                   停止录音
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
+                  size="lg"
                   onClick={startRecording}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
                 >
                   <Mic className="h-4 w-4" />
                   开始录音
-                </button>
+                </Button>
               )}
             </div>
 
@@ -560,14 +571,18 @@ export function PracticeClient() {
               </p>
             ) : null}
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">跟读步骤</h2>
+            <CardTitle className="text-lg">跟读步骤</CardTitle>
             {isRecording ? <MicOff className="h-5 w-5 text-rose-600" /> : <Mic className="h-5 w-5 text-accent" />}
           </div>
-          <div className="mt-4 space-y-3">
+          <CardDescription>先低压力模仿，不急着自由发挥。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
             {todayPractice.steps.map((step, index) => (
               <div key={step} className="flex gap-3 rounded-lg border border-border bg-white p-3">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-sm font-semibold text-accent">
@@ -576,8 +591,8 @@ export function PracticeClient() {
                 <p className="text-sm leading-6 text-muted">{step}</p>
               </div>
             ))}
-          </div>
-        </aside>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -585,14 +600,15 @@ export function PracticeClient() {
           const Icon = mode.icon;
 
           return (
-            <article key={mode.id} className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+            <Card key={mode.id}>
+              <CardContent className="pt-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
                   <Icon className="h-5 w-5" />
                 </div>
-                <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
+                <Badge variant="outline">
                   {mode.status}
-                </span>
+                </Badge>
               </div>
               <h2 className="mt-4 text-lg font-semibold text-foreground">{mode.title}</h2>
               <p className="mt-2 text-sm leading-6 text-muted">{mode.description}</p>
@@ -602,21 +618,24 @@ export function PracticeClient() {
                   {mode.estimatedMinutes} 分钟 · {mode.output}
                 </p>
               </div>
-              <button className="mt-5 min-h-10 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong">
+              <Button variant="outline" className="mt-5 w-full">
                 进入
-              </button>
-            </article>
+              </Button>
+              </CardContent>
+            </Card>
           );
         })}
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">跟读记录</h2>
+            <CardTitle className="text-lg">跟读记录</CardTitle>
             <Play className="h-5 w-5 text-accent" />
           </div>
-          <div className="mt-4 space-y-3">
+          </CardHeader>
+          <CardContent className="space-y-3">
             {attempts.slice(0, 4).map((attempt) => (
               <div key={attempt.id} className="rounded-lg border border-border bg-white p-4">
                 <p className="text-sm font-semibold text-foreground">{attempt.prompt}</p>
@@ -641,15 +660,19 @@ export function PracticeClient() {
                 今天还没有跟读记录。
               </p>
             ) : null}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">输出后会沉淀什么</h2>
+            <CardTitle className="text-lg">输出后会沉淀什么</CardTitle>
             <CheckCircle2 className="h-5 w-5 text-accent" />
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <CardDescription>每次练习都会变成可追踪、可复习的个人学习资产。</CardDescription>
+          </CardHeader>
+          <CardContent>
+          <div className="grid gap-3 sm:grid-cols-3">
             {["录音记录", "浏览器转写", "复习卡"].map((item) => (
               <div key={item} className="rounded-lg border border-border bg-white p-4">
                 <p className="text-sm font-semibold text-foreground">{item}</p>
@@ -659,27 +682,33 @@ export function PracticeClient() {
               </div>
             ))}
           </div>
-          <Link
-            href="/review"
-            className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-          >
-            查看会进入复习的内容
-            <ArrowRight className="h-4 w-4 text-accent" />
-          </Link>
-        </div>
+          <Separator className="my-5" />
+          <Button asChild variant="outline">
+            <Link href="/review">
+              查看会进入复习的内容
+              <ArrowRight className="h-4 w-4 text-accent" />
+            </Link>
+          </Button>
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">短写作教练</h2>
-          <PenLine className="h-5 w-5 text-accent" />
-        </div>
-        <div className="mt-4 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">短写作教练</CardTitle>
+            <PenLine className="h-5 w-5 text-accent" />
+          </div>
+          <CardDescription>从一句英文开始，先让 AI 帮你改成自然表达，再沉淀到复习卡。</CardDescription>
+        </CardHeader>
+        <CardContent>
+        <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="space-y-3">
             <div className="grid gap-2 sm:grid-cols-3">
               {writingPrompts.map((item, index) => (
-                <button
+                <Button
                   key={item.title}
+                  variant={index === selectedWritingIndex ? "soft" : "outline"}
                   onClick={() => {
                     setSelectedWritingIndex(index);
                     setWritingCorrection(null);
@@ -687,40 +716,36 @@ export function PracticeClient() {
                     setWritingSaveMessage("");
                     setSavedWritingKeys({});
                   }}
-                  className={`rounded-lg border p-3 text-left ${
-                    index === selectedWritingIndex
-                      ? "border-accent bg-accent-soft"
-                      : "border-border bg-white hover:bg-panel-strong"
-                  }`}
+                  className="h-auto flex-col items-start justify-start p-3 text-left"
                 >
                   <span className="block text-sm font-semibold text-foreground">{item.title}</span>
                   <span className="mt-1 block text-xs text-muted">{item.level}</span>
-                </button>
+                </Button>
               ))}
             </div>
 
             <div className="rounded-lg border border-border bg-white p-4">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="font-semibold text-foreground">{writingPrompts[selectedWritingIndex].title}</h3>
-                <span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-medium text-accent">
+                <Badge variant="soft">
                   {writingPrompts[selectedWritingIndex].level}
-                </span>
+                </Badge>
               </div>
               <p className="mt-2 text-sm leading-6 text-muted">{writingPrompts[selectedWritingIndex].prompt}</p>
-              <textarea
+              <Textarea
                 value={writingText}
                 onChange={(event) => setWritingText(event.target.value)}
-                className="mt-4 min-h-32 w-full resize-y rounded-lg border border-border bg-white px-3 py-2 text-sm leading-6 text-foreground outline-none focus:border-accent"
+                className="mt-4 min-h-32"
                 placeholder="Write your English sentence here..."
               />
-              <button
+              <Button
                 onClick={handleCorrectWriting}
                 disabled={isCorrectingWriting}
-                className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
+                className="mt-3 w-full"
               >
                 <PenLine className="h-4 w-4" />
                 {isCorrectingWriting ? "批改中..." : "AI 批改"}
-              </button>
+              </Button>
               {writingMessage ? (
                 <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
                   {writingMessage}
@@ -736,16 +761,17 @@ export function PracticeClient() {
                 <section>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm font-medium text-muted">更自然写法</p>
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handleSaveCorrectedWriting}
                       disabled={savedWritingKeys[createWritingSaveKey("corrected-sentence", writingCorrection.correctedText)]}
-                      className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       <Plus className="h-4 w-4 text-accent" />
                       {savedWritingKeys[createWritingSaveKey("corrected-sentence", writingCorrection.correctedText)]
                         ? "已保存"
                         : "保存复习卡"}
-                    </button>
+                    </Button>
                   </div>
                   <p className="mt-2 rounded-lg bg-panel-strong p-3 text-sm leading-6 text-foreground">
                     {writingCorrection.correctedText}
@@ -775,16 +801,18 @@ export function PracticeClient() {
                           <p className="text-sm font-semibold text-foreground">{expression.text}</p>
                           <p className="mt-1 text-xs leading-5 text-muted">{expression.meaningZh}</p>
                         </div>
-                        <button
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleSaveWritingExpression(expression)}
                           disabled={savedWritingKeys[createWritingSaveKey("expression", expression.text)]}
-                          className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
+                          className="shrink-0"
                         >
                           <Plus className="h-4 w-4 text-accent" />
                           {savedWritingKeys[createWritingSaveKey("expression", expression.text)]
                             ? "已保存"
                             : "保存"}
-                        </button>
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -802,7 +830,8 @@ export function PracticeClient() {
             )}
           </div>
         </div>
-      </section>
+        </CardContent>
+      </Card>
     </main>
   );
 }

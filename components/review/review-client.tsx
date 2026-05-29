@@ -10,6 +10,11 @@ import {
   loadReviewCards,
   reviewCard
 } from "@/lib/review/review-store";
+import {
+  filterReviewCards,
+  type ReviewCardTypeFilter,
+  type ReviewQueueFilter
+} from "@/lib/review/review-filters";
 import { getReviewQueueStats } from "@/lib/review/review-stats";
 import type { ReviewCardRecord } from "@/lib/review/types";
 import type { ReviewRating } from "@/lib/review/scheduler";
@@ -21,6 +26,22 @@ const cardTypeLabels: Record<ReviewCardRecord["cardType"], string> = {
   speaking: "口语",
   production: "输出"
 };
+
+const queueFilterOptions: Array<{ id: ReviewQueueFilter; label: string }> = [
+  { id: "all", label: "全部" },
+  { id: "due", label: "到期" },
+  { id: "new", label: "新卡" },
+  { id: "future", label: "未来" }
+];
+
+const cardTypeFilterOptions: Array<{ id: ReviewCardTypeFilter; label: string }> = [
+  { id: "all", label: "全部类型" },
+  { id: "recognition", label: "识别" },
+  { id: "listening", label: "听力" },
+  { id: "spelling", label: "拼写" },
+  { id: "speaking", label: "口语" },
+  { id: "production", label: "输出" }
+];
 
 const cardTypeInstructions: Record<ReviewCardRecord["cardType"], string> = {
   recognition: "看到英文，先说出中文意思。",
@@ -51,6 +72,8 @@ function formatDueLabel(card: ReviewCardRecord) {
 export function ReviewClient() {
   const [cards, setCards] = useState<ReviewCardRecord[]>(() => getSeedReviewCards());
   const [activeCardId, setActiveCardId] = useState(cards[0]?.id ?? "");
+  const [queueFilter, setQueueFilter] = useState<ReviewQueueFilter>("all");
+  const [cardTypeFilter, setCardTypeFilter] = useState<ReviewCardTypeFilter>("all");
   const [message, setMessage] = useState("");
   const [isAnswerVisible, setIsAnswerVisible] = useState(false);
 
@@ -74,8 +97,14 @@ export function ReviewClient() {
 
   const visibleCards = useMemo(() => cards.filter((card) => card.status !== "suspended"), [cards]);
   const dueCards = useMemo(() => visibleCards.filter((card) => isCardDue(card)), [visibleCards]);
+  const filteredCards = useMemo(
+    () => filterReviewCards(cards, { queue: queueFilter, cardType: cardTypeFilter }),
+    [cards, cardTypeFilter, queueFilter]
+  );
   const activeCard =
-    visibleCards.find((card) => card.id === activeCardId) ?? dueCards[0] ?? visibleCards[0];
+    filteredCards.find((card) => card.id === activeCardId) ??
+    filteredCards.find((card) => isCardDue(card)) ??
+    filteredCards[0];
   const queueStats = useMemo(() => getReviewQueueStats(cards), [cards]);
   const typeStats = Object.entries(queueStats.byType).filter(([, count]) => count > 0) as Array<
     [ReviewCardRecord["cardType"], number]
@@ -84,11 +113,15 @@ export function ReviewClient() {
   function handleRate(cardId: string, rating: ReviewRating) {
     const updated = reviewCard(cardId, rating);
     const nextCards = loadReviewCards();
-    const nextVisibleCards = nextCards.filter((card) => card.status !== "suspended");
+    const nextFilteredCards = filterReviewCards(nextCards, {
+      queue: queueFilter,
+      cardType: cardTypeFilter
+    });
     setCards(nextCards);
 
-    const nextDue = nextVisibleCards.find((card) => isCardDue(card) && card.id !== cardId);
-    setActiveCardId(nextDue?.id ?? nextVisibleCards[0]?.id ?? "");
+    const nextDue = nextFilteredCards.find((card) => isCardDue(card) && card.id !== cardId);
+    const nextQueued = nextFilteredCards.find((card) => card.id !== cardId) ?? nextFilteredCards[0];
+    setActiveCardId(nextDue?.id ?? nextQueued?.id ?? "");
     setIsAnswerVisible(false);
 
     if (updated) {
@@ -167,6 +200,53 @@ export function ReviewClient() {
             </div>
           ) : null}
 
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div>
+              <p className="text-xs font-medium text-muted">队列筛选</p>
+              <div className="mt-2 grid grid-cols-4 gap-1 rounded-lg border border-border bg-white p-1">
+                {queueFilterOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => {
+                      setQueueFilter(option.id);
+                      setIsAnswerVisible(false);
+                    }}
+                    className={`min-h-9 rounded-md px-2 text-xs font-semibold ${
+                      queueFilter === option.id
+                        ? "bg-accent text-white"
+                        : "text-muted hover:bg-panel-strong"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-muted">卡片类型</p>
+              <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-border bg-white p-1 sm:grid-cols-6">
+                {cardTypeFilterOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => {
+                      setCardTypeFilter(option.id);
+                      setIsAnswerVisible(false);
+                    }}
+                    disabled={option.id !== "all" && queueStats.byType[option.id] === 0}
+                    className={`min-h-9 rounded-md px-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-35 ${
+                      cardTypeFilter === option.id
+                        ? "bg-accent text-white"
+                        : "text-muted hover:bg-panel-strong"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {message ? (
             <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
               {message}
@@ -193,63 +273,83 @@ export function ReviewClient() {
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1fr_320px]">
-        <article className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-medium text-accent">
-                {cardTypeLabels[activeCard.cardType]}
-              </span>
-              <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
-                {formatDueLabel(activeCard)}
-              </span>
-            </div>
-            <button
-              onClick={() => handleSpeakCard(activeCard)}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white hover:bg-panel-strong"
-              aria-label="播放当前卡片"
-            >
-              <Volume2 className="h-4 w-4 text-accent" />
-            </button>
-          </div>
-
-          <div className="mt-8 rounded-lg border border-border bg-panel-strong p-5">
-            <p className="mb-3 text-sm font-medium text-accent">
-              {cardTypeInstructions[activeCard.cardType]}
-            </p>
-            <p className="text-2xl font-semibold leading-10 text-foreground">{activeCard.front}</p>
-            <p className="mt-4 text-sm leading-6 text-muted">{activeCard.example}</p>
-          </div>
-
-          {isAnswerVisible ? (
-            <div className="mt-5 rounded-lg border border-border bg-white p-4">
-              <p className="text-sm font-medium text-muted">答案</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">{activeCard.back}</p>
-              <p className="mt-2 text-sm text-muted">来源：{activeCard.source}</p>
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsAnswerVisible(true)}
-              className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-            >
-              <Eye className="h-4 w-4 text-accent" />
-              显示答案
-            </button>
-          )}
-
-          <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
-            {reviewRatings.map((rating) => (
+        {activeCard ? (
+          <article className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-medium text-accent">
+                  {cardTypeLabels[activeCard.cardType]}
+                </span>
+                <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
+                  {formatDueLabel(activeCard)}
+                </span>
+              </div>
               <button
-                key={rating.id}
-                disabled={!isAnswerVisible}
-                onClick={() => handleRate(activeCard.id, rating.id as ReviewRating)}
-                className={`min-h-16 rounded-lg border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 ${rating.tone}`}
+                onClick={() => handleSpeakCard(activeCard)}
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white hover:bg-panel-strong"
+                aria-label="播放当前卡片"
               >
-                <span className="block">{rating.label}</span>
-                <span className="mt-1 block text-xs font-medium opacity-80">{rating.next}</span>
+                <Volume2 className="h-4 w-4 text-accent" />
               </button>
-            ))}
-          </div>
-        </article>
+            </div>
+
+            <div className="mt-8 rounded-lg border border-border bg-panel-strong p-5">
+              <p className="mb-3 text-sm font-medium text-accent">
+                {cardTypeInstructions[activeCard.cardType]}
+              </p>
+              <p className="text-2xl font-semibold leading-10 text-foreground">{activeCard.front}</p>
+              <p className="mt-4 text-sm leading-6 text-muted">{activeCard.example}</p>
+            </div>
+
+            {isAnswerVisible ? (
+              <div className="mt-5 rounded-lg border border-border bg-white p-4">
+                <p className="text-sm font-medium text-muted">答案</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{activeCard.back}</p>
+                <p className="mt-2 text-sm text-muted">来源：{activeCard.source}</p>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsAnswerVisible(true)}
+                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
+              >
+                <Eye className="h-4 w-4 text-accent" />
+                显示答案
+              </button>
+            )}
+
+            <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
+              {reviewRatings.map((rating) => (
+                <button
+                  key={rating.id}
+                  disabled={!isAnswerVisible}
+                  onClick={() => handleRate(activeCard.id, rating.id as ReviewRating)}
+                  className={`min-h-16 rounded-lg border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 ${rating.tone}`}
+                >
+                  <span className="block">{rating.label}</span>
+                  <span className="mt-1 block text-xs font-medium opacity-80">{rating.next}</span>
+                </button>
+              ))}
+            </div>
+          </article>
+        ) : (
+          <article className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+            <p className="text-sm font-medium text-accent">当前筛选</p>
+            <h2 className="mt-2 text-xl font-semibold text-foreground">暂无匹配复习卡</h2>
+            <p className="mt-3 text-sm leading-6 text-muted">
+              这个筛选范围里暂时没有卡片，可以切回全部队列继续复习。
+            </p>
+            <button
+              onClick={() => {
+                setQueueFilter("all");
+                setCardTypeFilter("all");
+                setIsAnswerVisible(false);
+              }}
+              className="mt-5 inline-flex min-h-10 items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
+            >
+              查看全部队列
+            </button>
+          </article>
+        )}
 
         <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
           <div className="flex items-center justify-between">
@@ -257,7 +357,7 @@ export function ReviewClient() {
             <RotateCcw className="h-5 w-5 text-accent" />
           </div>
           <div className="mt-4 space-y-3">
-            {visibleCards.map((card) => (
+            {filteredCards.map((card) => (
               <button
                 key={card.id}
                 onClick={() => {
@@ -281,6 +381,11 @@ export function ReviewClient() {
                 </div>
               </button>
             ))}
+            {filteredCards.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border bg-white px-3 py-4 text-sm leading-6 text-muted">
+                当前筛选没有复习卡。
+              </p>
+            ) : null}
           </div>
         </aside>
       </section>

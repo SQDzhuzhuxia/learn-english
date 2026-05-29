@@ -9,6 +9,11 @@ import {
   Play,
   RefreshCcw
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { dailyPlan, progressStats, reviewCards, studyQueue } from "@/lib/mock-data";
 
 export default function TodayPage() {
@@ -17,11 +22,12 @@ export default function TodayPage() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
       <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card className="overflow-hidden">
+          <CardContent className="pt-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm font-medium text-accent">{dailyPlan.dateLabel} · 今日计划</p>
-              <h1 className="mt-2 text-2xl font-semibold text-foreground sm:text-3xl">
+              <Badge variant="soft">{dailyPlan.dateLabel} · 今日计划</Badge>
+              <h1 className="mt-3 text-2xl font-semibold text-foreground sm:text-3xl">
                 {dailyPlan.title}
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">{dailyPlan.focus}</p>
@@ -31,12 +37,7 @@ export default function TodayPage() {
                 <span>今日进度</span>
                 <span>{dailyPlan.completion}%</span>
               </div>
-              <div className="h-2 rounded-full bg-white">
-                <div
-                  className="h-2 rounded-full bg-accent"
-                  style={{ width: `${dailyPlan.completion}%` }}
-                />
-              </div>
+              <Progress value={dailyPlan.completion} />
               <div className="flex items-center gap-2 text-xs text-muted">
                 <Clock3 className="h-3.5 w-3.5" />
                 {dailyPlan.durationMinutes} 分钟模式
@@ -68,24 +69,24 @@ export default function TodayPage() {
           </div>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/study"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-strong"
-            >
-              <Play className="h-4 w-4" />
-              继续今日学习
-            </Link>
-            <Link
-              href="/review"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-panel-strong"
-            >
-              <RefreshCcw className="h-4 w-4 text-accent" />
-              先完成复习
-            </Link>
+            <Button asChild size="lg">
+              <Link href="/study">
+                <Play className="h-4 w-4" />
+                继续今日学习
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link href="/review">
+                <RefreshCcw className="h-4 w-4" />
+                先完成复习
+              </Link>
+            </Button>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardContent className="pt-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-accent">当前材料</p>
@@ -102,12 +103,7 @@ export default function TodayPage() {
                 <span>{dailyPlan.currentMaterial.type} · {dailyPlan.currentMaterial.level}</span>
                 <span>{dailyPlan.currentMaterial.progress}%</span>
               </div>
-              <div className="mt-2 h-2 rounded-full bg-panel-strong">
-                <div
-                  className="h-2 rounded-full bg-accent"
-                  style={{ width: `${dailyPlan.currentMaterial.progress}%` }}
-                />
-              </div>
+              <Progress value={dailyPlan.currentMaterial.progress} className="mt-2" />
             </div>
 
             <div className="rounded-lg border border-border bg-panel-strong p-4">
@@ -119,27 +115,30 @@ export default function TodayPage() {
               </p>
             </div>
 
-            <Link
-              href="/study"
-              className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-            >
-              进入学习器
-              <ArrowRight className="h-4 w-4 text-accent" />
-            </Link>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/study">
+                进入学习器
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
           </div>
-        </aside>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+        <Card>
+          <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-accent">今日队列</p>
-              <h2 className="mt-2 text-lg font-semibold text-foreground">下一步做什么</h2>
+              <Badge variant="soft">今日队列</Badge>
+              <CardTitle className="mt-3">下一步做什么</CardTitle>
             </div>
             <Headphones className="h-5 w-5 text-accent" />
           </div>
-          <div className="mt-4 divide-y divide-border rounded-lg border border-border bg-white">
+          </CardHeader>
+          <CardContent>
+          <div className="divide-y divide-border rounded-lg border border-border bg-white">
             {studyQueue.map((item) => (
               <Link
                 href={item.href}
@@ -157,18 +156,22 @@ export default function TodayPage() {
               </Link>
             ))}
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-          <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+          <Card>
+            <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">今日复习</h2>
+              <CardTitle>今日复习</CardTitle>
               <CalendarCheck className="h-5 w-5 text-accent" />
             </div>
-            <p className="mt-2 text-sm leading-6 text-muted">
+            <CardDescription>
               {dueCards.length} 张词句卡到期，优先复习来自真实材料的句子。
-            </p>
-            <div className="mt-4 space-y-2">
+            </CardDescription>
+            </CardHeader>
+            <CardContent>
+            <div className="space-y-2">
               {dueCards.slice(0, 3).map((card) => (
                 <div key={card.id} className="rounded-lg border border-border bg-white p-3">
                   <p className="text-sm font-medium text-foreground">{card.front}</p>
@@ -176,14 +179,18 @@ export default function TodayPage() {
                 </div>
               ))}
             </div>
-          </aside>
+            </CardContent>
+          </Card>
 
-          <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+          <Card>
+            <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">本周进度</h2>
+              <CardTitle>本周进度</CardTitle>
               <CheckCircle2 className="h-5 w-5 text-accent" />
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            </CardHeader>
+            <CardContent>
+            <div className="grid grid-cols-2 gap-3">
               {progressStats.map((stat) => (
                 <div key={stat.label} className="rounded-lg border border-border bg-white p-3">
                   <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
@@ -192,15 +199,17 @@ export default function TodayPage() {
                 </div>
               ))}
             </div>
-          </aside>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+      <Card>
+        <CardContent className="pt-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-medium text-accent">学习原则</p>
-            <h2 className="mt-2 text-lg font-semibold text-foreground">今天只需要跟着流程走</h2>
+            <Badge variant="soft">学习原则</Badge>
+            <h2 className="mt-3 text-lg font-semibold text-foreground">今天只需要跟着流程走</h2>
           </div>
           <div className="grid gap-2 text-sm text-muted sm:grid-cols-3">
             {dailyPlan.habits.map((habit) => (
@@ -211,10 +220,12 @@ export default function TodayPage() {
             ))}
           </div>
         </div>
+        <Separator className="my-4" />
         <p className="mt-4 text-sm leading-6 text-muted">
           初级阶段不靠硬聊推进，先让听读输入变得可理解；输出只做跟读、复述和短句表达，所有不会的内容进入复习。
         </p>
-      </section>
+        </CardContent>
+      </Card>
     </main>
   );
 }

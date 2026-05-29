@@ -514,23 +514,25 @@ export function ReviewClient() {
 
       <section className="grid gap-5 lg:grid-cols-[1fr_320px]">
         {activeCard ? (
-          <article className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+          <Card>
+            <CardContent className="pt-5">
             <div className="flex items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-medium text-accent">
+                <Badge variant="soft">
                   {cardTypeLabels[activeCard.cardType]}
-                </span>
-                <span className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted">
+                </Badge>
+                <Badge variant={activeCard.status === "suspended" ? "warning" : "outline"}>
                   {formatDueLabel(activeCard)}
-                </span>
+                </Badge>
               </div>
-              <button
+              <Button
                 onClick={() => handleSpeakCard(activeCard)}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white hover:bg-panel-strong"
+                variant="outline"
+                size="icon"
                 aria-label="播放当前卡片"
               >
                 <Volume2 className="h-4 w-4 text-accent" />
-              </button>
+              </Button>
             </div>
 
             <div className="mt-8 rounded-lg border border-border bg-panel-strong p-5">
@@ -547,12 +549,12 @@ export function ReviewClient() {
                 <p className="mt-2 text-sm leading-6 text-amber-800">
                   暂停卡不会进入日常复习队列。恢复后会按照原来的间隔重新进入复习。
                 </p>
-                <button
+                <Button
                   onClick={() => handleRestoreCard(activeCard.id)}
-                  className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
+                  className="mt-4"
                 >
                   恢复这张卡
-                </button>
+                </Button>
               </div>
             ) : isAnswerVisible ? (
               <div className="mt-5 rounded-lg border border-border bg-white p-4">
@@ -561,13 +563,15 @@ export function ReviewClient() {
                 <p className="mt-2 text-sm text-muted">来源：{activeCard.source}</p>
               </div>
             ) : (
-              <button
+              <Button
                 onClick={() => setIsAnswerVisible(true)}
-                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
+                variant="outline"
+                size="lg"
+                className="mt-5 w-full"
               >
                 <Eye className="h-4 w-4 text-accent" />
                 显示答案
-              </button>
+              </Button>
             )}
 
             {activeCard.status !== "suspended" ? (
@@ -587,7 +591,8 @@ export function ReviewClient() {
             ) : null}
 
             {activeCardDetail ? (
-              <div className="mt-5 border-t border-border pt-5">
+              <div className="mt-5">
+                <Separator className="mb-5" />
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-foreground">卡片详情</p>
@@ -595,13 +600,12 @@ export function ReviewClient() {
                       {activeCardDetail.item?.text ?? "未找到关联词句"}
                     </p>
                   </div>
-                  <Link
-                    href="/notebook"
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-                  >
-                    管理词句
-                    <ArrowRight className="h-4 w-4 text-accent" />
-                  </Link>
+                  <Button asChild variant="outline">
+                    <Link href="/notebook">
+                      管理词句
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div>
@@ -640,15 +644,11 @@ export function ReviewClient() {
                         const isCurrentCard = groupCard.id === activeCard.id;
 
                         return (
-                          <button
+                          <Button
                             key={groupCard.id}
                             onClick={() => handleSwitchToGroupCard(groupCard)}
                             aria-current={isCurrentCard ? "true" : undefined}
-                            className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
-                              isCurrentCard
-                                ? "border-accent bg-accent-soft text-accent"
-                                : "border-border bg-white text-foreground hover:bg-panel-strong"
-                            }`}
+                            variant={isCurrentCard ? "soft" : "outline"}
                           >
                             <span>{cardTypeLabels[groupCard.cardType]}</span>
                             <span className="text-xs font-medium text-muted">
@@ -658,7 +658,7 @@ export function ReviewClient() {
                                   ? "已暂停"
                                   : formatDueLabel(groupCard)}
                             </span>
-                          </button>
+                          </Button>
                         );
                       })}
                     </div>
@@ -670,13 +670,12 @@ export function ReviewClient() {
                   </p>
                   <p className="mt-1 text-sm leading-6 text-muted">{activeCardDetail.suggestion}</p>
                   {activeCardDetail.sourceStudyHref ? (
-                    <Link
-                      href={activeCardDetail.sourceStudyHref}
-                      className="mt-3 inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-                    >
-                      回到原材料
-                      <ArrowRight className="h-4 w-4 text-accent" />
-                    </Link>
+                    <Button asChild variant="outline" size="sm" className="mt-3">
+                      <Link href={activeCardDetail.sourceStudyHref}>
+                        回到原材料
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
                   ) : null}
                 </div>
                 {activeCardDetail.recentLogs.length > 0 ? (
@@ -699,48 +698,43 @@ export function ReviewClient() {
                 ) : null}
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
                   {activeCard.status === "suspended" ? (
-                    <button
-                      onClick={() => handleRestoreCard(activeCard.id)}
-                      className="inline-flex min-h-10 items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
-                    >
+                    <Button onClick={() => handleRestoreCard(activeCard.id)}>
                       恢复复习卡
-                    </button>
+                    </Button>
                   ) : (
-                    <button
-                      onClick={() => handleSuspendCard(activeCard.id)}
-                      className="inline-flex min-h-10 items-center justify-center rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-                    >
+                    <Button onClick={() => handleSuspendCard(activeCard.id)} variant="outline">
                       暂停复习卡
-                    </button>
+                    </Button>
                   )}
-                  <button
-                    onClick={() => handleResetCard(activeCard.id)}
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100"
-                  >
+                  <Button onClick={() => handleResetCard(activeCard.id)} variant="warning">
                     重置为新卡
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : null}
-          </article>
+            </CardContent>
+          </Card>
         ) : (
-          <article className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-            <p className="text-sm font-medium text-accent">当前筛选</p>
-            <h2 className="mt-2 text-xl font-semibold text-foreground">暂无匹配复习卡</h2>
-            <p className="mt-3 text-sm leading-6 text-muted">
-              这个筛选范围里暂时没有卡片，可以切回全部队列继续复习。
-            </p>
-            <button
-              onClick={() => {
-                setQueueFilter("all");
-                setCardTypeFilter("all");
-                setIsAnswerVisible(false);
-              }}
-              className="mt-5 inline-flex min-h-10 items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
-            >
-              查看全部队列
-            </button>
-          </article>
+          <Card>
+            <CardHeader>
+              <Badge variant="soft" className="w-fit">当前筛选</Badge>
+              <CardTitle>暂无匹配复习卡</CardTitle>
+              <CardDescription>
+                这个筛选范围里暂时没有卡片，可以切回全部队列继续复习。
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={() => {
+                  setQueueFilter("all");
+                  setCardTypeFilter("all");
+                  setIsAnswerVisible(false);
+                }}
+              >
+                查看全部队列
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         <Card>

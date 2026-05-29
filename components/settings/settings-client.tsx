@@ -3,6 +3,10 @@
 import { useRef, useState } from "react";
 import { Cloud, Database, Download, KeyRound, Upload } from "lucide-react";
 import { CloudSyncPanel } from "@/components/settings/cloud-sync-panel";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { settingsGroups } from "@/lib/mock-data";
 import {
   createLocalBackup,
@@ -67,27 +71,32 @@ export function SettingsClient() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-      <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-        <p className="text-sm font-medium text-accent">设置</p>
-        <h1 className="mt-2 text-2xl font-semibold text-foreground">学习和系统配置</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          这里管理学习目标、AI 和语音、云同步与离线，以及当前阶段的数据迁移。
-        </p>
+      <Card>
+        <CardHeader>
+          <Badge variant="soft" className="w-fit">设置</Badge>
+          <CardTitle className="text-2xl">学习和系统配置</CardTitle>
+          <CardDescription className="max-w-3xl">
+            这里管理学习目标、AI 和语音、云同步与离线，以及当前阶段的数据迁移。
+          </CardDescription>
+        </CardHeader>
         {message ? (
-          <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
-            {message}
-          </p>
+          <CardContent>
+            <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+              {message}
+            </p>
+          </CardContent>
         ) : null}
-      </section>
+      </Card>
 
       <section className="grid gap-5">
         {settingsGroups.map((group) => (
-          <article key={group.title} className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">{group.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">{group.description}</p>
-            </div>
-            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          <Card key={group.title}>
+            <CardHeader>
+              <CardTitle>{group.title}</CardTitle>
+              <CardDescription>{group.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+            <div className="grid gap-3 lg:grid-cols-3">
               {group.items.map((item) => (
                 <div key={item.label} className="rounded-lg border border-border bg-white p-4">
                   <div className="flex items-start gap-3">
@@ -103,24 +112,28 @@ export function SettingsClient() {
                 </div>
               ))}
             </div>
-          </article>
+            </CardContent>
+          </Card>
         ))}
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
         <CloudSyncPanel />
 
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
-              <Database className="h-5 w-5" />
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                <Database className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle>数据策略</CardTitle>
+                <CardDescription>个人学习数据优先可导出、可迁移。</CardDescription>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">数据策略</h2>
-              <p className="mt-1 text-sm text-muted">个人学习数据优先可导出、可迁移。</p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          </CardHeader>
+          <CardContent>
+          <div className="grid gap-2 sm:grid-cols-2">
             {["材料", "词句", "复习记录", "练习反馈"].map((item) => (
               <div
                 key={item}
@@ -130,28 +143,20 @@ export function SettingsClient() {
               </div>
             ))}
           </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <button
-              onClick={handleExport}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-strong"
-            >
+          <Separator className="my-5" />
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Button onClick={handleExport}>
               <Download className="h-4 w-4" />
               导出数据
-            </button>
-            <button
-              onClick={handleCreateSyncSnapshot}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-            >
-              <Cloud className="h-4 w-4 text-accent" />
+            </Button>
+            <Button onClick={handleCreateSyncSnapshot} variant="outline">
+              <Cloud className="h-4 w-4" />
               同步快照
-            </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
-            >
-              <Upload className="h-4 w-4 text-accent" />
+            </Button>
+            <Button onClick={() => fileInputRef.current?.click()} variant="outline">
+              <Upload className="h-4 w-4" />
               导入数据
-            </button>
+            </Button>
             <input
               ref={fileInputRef}
               type="file"
@@ -160,25 +165,30 @@ export function SettingsClient() {
               onChange={(event) => void handleImport(event.target.files?.[0])}
             />
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
-              <KeyRound className="h-5 w-5" />
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle>本地开发提示</CardTitle>
+                <CardDescription>密钥放在 `.env`，仓库只保留 `.env.example`。</CardDescription>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">本地开发提示</h2>
-              <p className="mt-1 text-sm text-muted">密钥放在 `.env`，仓库只保留 `.env.example`。</p>
-            </div>
-          </div>
-          <div className="mt-4 rounded-lg border border-border bg-white p-4">
+          </CardHeader>
+          <CardContent>
+          <div className="rounded-lg border border-border bg-white p-4">
             <p className="text-sm font-semibold text-foreground">可迁移数据</p>
             <p className="mt-2 text-sm leading-6 text-muted">
               导出的 JSON 会包含当前浏览器里以 `learn-english.` 开头的本地学习数据。
             </p>
           </div>
-        </div>
+          </CardContent>
+        </Card>
       </section>
     </main>
   );

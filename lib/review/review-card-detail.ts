@@ -9,10 +9,19 @@ export type ReviewCardDetail = {
   latestRating?: ReviewRating;
   latestReviewedAt?: string;
   needsAttention: boolean;
+  groupCards: ReviewCardRecord[];
   statusLabel: string;
   sourceStudyHref?: string;
   suggestion: string;
 };
+
+const cardTypeOrder: ReviewCardRecord["cardType"][] = [
+  "recognition",
+  "listening",
+  "spelling",
+  "speaking",
+  "production"
+];
 
 const statusLabels: Record<ReviewCardRecord["status"], string> = {
   new: "新卡",
@@ -50,9 +59,14 @@ function getLatestLog(logs: ReviewLogRecord[]) {
 export function getReviewCardDetail(
   card: ReviewCardRecord,
   items: LearningItemRecord[],
-  logs: ReviewLogRecord[]
+  logs: ReviewLogRecord[],
+  cards: ReviewCardRecord[] = []
 ): ReviewCardDetail {
   const item = items.find((record) => record.id === card.learningItemId);
+  const groupCards = cards
+    .filter((record) => record.learningItemId === card.learningItemId)
+    .concat(cards.some((record) => record.id === card.id) ? [] : [card])
+    .sort((left, right) => cardTypeOrder.indexOf(left.cardType) - cardTypeOrder.indexOf(right.cardType));
   const cardLogs = logs
     .filter((log) => log.cardId === card.id)
     .sort((left, right) => new Date(right.reviewedAt).getTime() - new Date(left.reviewedAt).getTime());
@@ -70,6 +84,7 @@ export function getReviewCardDetail(
     latestRating,
     latestReviewedAt: latestLog?.reviewedAt,
     needsAttention,
+    groupCards,
     statusLabel: statusLabels[card.status],
     sourceStudyHref,
     suggestion: needsAttention ? attentionSuggestions[card.cardType] : stableSuggestions[card.cardType]

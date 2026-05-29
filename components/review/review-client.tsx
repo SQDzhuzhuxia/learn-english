@@ -157,8 +157,8 @@ export function ReviewClient() {
   const queueStats = useMemo(() => getReviewQueueStats(cards), [cards]);
   const diagnostics = useMemo(() => summarizeReviewLogs(logs), [logs]);
   const activeCardDetail = useMemo(
-    () => (activeCard ? getReviewCardDetail(activeCard, items, logs) : undefined),
-    [activeCard, items, logs]
+    () => (activeCard ? getReviewCardDetail(activeCard, items, logs, cards) : undefined),
+    [activeCard, cards, items, logs]
   );
   const typeStats = Object.entries(queueStats.byType).filter(([, count]) => count > 0) as Array<
     [ReviewCardRecord["cardType"], number]
@@ -248,6 +248,13 @@ export function ReviewClient() {
 
   function handleClearCardSelection() {
     setSelectedCardIds([]);
+  }
+
+  function handleSwitchToGroupCard(card: ReviewCardRecord) {
+    setActiveCardId(card.id);
+    setQueueFilter(card.status === "suspended" ? "paused" : "all");
+    setCardTypeFilter((current) => (current === "all" || current === card.cardType ? current : "all"));
+    setIsAnswerVisible(false);
   }
 
   function handleBulkSuspendCards() {
@@ -621,6 +628,38 @@ export function ReviewClient() {
                     </p>
                   </div>
                 </div>
+                {activeCardDetail.groupCards.length > 1 ? (
+                  <div className="mt-4 border-t border-border pt-4">
+                    <p className="text-sm font-semibold text-foreground">同组卡片</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {activeCardDetail.groupCards.map((groupCard) => {
+                        const isCurrentCard = groupCard.id === activeCard.id;
+
+                        return (
+                          <button
+                            key={groupCard.id}
+                            onClick={() => handleSwitchToGroupCard(groupCard)}
+                            aria-current={isCurrentCard ? "true" : undefined}
+                            className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
+                              isCurrentCard
+                                ? "border-accent bg-accent-soft text-accent"
+                                : "border-border bg-white text-foreground hover:bg-panel-strong"
+                            }`}
+                          >
+                            <span>{cardTypeLabels[groupCard.cardType]}</span>
+                            <span className="text-xs font-medium text-muted">
+                              {isCurrentCard
+                                ? "当前"
+                                : groupCard.status === "suspended"
+                                  ? "已暂停"
+                                  : formatDueLabel(groupCard)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="mt-4 border-l-2 border-accent pl-3">
                   <p className="text-xs font-medium text-accent">
                     {activeCardDetail.needsAttention ? "回炉建议" : "练习建议"}

@@ -99,6 +99,30 @@ describe("getReviewCardDetail", () => {
     expect(detail.sourceStudyHref).toBeUndefined();
   });
 
+  it("returns sibling cards from the same learning item in practice order", () => {
+    const recognitionCard = createCard({ id: "card-recognition", cardType: "recognition" });
+    const productionCard = createCard({ id: "card-production", cardType: "production" });
+    const listeningCard = createCard({ id: "card-listening", cardType: "listening" });
+    const otherItemCard = createCard({
+      id: "card-other",
+      learningItemId: "item-2",
+      cardType: "spelling"
+    });
+
+    const detail = getReviewCardDetail(
+      productionCard,
+      [createItem()],
+      [],
+      [productionCard, otherItemCard, listeningCard, recognitionCard]
+    );
+
+    expect(detail.groupCards.map((card) => card.id)).toEqual([
+      "card-recognition",
+      "card-listening",
+      "card-production"
+    ]);
+  });
+
   it("keeps only the three newest review logs in detail history", () => {
     const detail = getReviewCardDetail(
       createCard(),

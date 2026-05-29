@@ -104,6 +104,8 @@ export function PracticeClient() {
   const [retellingText, setRetellingText] = useState("");
   const [retellingFeedback, setRetellingFeedback] = useState<RetellingFeedback | null>(null);
   const [retellingMessage, setRetellingMessage] = useState("");
+  const [retellingSaveMessage, setRetellingSaveMessage] = useState("");
+  const [savedRetellingKeys, setSavedRetellingKeys] = useState<Record<string, boolean>>({});
   const [selectedWritingIndex, setSelectedWritingIndex] = useState(0);
   const [writingText, setWritingText] = useState("");
   const [writingCorrection, setWritingCorrection] = useState<AiWritingCorrection | null>(null);
@@ -192,6 +194,66 @@ export function PracticeClient() {
     setRetellingFeedback(nextFeedback);
     setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
     setRetellingMessage("已保存本次复述记录。");
+    setRetellingSaveMessage("");
+    setSavedRetellingKeys({});
+  }
+
+  function createRetellingSaveKey(kind: "sentence" | "expression", text: string) {
+    return `retelling:${kind}:${text.trim().toLowerCase()}`;
+  }
+
+  function markRetellingItemSaved(key: string) {
+    setSavedRetellingKeys((current) => ({
+      ...current,
+      [key]: true
+    }));
+  }
+
+  function handleSaveRetellingSentence() {
+    if (!retellingText.trim()) {
+      setRetellingSaveMessage("请先完成一段复述。");
+      return;
+    }
+
+    const key = createRetellingSaveKey("sentence", retellingText);
+    const result = saveWritingItemAsReviewCard({
+      kind: "corrected-sentence",
+      promptTitle: retellingPractice.title,
+      prompt: retellingPractice.prompt,
+      originalText: retellingPractice.sourceSummary,
+      correctedText: retellingText.trim(),
+      text: retellingText.trim(),
+      meaningZh: "我的复述句",
+      example: retellingText.trim()
+    });
+
+    markRetellingItemSaved(key);
+    setRetellingSaveMessage(
+      result.created
+        ? `已保存复述句，并生成 ${result.cards?.length ?? 1} 张复习卡。`
+        : "这条复述句已经在复习系统里。"
+    );
+  }
+
+  function handleSaveRetellingExpression(expression: string) {
+    const key = createRetellingSaveKey("expression", expression);
+    const result = saveWritingItemAsReviewCard({
+      kind: "expression",
+      promptTitle: retellingPractice.title,
+      prompt: retellingPractice.prompt,
+      originalText: retellingPractice.sourceSummary,
+      correctedText: retellingText.trim(),
+      text: expression,
+      meaningZh: "复述关键词",
+      example: retellingText.trim() || retellingPractice.sourceSummary
+    });
+
+    markRetellingItemSaved(key);
+    setRetellingSaveMessage(
+      result.created
+        ? `已保存表达“${expression}”，并生成 ${result.cards?.length ?? 1} 张复习卡。`
+        : `表达“${expression}”已经在复习系统里。`
+    );
   }
 
   async function handleCorrectWriting() {
@@ -720,6 +782,47 @@ export function PracticeClient() {
                   {retellingMessage}
                 </p>
               ) : null}
+
+              <div className="mt-3 rounded-lg border border-border bg-panel-strong p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-semibold text-foreground">沉淀到复习</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveRetellingSentence}
+                    disabled={savedRetellingKeys[createRetellingSaveKey("sentence", retellingText)]}
+                  >
+                    <Plus className="h-4 w-4 text-accent" />
+                    {savedRetellingKeys[createRetellingSaveKey("sentence", retellingText)]
+                      ? "已保存复述句"
+                      : "保存复述句"}
+                  </Button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {retellingPractice.usefulWords.map((word) => {
+                    const key = createRetellingSaveKey("expression", word);
+
+                    return (
+                      <Button
+                        key={word}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSaveRetellingExpression(word)}
+                        disabled={savedRetellingKeys[key]}
+                        className="h-8 text-xs"
+                      >
+                        <Plus className="h-3.5 w-3.5 text-accent" />
+                        {savedRetellingKeys[key] ? "已保存" : word}
+                      </Button>
+                    );
+                  })}
+                </div>
+                {retellingSaveMessage ? (
+                  <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                    {retellingSaveMessage}
+                  </p>
+                ) : null}
+              </div>
 
               {retellingFeedback ? (
                 <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">

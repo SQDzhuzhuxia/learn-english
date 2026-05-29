@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { AppShell } from "@/components/layout/app-shell";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
+import { CloudAutoSync } from "@/components/sync/cloud-auto-sync";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -28,6 +29,7 @@ export default function RootLayout({
     <html lang="zh-CN">
       <body>
         <ServiceWorkerRegister />
+        <CloudAutoSync />
         <AppShell>{children}</AppShell>
       </body>
     </html>

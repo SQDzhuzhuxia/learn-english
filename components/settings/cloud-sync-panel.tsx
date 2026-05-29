@@ -12,6 +12,12 @@ import {
   uploadSyncSnapshot
 } from "@/lib/sync/cloud-sync";
 import type { CloudSyncClient } from "@/lib/sync/cloud-sync";
+import {
+  createSyncSnapshotFingerprint,
+  loadAutoSyncPreference,
+  saveAutoSyncPreference,
+  saveAutoSyncUploadState
+} from "@/lib/sync/auto-sync";
 import { createLocalSyncSnapshot, restoreSyncRecords } from "@/lib/sync/local-backup";
 import { summarizeSyncSnapshot } from "@/lib/sync/sync-snapshot";
 
@@ -26,6 +32,7 @@ export function CloudSyncPanel() {
   const [sessionEmail, setSessionEmail] = useState("");
   const [message, setMessage] = useState(config.configured ? "" : "Supabase 未配置。");
   const [loading, setLoading] = useState(false);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(() => loadAutoSyncPreference());
 
   useEffect(() => {
     if (!supabase) {
@@ -103,13 +110,21 @@ export function CloudSyncPanel() {
 
     try {
       const snapshot = createLocalSyncSnapshot("browser");
+      const fingerprint = createSyncSnapshotFingerprint(snapshot);
       const result = await uploadSyncSnapshot(supabase as unknown as CloudSyncClient, data.user.id, snapshot);
+      saveAutoSyncUploadState(fingerprint);
       setMessage(`已上传 ${result.uploadedRecords} 组数据，${result.totalBytes} bytes。`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "云同步上传失败。");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleToggleAutoSync(enabled: boolean) {
+    saveAutoSyncPreference(enabled);
+    setAutoSyncEnabled(enabled);
+    setMessage(enabled ? "已开启自动上传变化快照。" : "已关闭自动上传。");
   }
 
   async function handleCheckRemoteChanges() {
@@ -251,6 +266,24 @@ export function CloudSyncPanel() {
           </button>
         </div>
       )}
+
+      <div className="mt-4 border-t border-border pt-4">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={autoSyncEnabled}
+            disabled={!config.configured || loading}
+            onChange={(event) => handleToggleAutoSync(event.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-border text-accent disabled:cursor-not-allowed"
+          />
+          <span>
+            <span className="block text-sm font-semibold text-foreground">自动上传变化快照</span>
+            <span className="mt-1 block text-sm leading-6 text-muted">
+              登录后会在回到前台、恢复在线和固定间隔时上传变化数据；本地学习不受同步失败影响。
+            </span>
+          </span>
+        </label>
+      </div>
 
       {message ? (
         <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">

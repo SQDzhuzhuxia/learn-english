@@ -741,6 +741,59 @@ export function archiveLearningItem(itemId: string) {
   return archivedItem;
 }
 
+export function archiveLearningItems(itemIds: string[]) {
+  const timestamp = nowIso();
+  const targetIds = new Set(itemIds);
+  const items = loadLearningItems();
+  const itemIdsToArchive = new Set(
+    items
+      .filter((item) => targetIds.has(item.id) && item.status !== "archived")
+      .map((item) => item.id)
+  );
+
+  if (itemIdsToArchive.size === 0) {
+    return {
+      archivedItems: 0,
+      suspendedCards: 0
+    };
+  }
+
+  saveLearningItems(
+    items.map((item) =>
+      itemIdsToArchive.has(item.id)
+        ? {
+            ...item,
+            status: "archived" as const,
+            archivedAt: timestamp,
+            updatedAt: timestamp
+          }
+        : item
+    )
+  );
+
+  let suspendedCards = 0;
+  saveReviewCards(
+    loadReviewCards().map((card) => {
+      if (!itemIdsToArchive.has(card.learningItemId) || card.status === "suspended") {
+        return card;
+      }
+
+      suspendedCards += 1;
+
+      return {
+        ...card,
+        status: "suspended" as const,
+        updatedAt: timestamp
+      };
+    })
+  );
+
+  return {
+    archivedItems: itemIdsToArchive.size,
+    suspendedCards
+  };
+}
+
 export function restoreLearningItem(itemId: string) {
   const timestamp = nowIso();
   let restoredItem: LearningItemRecord | undefined;
@@ -776,6 +829,59 @@ export function restoreLearningItem(itemId: string) {
   return restoredItem;
 }
 
+export function restoreLearningItems(itemIds: string[]) {
+  const timestamp = nowIso();
+  const targetIds = new Set(itemIds);
+  const items = loadLearningItems();
+  const itemIdsToRestore = new Set(
+    items
+      .filter((item) => targetIds.has(item.id) && item.status === "archived")
+      .map((item) => item.id)
+  );
+
+  if (itemIdsToRestore.size === 0) {
+    return {
+      restoredItems: 0,
+      restoredCards: 0
+    };
+  }
+
+  saveLearningItems(
+    items.map((item) =>
+      itemIdsToRestore.has(item.id)
+        ? {
+            ...item,
+            status: "active" as const,
+            archivedAt: undefined,
+            updatedAt: timestamp
+          }
+        : item
+    )
+  );
+
+  let restoredCards = 0;
+  saveReviewCards(
+    loadReviewCards().map((card) => {
+      if (!itemIdsToRestore.has(card.learningItemId) || card.status !== "suspended") {
+        return card;
+      }
+
+      restoredCards += 1;
+
+      return {
+        ...card,
+        status: card.intervalDays > 0 ? "review" : "new",
+        updatedAt: timestamp
+      };
+    })
+  );
+
+  return {
+    restoredItems: itemIdsToRestore.size,
+    restoredCards
+  };
+}
+
 export function deleteLearningItem(itemId: string) {
   const items = loadLearningItems();
   const cards = loadReviewCards();
@@ -783,6 +889,26 @@ export function deleteLearningItem(itemId: string) {
   const cardIdsToDelete = new Set(cardsToDelete.map((card) => card.id));
   const nextItems = items.filter((item) => item.id !== itemId);
   const nextCards = cards.filter((card) => card.learningItemId !== itemId);
+  const nextLogs = loadReviewLogs().filter((log) => !cardIdsToDelete.has(log.cardId));
+
+  saveLearningItems(nextItems);
+  saveReviewCards(nextCards);
+  saveReviewLogs(nextLogs);
+
+  return {
+    deletedItems: items.length - nextItems.length,
+    deletedCards: cardsToDelete.length
+  };
+}
+
+export function deleteLearningItems(itemIds: string[]) {
+  const targetIds = new Set(itemIds);
+  const items = loadLearningItems();
+  const cards = loadReviewCards();
+  const cardsToDelete = cards.filter((card) => targetIds.has(card.learningItemId));
+  const cardIdsToDelete = new Set(cardsToDelete.map((card) => card.id));
+  const nextItems = items.filter((item) => !targetIds.has(item.id));
+  const nextCards = cards.filter((card) => !targetIds.has(card.learningItemId));
   const nextLogs = loadReviewLogs().filter((log) => !cardIdsToDelete.has(log.cardId));
 
   saveLearningItems(nextItems);

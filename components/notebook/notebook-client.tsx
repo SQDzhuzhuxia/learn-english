@@ -17,12 +17,15 @@ import {
 } from "lucide-react";
 import {
   archiveLearningItem,
+  archiveLearningItems,
   deleteLearningItem,
+  deleteLearningItems,
   getSeedLearningItems,
   getSeedReviewCards,
   loadLearningItems,
   loadReviewCards,
   restoreLearningItem,
+  restoreLearningItems,
   updateLearningItem
 } from "@/lib/review/review-store";
 import { isCardDue } from "@/lib/review/review-store";
@@ -111,6 +114,7 @@ export function NotebookClient() {
   const [activeFilter, setActiveFilter] = useState("全部");
   const [editingItemId, setEditingItemId] = useState("");
   const [editForm, setEditForm] = useState<EditFormState | null>(null);
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -165,6 +169,15 @@ export function NotebookClient() {
       return matchesQuery && matchesFilter;
     });
   }, [activeFilter, cards, items, query]);
+
+  const selectedItems = useMemo(
+    () => items.filter((item) => selectedItemIds.includes(item.id)),
+    [items, selectedItemIds]
+  );
+  const selectedActiveItems = selectedItems.filter((item) => item.status !== "archived");
+  const selectedArchivedItems = selectedItems.filter((item) => item.status === "archived");
+  const allFilteredSelected =
+    filteredItems.length > 0 && filteredItems.every((item) => selectedItemIds.includes(item.id));
 
   function refreshNotebook() {
     setItems(loadLearningItems());
@@ -226,8 +239,56 @@ export function NotebookClient() {
 
     deleteLearningItem(itemId);
     refreshNotebook();
+    setSelectedItemIds((current) => current.filter((id) => id !== itemId));
     handleCancelEdit();
     setMessage("已删除词句和关联复习卡。");
+  }
+
+  function handleToggleSelect(itemId: string) {
+    setSelectedItemIds((current) =>
+      current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId]
+    );
+  }
+
+  function handleToggleSelectFiltered() {
+    const filteredIds = filteredItems.map((item) => item.id);
+
+    setSelectedItemIds((current) => {
+      if (allFilteredSelected) {
+        return current.filter((id) => !filteredIds.includes(id));
+      }
+
+      return Array.from(new Set([...current, ...filteredIds]));
+    });
+  }
+
+  function handleBulkArchive() {
+    const result = archiveLearningItems(selectedActiveItems.map((item) => item.id));
+    refreshNotebook();
+    setSelectedItemIds([]);
+    setMessage(`已批量归档 ${result.archivedItems} 个词句，暂停 ${result.suspendedCards} 张复习卡。`);
+  }
+
+  function handleBulkRestore() {
+    const result = restoreLearningItems(selectedArchivedItems.map((item) => item.id));
+    refreshNotebook();
+    setSelectedItemIds([]);
+    setActiveFilter("全部");
+    setMessage(`已批量恢复 ${result.restoredItems} 个词句，恢复 ${result.restoredCards} 张复习卡。`);
+  }
+
+  function handleBulkDelete() {
+    const confirmed = window.confirm("批量删除后会移除关联复习卡和复习日志，确定删除吗？");
+
+    if (!confirmed) {
+      return;
+    }
+
+    const result = deleteLearningItems(selectedItems.map((item) => item.id));
+    refreshNotebook();
+    setSelectedItemIds([]);
+    handleCancelEdit();
+    setMessage(`已批量删除 ${result.deletedItems} 个词句和 ${result.deletedCards} 张复习卡。`);
   }
 
   return (
@@ -288,6 +349,55 @@ export function NotebookClient() {
               </button>
             ))}
           </div>
+
+          {filteredItems.length > 0 ? (
+            <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 lg:flex-row lg:items-center lg:justify-between">
+              <p className="text-sm text-muted">
+                已选择 <span className="font-semibold text-foreground">{selectedItems.length}</span> 条
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleToggleSelectFiltered}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong"
+                >
+                  <Check className="h-4 w-4 text-accent" />
+                  {allFilteredSelected ? "取消当前结果" : "选择当前结果"}
+                </button>
+                <button
+                  onClick={() => setSelectedItemIds([])}
+                  disabled={selectedItems.length === 0}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <CircleX className="h-4 w-4 text-muted" />
+                  清空选择
+                </button>
+                <button
+                  onClick={handleBulkArchive}
+                  disabled={selectedActiveItems.length === 0}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <Archive className="h-4 w-4 text-muted" />
+                  批量归档
+                </button>
+                <button
+                  onClick={handleBulkRestore}
+                  disabled={selectedArchivedItems.length === 0}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <ArchiveRestore className="h-4 w-4" />
+                  批量恢复
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={selectedItems.length === 0}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  批量删除
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <aside className="rounded-lg border border-border bg-panel p-5 shadow-sm">
@@ -327,16 +437,27 @@ export function NotebookClient() {
           return (
             <article key={item.id} className="rounded-lg border border-border bg-panel p-5 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-medium text-accent">
-                      {getTypeLabel(item.type)}
-                    </span>
-                    <span className={`rounded-md border px-2 py-1 text-xs font-medium ${reviewState.tone}`}>
-                      {reviewState.label}
-                    </span>
+                <div className="flex gap-3">
+                  <label className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedItemIds.includes(item.id)}
+                      onChange={() => handleToggleSelect(item.id)}
+                      className="h-4 w-4 rounded border-border text-accent"
+                      aria-label={`选择词句：${item.text}`}
+                    />
+                  </label>
+                  <div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-medium text-accent">
+                        {getTypeLabel(item.type)}
+                      </span>
+                      <span className={`rounded-md border px-2 py-1 text-xs font-medium ${reviewState.tone}`}>
+                        {reviewState.label}
+                      </span>
+                    </div>
+                    <h2 className="mt-3 text-lg font-semibold leading-7 text-foreground">{item.text}</h2>
                   </div>
-                  <h2 className="mt-3 text-lg font-semibold leading-7 text-foreground">{item.text}</h2>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <button

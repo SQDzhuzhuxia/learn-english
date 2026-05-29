@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   archiveLearningItem,
+  archiveLearningItems,
   deleteLearningItem,
+  deleteLearningItems,
   isCardDue,
   loadLearningItems,
   loadReviewCards,
   restoreLearningItem,
+  restoreLearningItems,
   saveExpressionAsReviewCard,
   saveSegmentAsReviewCard,
   saveWritingItemAsReviewCard,
@@ -115,6 +118,63 @@ describe("learning item management", () => {
     expect(result.deletedCards).toBe(1);
     expect(loadLearningItems().some((record) => record.id === "seed-item-spell-name")).toBe(false);
     expect(loadReviewCards().some((record) => record.learningItemId === "seed-item-spell-name")).toBe(false);
+  });
+
+  it("archives, restores, and deletes learning items in bulk", () => {
+    loadLearningItems();
+    loadReviewCards();
+
+    const archiveResult = archiveLearningItems([
+      "seed-item-appointment",
+      "seed-item-sore-throat",
+      "missing-item"
+    ]);
+
+    expect(archiveResult).toEqual({
+      archivedItems: 2,
+      suspendedCards: 2
+    });
+    expect(
+      loadLearningItems()
+        .filter((item) => ["seed-item-appointment", "seed-item-sore-throat"].includes(item.id))
+        .every((item) => item.status === "archived")
+    ).toBe(true);
+    expect(
+      loadReviewCards()
+        .filter((card) => ["seed-item-appointment", "seed-item-sore-throat"].includes(card.learningItemId))
+        .every((card) => card.status === "suspended")
+    ).toBe(true);
+
+    const restoreResult = restoreLearningItems(["seed-item-appointment", "seed-item-sore-throat"]);
+
+    expect(restoreResult).toEqual({
+      restoredItems: 2,
+      restoredCards: 2
+    });
+    expect(
+      loadLearningItems()
+        .filter((item) => ["seed-item-appointment", "seed-item-sore-throat"].includes(item.id))
+        .every((item) => item.status === "active")
+    ).toBe(true);
+    expect(
+      loadReviewCards()
+        .filter((card) => ["seed-item-appointment", "seed-item-sore-throat"].includes(card.learningItemId))
+        .every((card) => card.status === "new")
+    ).toBe(true);
+
+    const deleteResult = deleteLearningItems(["seed-item-appointment", "seed-item-sore-throat"]);
+
+    expect(deleteResult).toEqual({
+      deletedItems: 2,
+      deletedCards: 2
+    });
+    expect(loadLearningItems().some((item) => item.id === "seed-item-appointment")).toBe(false);
+    expect(loadLearningItems().some((item) => item.id === "seed-item-sore-throat")).toBe(false);
+    expect(
+      loadReviewCards().some((card) =>
+        ["seed-item-appointment", "seed-item-sore-throat"].includes(card.learningItemId)
+      )
+    ).toBe(false);
   });
 
   it("saves an expression as a review card without duplicates", () => {

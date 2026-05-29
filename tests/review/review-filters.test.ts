@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { filterReviewCards } from "@/lib/review/review-filters";
-import type { ReviewCardRecord } from "@/lib/review/types";
+import type { ReviewCardRecord, ReviewLogRecord } from "@/lib/review/types";
 
 function createCard(overrides: Partial<ReviewCardRecord>): ReviewCardRecord {
   return {
@@ -17,6 +17,16 @@ function createCard(overrides: Partial<ReviewCardRecord>): ReviewCardRecord {
     status: overrides.status ?? "new",
     createdAt: overrides.createdAt ?? "2026-05-28T00:00:00.000Z",
     updatedAt: overrides.updatedAt ?? "2026-05-28T00:00:00.000Z"
+  };
+}
+
+function createLog(overrides: Partial<ReviewLogRecord>): ReviewLogRecord {
+  return {
+    id: overrides.id ?? "log-1",
+    cardId: overrides.cardId ?? "card-1",
+    rating: overrides.rating ?? "good",
+    reviewedAt: overrides.reviewedAt ?? "2026-05-29T00:00:00.000Z",
+    nextDueAt: overrides.nextDueAt ?? "2026-06-02T00:00:00.000Z"
   };
 }
 
@@ -84,5 +94,41 @@ describe("filterReviewCards", () => {
     expect(
       filterReviewCards(cards, { queue: "due", cardType: "listening", referenceDate })
     ).toHaveLength(0);
+  });
+
+  it("filters attention cards by the latest again or hard rating", () => {
+    const attentionCards = filterReviewCards(cards, {
+      queue: "attention",
+      cardType: "all",
+      referenceDate,
+      logs: [
+        createLog({
+          id: "old-hard",
+          cardId: "due-recognition",
+          rating: "hard",
+          reviewedAt: "2026-05-28T08:00:00.000Z"
+        }),
+        createLog({
+          id: "latest-good",
+          cardId: "due-recognition",
+          rating: "good",
+          reviewedAt: "2026-05-29T08:00:00.000Z"
+        }),
+        createLog({
+          id: "latest-again",
+          cardId: "new-production",
+          rating: "again",
+          reviewedAt: "2026-05-29T09:00:00.000Z"
+        }),
+        createLog({
+          id: "latest-hard",
+          cardId: "future-listening",
+          rating: "hard",
+          reviewedAt: "2026-05-29T10:00:00.000Z"
+        })
+      ]
+    });
+
+    expect(attentionCards.map((card) => card.id)).toEqual(["new-production", "future-listening"]);
   });
 });

@@ -33,7 +33,8 @@ const queueFilterOptions: Array<{ id: ReviewQueueFilter; label: string }> = [
   { id: "all", label: "全部" },
   { id: "due", label: "到期" },
   { id: "new", label: "新卡" },
-  { id: "future", label: "未来" }
+  { id: "future", label: "未来" },
+  { id: "attention", label: "回炉" }
 ];
 
 const cardTypeFilterOptions: Array<{ id: ReviewCardTypeFilter; label: string }> = [
@@ -109,8 +110,8 @@ export function ReviewClient() {
   const visibleCards = useMemo(() => cards.filter((card) => card.status !== "suspended"), [cards]);
   const dueCards = useMemo(() => visibleCards.filter((card) => isCardDue(card)), [visibleCards]);
   const filteredCards = useMemo(
-    () => filterReviewCards(cards, { queue: queueFilter, cardType: cardTypeFilter }),
-    [cards, cardTypeFilter, queueFilter]
+    () => filterReviewCards(cards, { queue: queueFilter, cardType: cardTypeFilter, logs }),
+    [cards, cardTypeFilter, logs, queueFilter]
   );
   const activeCard =
     filteredCards.find((card) => card.id === activeCardId) ??
@@ -126,12 +127,14 @@ export function ReviewClient() {
   function handleRate(cardId: string, rating: ReviewRating) {
     const updated = reviewCard(cardId, rating);
     const nextCards = loadReviewCards();
+    const nextLogs = loadReviewLogs();
     const nextFilteredCards = filterReviewCards(nextCards, {
       queue: queueFilter,
-      cardType: cardTypeFilter
+      cardType: cardTypeFilter,
+      logs: nextLogs
     });
     setCards(nextCards);
-    setLogs(loadReviewLogs());
+    setLogs(nextLogs);
 
     const nextDue = nextFilteredCards.find((card) => isCardDue(card) && card.id !== cardId);
     const nextQueued = nextFilteredCards.find((card) => card.id !== cardId) ?? nextFilteredCards[0];
@@ -157,7 +160,7 @@ export function ReviewClient() {
     window.speechSynthesis.speak(utterance);
   }
 
-  if (!activeCard) {
+  if (visibleCards.length === 0) {
     return (
       <main className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
         <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
@@ -217,7 +220,7 @@ export function ReviewClient() {
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <div>
               <p className="text-xs font-medium text-muted">队列筛选</p>
-              <div className="mt-2 grid grid-cols-4 gap-1 rounded-lg border border-border bg-white p-1">
+              <div className="mt-2 grid grid-cols-5 gap-1 rounded-lg border border-border bg-white p-1">
                 {queueFilterOptions.map((option) => (
                   <button
                     key={option.id}

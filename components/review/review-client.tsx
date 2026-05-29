@@ -10,6 +10,7 @@ import {
   loadReviewCards,
   reviewCard
 } from "@/lib/review/review-store";
+import { getReviewQueueStats } from "@/lib/review/review-stats";
 import type { ReviewCardRecord } from "@/lib/review/types";
 import type { ReviewRating } from "@/lib/review/scheduler";
 
@@ -75,7 +76,10 @@ export function ReviewClient() {
   const dueCards = useMemo(() => visibleCards.filter((card) => isCardDue(card)), [visibleCards]);
   const activeCard =
     visibleCards.find((card) => card.id === activeCardId) ?? dueCards[0] ?? visibleCards[0];
-  const newCards = visibleCards.filter((card) => card.status === "new").length;
+  const queueStats = useMemo(() => getReviewQueueStats(cards), [cards]);
+  const typeStats = Object.entries(queueStats.byType).filter(([, count]) => count > 0) as Array<
+    [ReviewCardRecord["cardType"], number]
+  >;
 
   function handleRate(cardId: string, rating: ReviewRating) {
     const updated = reviewCard(cardId, rating);
@@ -141,14 +145,27 @@ export function ReviewClient() {
               <p className="mt-1 text-xs text-muted">今日到期</p>
             </div>
             <div className="rounded-lg border border-border bg-white p-4">
-              <p className="text-2xl font-semibold text-foreground">{newCards}</p>
+              <p className="text-2xl font-semibold text-foreground">{queueStats.new}</p>
               <p className="mt-1 text-xs text-muted">新卡</p>
             </div>
             <div className="rounded-lg border border-border bg-white p-4">
-              <p className="text-2xl font-semibold text-foreground">{visibleCards.length}</p>
+              <p className="text-2xl font-semibold text-foreground">{queueStats.total}</p>
               <p className="mt-1 text-xs text-muted">总卡片</p>
             </div>
           </div>
+
+          {typeStats.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {typeStats.map(([cardType, count]) => (
+                <span
+                  key={cardType}
+                  className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-muted"
+                >
+                  {cardTypeLabels[cardType]} {count}
+                </span>
+              ))}
+            </div>
+          ) : null}
 
           {message ? (
             <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">

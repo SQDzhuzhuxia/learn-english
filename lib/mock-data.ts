@@ -433,6 +433,34 @@ export const todayPractice = {
   prompt: "I would like to make an appointment with a doctor."
 };
 
+export const retellingPractice = {
+  title: "复述：预约医生大意",
+  material: "A Visit to the Doctor",
+  prompt: "用 2-3 句简单英文复述：你想预约医生、说明症状、询问今天下午是否有空档。",
+  sourceSummary:
+    "I would like to make an appointment with a doctor. I have had a sore throat since yesterday. Do you have any openings this afternoon?",
+  keyPoints: [
+    {
+      label: "想预约医生",
+      keywords: ["appointment", "doctor"]
+    },
+    {
+      label: "从昨天开始嗓子疼",
+      keywords: ["throat", "yesterday"]
+    },
+    {
+      label: "询问今天下午是否有空档",
+      keywords: ["openings", "afternoon"]
+    }
+  ],
+  usefulWords: ["appointment", "doctor", "throat", "yesterday", "openings", "afternoon"],
+  starters: [
+    "I would like to make an appointment with a doctor.",
+    "I have had a sore throat since yesterday.",
+    "I want to ask if there are any openings this afternoon."
+  ]
+};
+
 export const writingPrompts = [
   {
     title: "预约短信",

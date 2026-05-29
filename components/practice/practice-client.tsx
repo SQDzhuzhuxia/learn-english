@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   CheckCircle2,
+  ClipboardCheck,
   Mic,
   MicOff,
   PenLine,
@@ -13,7 +14,7 @@ import {
   Square,
   Volume2
 } from "lucide-react";
-import { practiceModes, todayPractice, writingPrompts } from "@/lib/mock-data";
+import { practiceModes, retellingPractice, todayPractice, writingPrompts } from "@/lib/mock-data";
 import { recordStudyActivity } from "@/lib/analytics/progress-store";
 import {
   addPracticeAttempt,
@@ -21,6 +22,7 @@ import {
   type PracticeAttemptRecord
 } from "@/lib/speech/practice-store";
 import { createShadowingFeedback, type ShadowingFeedback } from "@/lib/speech/shadowing-feedback";
+import { createRetellingFeedback, type RetellingFeedback } from "@/lib/speech/retelling-feedback";
 import { saveWritingItemAsReviewCard } from "@/lib/review/review-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -99,6 +101,9 @@ export function PracticeClient() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [feedback, setFeedback] = useState<ShadowingFeedback | null>(null);
   const [attempts, setAttempts] = useState<PracticeAttemptRecord[]>([]);
+  const [retellingText, setRetellingText] = useState("");
+  const [retellingFeedback, setRetellingFeedback] = useState<RetellingFeedback | null>(null);
+  const [retellingMessage, setRetellingMessage] = useState("");
   const [selectedWritingIndex, setSelectedWritingIndex] = useState(0);
   const [writingText, setWritingText] = useState("");
   const [writingCorrection, setWritingCorrection] = useState<AiWritingCorrection | null>(null);
@@ -150,6 +155,43 @@ export function PracticeClient() {
     utterance.rate = 0.82;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
+  }
+
+  function handleUseRetellingStarter(starter: string) {
+    setRetellingText((current) => `${current.trim()} ${starter}`.trim());
+    setRetellingMessage("");
+  }
+
+  function handleEvaluateRetelling() {
+    if (!retellingText.trim()) {
+      setRetellingMessage("请先写 1-2 句英文复述。");
+      return;
+    }
+
+    const nextFeedback = createRetellingFeedback({
+      transcript: retellingText,
+      keyPoints: retellingPractice.keyPoints,
+      usefulWords: retellingPractice.usefulWords
+    });
+    const attempt = addPracticeAttempt({
+      type: "retelling",
+      prompt: retellingPractice.prompt,
+      materialTitle: retellingPractice.material,
+      durationSeconds: Math.max(30, retellingText.trim().split(/\s+/).length * 3),
+      transcript: retellingText.trim(),
+      score: nextFeedback.score,
+      feedback: nextFeedback.tip
+    });
+
+    recordStudyActivity({
+      type: "output",
+      label: `复述练习：${retellingPractice.title}`,
+      minutes: 2,
+      materialTitle: retellingPractice.material
+    });
+    setRetellingFeedback(nextFeedback);
+    setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
+    setRetellingMessage("已保存本次复述记录。");
   }
 
   async function handleCorrectWriting() {
@@ -626,6 +668,93 @@ export function PracticeClient() {
           );
         })}
       </section>
+
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Badge variant="soft">复述</Badge>
+              <CardTitle className="mt-3 text-lg">{retellingPractice.title}</CardTitle>
+            </div>
+            <ClipboardCheck className="h-5 w-5 text-accent" />
+          </div>
+          <CardDescription>{retellingPractice.prompt}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border bg-white p-4">
+                <p className="text-sm font-semibold text-foreground">原材料大意</p>
+                <p className="mt-2 text-sm leading-6 text-muted">{retellingPractice.sourceSummary}</p>
+              </div>
+              <div className="grid gap-2">
+                {retellingPractice.starters.map((starter) => (
+                  <Button
+                    key={starter}
+                    variant="outline"
+                    className="h-auto justify-start whitespace-normal p-3 text-left"
+                    onClick={() => handleUseRetellingStarter(starter)}
+                  >
+                    {starter}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border bg-white p-4">
+              <Textarea
+                value={retellingText}
+                onChange={(event) => {
+                  setRetellingText(event.target.value);
+                  setRetellingMessage("");
+                }}
+                className="min-h-32"
+                placeholder="Retell it in simple English..."
+              />
+              <Button onClick={handleEvaluateRetelling} className="mt-3 w-full">
+                <ClipboardCheck className="h-4 w-4" />
+                保存并反馈复述
+              </Button>
+              {retellingMessage ? (
+                <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+                  {retellingMessage}
+                </p>
+              ) : null}
+
+              {retellingFeedback ? (
+                <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-emerald-800">{retellingFeedback.label}</p>
+                    <p className="text-sm font-semibold text-emerald-800">{retellingFeedback.score}%</p>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-emerald-700">{retellingFeedback.tip}</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border border-emerald-200 bg-white p-3">
+                      <p className="text-xs font-medium text-emerald-700">已覆盖</p>
+                      <p className="mt-1 text-sm leading-6 text-emerald-900">
+                        {retellingFeedback.coveredPoints.join("、") || "继续补充"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-emerald-200 bg-white p-3">
+                      <p className="text-xs font-medium text-emerald-700">待补充</p>
+                      <p className="mt-1 text-sm leading-6 text-emerald-900">
+                        {retellingFeedback.missingPoints.join("、") || "已覆盖主要信息"}
+                      </p>
+                    </div>
+                  </div>
+                  {retellingFeedback.suggestions.length > 0 ? (
+                    <ul className="mt-3 space-y-1 text-xs leading-5 text-emerald-700">
+                      {retellingFeedback.suggestions.map((suggestion) => (
+                        <li key={suggestion}>{suggestion}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
         <Card>

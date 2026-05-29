@@ -20,7 +20,7 @@
 ### 前端和应用层
 
 - 框架：Next.js + React + TypeScript
-- UI：Tailwind CSS + Radix UI/shadcn 风格组件 + lucide-react 图标
+- UI：shadcn/ui + Radix UI + Tailwind CSS + lucide-react 图标
 - PWA：后续接入 Serwist 或 next-pwa
 - 状态管理：优先 React Server Components + URL state；复杂学习状态再引入 Zustand
 - 表单：React Hook Form + Zod
@@ -32,6 +32,15 @@
 - 便于做登录、云同步、AI 代理接口
 - 未来可部署到 Vercel、服务器或 Docker
 - 适合按模块拆分，后续开源维护成本较低
+
+UI 方案补充：
+
+- UI 体系以 `docs/ui-technical-plan-v0.1.md` 为准
+- `shadcn/ui` 作为主组件体系
+- `Radix UI` 作为复杂交互和可访问性基础
+- `Tailwind CSS` 负责设计 token 和样式表达
+- `lucide-react` 作为默认图标库
+- 旧页面逐步迁移，不进行一次性全量重写
 
 ### 数据和同步
 

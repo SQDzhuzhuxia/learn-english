@@ -38,6 +38,7 @@ Supabase 登录入口    已完成
 云同步差异检查       已完成
 云同步安全拉取预案   已完成
 云同步自动上传开关   已完成
+UI 技术方案补充      已完成
 复习队列统计增强     已完成
 复习队列筛选         已完成
 词句批量管理         已完成
@@ -98,6 +99,7 @@ Supabase 登录入口    已完成
 | Sprint 3M | 已完成 | 复习卡详情支持同一词句下多类型卡片快速切换 |
 | Sprint 3N | 已完成 | 设置页支持云端差异检查，拉取时按合并预案只恢复云端新增或变化数据 |
 | Sprint 3O | 已完成 | 设置页支持自动上传开关，开启后登录状态下自动上传变化快照 |
+| Sprint 3P | 已完成 | 明确 shadcn/ui + Radix UI + Tailwind CSS + lucide-react 作为 UI 方案 |
 | Sprint 3 | 进行中 | 复习系统增强、更多卡片类型、学习项管理 |
 | Sprint 4 | 未开始 | 跟读、复述、写作练习真实闭环 |
 | Sprint 5 | 未开始 | 同步冲突高级合并、离线音频缓存、AI 请求队列和跨端体验打磨 |
@@ -171,6 +173,9 @@ Supabase 登录入口    已完成
 - 开启自动上传后，登录状态下会在回到前台、恢复在线和固定间隔时上传变化数据
 - 同步快照会记录可同步数据 key、hash、大小和 deviceId
 - 新增 Supabase 同步 records/snapshots 表结构草案
+- README 已补充项目技术栈
+- 技术方案已明确采用 shadcn/ui + Radix UI + Tailwind CSS + lucide-react
+- 新增 UI 技术方案补充文档
 - 复习页展示当前复习队列中新卡、到期卡、活跃总卡片和卡片类型分布
 - 复习页支持按全部、到期、新卡、未来筛选复习队列
 - 复习页支持按回炉队列优先复习最近忘了或困难的卡片
@@ -210,6 +215,7 @@ Supabase 登录入口    已完成
 - `technical-plan-v0.1.md`：技术方案，说明技术栈、数据模型、AI/语音/同步方向。
 - `page-prototype-v0.1.md`：页面原型，说明每个页面应该有什么。
 - `development-plan-v0.1.md`：开发计划，说明按什么流程、什么 Sprint 去做。
+- `ui-technical-plan-v0.1.md`：UI 技术方案补充，说明 shadcn/ui 选型、视觉方向和迁移路线。
 - `sprint-0-status.md`：Sprint 0 的验收记录。
 - `sprint-1-status.md`：Sprint 1 的验收记录。
 - `sprint-2-status.md`：Sprint 2 的验收记录，会随着 Sprint 2 继续更新。
@@ -219,5 +225,6 @@ Supabase 登录入口    已完成
 
 当前下一步：
 
-1. 增加同步确认 UI 和最近同步状态展示。
-2. 开始梳理 Sprint 4 的跟读、复述、写作练习真实闭环。
+1. 接入 shadcn/ui 基础设施。
+2. 执行第一轮 UI Refresh：全局布局、设置页、复习页。
+3. 增加同步确认 UI 和最近同步状态展示。

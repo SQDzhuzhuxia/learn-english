@@ -17,12 +17,23 @@ The first milestone is a Web/PWA product that turns daily English study into a g
 - [技术方案 v0.1](docs/technical-plan-v0.1.md)
 - [页面原型 v0.1](docs/page-prototype-v0.1.md)
 - [开发方案与开发计划 v0.1](docs/development-plan-v0.1.md)
+- [UI 技术方案补充 v0.1](docs/ui-technical-plan-v0.1.md)
 - [项目总进度](docs/project-progress.md)
 - [Supabase 同步表结构草案](docs/supabase-sync-schema-v0.1.sql)
 
 ## Current Direction
 
 Start with a Next.js Web/PWA app, use cloud sync for cross-device study, and keep the architecture ready for future mobile, desktop, local speech recognition, and local model support.
+
+## Tech Stack
+
+- App: Next.js 16, React 19, TypeScript
+- UI direction: shadcn/ui, Radix UI, Tailwind CSS 4, lucide-react
+- Data sync: Supabase Auth, Supabase Postgres sync tables, local sync snapshots
+- Local data: browser localStorage first, with a future path to IndexedDB/SQLite
+- AI: OpenAI-compatible provider layer with room for Claude, Gemini, DeepSeek, Qwen, Doubao, and local models
+- Speech: browser recording, cloud STT endpoint, local Whisper/whisper.cpp endpoint adapter
+- Quality: ESLint, TypeScript, Vitest, production build checks
 
 ## Development
 

@@ -7,6 +7,7 @@ import { reviewRatings } from "@/lib/mock-data";
 import {
   getSeedReviewCards,
   isCardDue,
+  loadReviewLogs,
   loadReviewCards,
   reviewCard
 } from "@/lib/review/review-store";
@@ -15,8 +16,9 @@ import {
   type ReviewCardTypeFilter,
   type ReviewQueueFilter
 } from "@/lib/review/review-filters";
+import { summarizeReviewLogs } from "@/lib/review/review-diagnostics";
 import { getReviewQueueStats } from "@/lib/review/review-stats";
-import type { ReviewCardRecord } from "@/lib/review/types";
+import type { ReviewCardRecord, ReviewLogRecord } from "@/lib/review/types";
 import type { ReviewRating } from "@/lib/review/scheduler";
 
 const cardTypeLabels: Record<ReviewCardRecord["cardType"], string> = {
@@ -51,6 +53,13 @@ const cardTypeInstructions: Record<ReviewCardRecord["cardType"], string> = {
   production: "看到中文，尝试说出自然英文。"
 };
 
+const ratingLabels: Record<ReviewRating, string> = {
+  again: "忘了",
+  hard: "困难",
+  good: "一般",
+  easy: "简单"
+};
+
 function formatDueLabel(card: ReviewCardRecord) {
   const dueAt = new Date(card.dueAt);
   const now = new Date();
@@ -71,6 +80,7 @@ function formatDueLabel(card: ReviewCardRecord) {
 
 export function ReviewClient() {
   const [cards, setCards] = useState<ReviewCardRecord[]>(() => getSeedReviewCards());
+  const [logs, setLogs] = useState<ReviewLogRecord[]>([]);
   const [activeCardId, setActiveCardId] = useState(cards[0]?.id ?? "");
   const [queueFilter, setQueueFilter] = useState<ReviewQueueFilter>("all");
   const [cardTypeFilter, setCardTypeFilter] = useState<ReviewCardTypeFilter>("all");
@@ -87,6 +97,7 @@ export function ReviewClient() {
 
       const loaded = loadReviewCards();
       setCards(loaded);
+      setLogs(loadReviewLogs());
       setActiveCardId((current) => current || loaded.find((card) => card.status !== "suspended")?.id || "");
     });
 
@@ -106,9 +117,11 @@ export function ReviewClient() {
     filteredCards.find((card) => isCardDue(card)) ??
     filteredCards[0];
   const queueStats = useMemo(() => getReviewQueueStats(cards), [cards]);
+  const diagnostics = useMemo(() => summarizeReviewLogs(logs), [logs]);
   const typeStats = Object.entries(queueStats.byType).filter(([, count]) => count > 0) as Array<
     [ReviewCardRecord["cardType"], number]
   >;
+  const maxDailyReviews = Math.max(1, ...diagnostics.dailyTrend.map((day) => day.reviews));
 
   function handleRate(cardId: string, rating: ReviewRating) {
     const updated = reviewCard(cardId, rating);
@@ -118,6 +131,7 @@ export function ReviewClient() {
       cardType: cardTypeFilter
     });
     setCards(nextCards);
+    setLogs(loadReviewLogs());
 
     const nextDue = nextFilteredCards.find((card) => isCardDue(card) && card.id !== cardId);
     const nextQueued = nextFilteredCards.find((card) => card.id !== cardId) ?? nextFilteredCards[0];
@@ -269,6 +283,46 @@ export function ReviewClient() {
             回到学习材料
             <ArrowRight className="h-4 w-4 text-accent" />
           </Link>
+          <div className="mt-5 border-t border-border pt-4">
+            <h3 className="text-sm font-semibold text-foreground">复习诊断</h3>
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              <div className="border-l border-border pl-3">
+                <p className="text-lg font-semibold text-foreground">{diagnostics.recentReviews}</p>
+                <p className="mt-1 text-xs text-muted">近 7 天</p>
+              </div>
+              <div className="border-l border-border pl-3">
+                <p className="text-lg font-semibold text-foreground">{diagnostics.successRate}%</p>
+                <p className="mt-1 text-xs text-muted">顺利率</p>
+              </div>
+              <div className="border-l border-border pl-3">
+                <p className="text-lg font-semibold text-foreground">{diagnostics.attentionCount}</p>
+                <p className="mt-1 text-xs text-muted">需回炉</p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-muted">{diagnostics.message}</p>
+            <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted">
+              {Object.entries(diagnostics.ratingCounts).map(([rating, count]) => (
+                <div key={rating} className="flex items-center justify-between gap-2">
+                  <span>{ratingLabels[rating as ReviewRating]}</span>
+                  <span className="font-semibold text-foreground">{count}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 space-y-2">
+              {diagnostics.dailyTrend.map((day) => (
+                <div key={day.day} className="grid grid-cols-[36px_1fr_24px] items-center gap-2 text-xs">
+                  <span className="text-muted">{day.day}</span>
+                  <span className="h-2 overflow-hidden rounded-full bg-panel-strong">
+                    <span
+                      className="block h-full rounded-full bg-accent"
+                      style={{ width: `${Math.max(6, (day.reviews / maxDailyReviews) * 100)}%` }}
+                    />
+                  </span>
+                  <span className="text-right font-medium text-foreground">{day.reviews}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </aside>
       </section>
 

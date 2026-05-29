@@ -4,10 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import { Cloud, LogOut, Mail, RefreshCw, UploadCloud } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
-import { compareSyncHashes, downloadSyncRecords, uploadSyncSnapshot } from "@/lib/sync/cloud-sync";
+import {
+  compareSyncHashes,
+  createSyncMergePlan,
+  downloadSyncRecords,
+  pickRemoteRecordsToRestore,
+  uploadSyncSnapshot
+} from "@/lib/sync/cloud-sync";
 import type { CloudSyncClient } from "@/lib/sync/cloud-sync";
 import { createLocalSyncSnapshot, restoreSyncRecords } from "@/lib/sync/local-backup";
 import { summarizeSyncSnapshot } from "@/lib/sync/sync-snapshot";
+
+function formatSyncComparison(comparison: ReturnType<typeof compareSyncHashes>) {
+  return `相同 ${comparison.same} 组，本地独有 ${comparison.localOnly} 组，云端新增 ${comparison.remoteOnly} 组，双方不同 ${comparison.changed} 组。`;
+}
 
 export function CloudSyncPanel() {
   const config = useMemo(() => getSupabasePublicConfig(), []);
@@ -102,6 +112,39 @@ export function CloudSyncPanel() {
     }
   }
 
+  async function handleCheckRemoteChanges() {
+    if (!supabase || !sessionEmail) {
+      setMessage("请先登录账号。");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data.user) {
+      setLoading(false);
+      setMessage(error?.message ?? "无法读取当前账号。");
+      return;
+    }
+
+    try {
+      const localSnapshot = createLocalSyncSnapshot("browser");
+      const result = await downloadSyncRecords(supabase as unknown as CloudSyncClient, data.user.id);
+      const localHashes = summarizeSyncSnapshot(localSnapshot).hashes;
+      const comparison = compareSyncHashes(localHashes, result.hashes);
+      const mergePlan = createSyncMergePlan(localHashes, result.hashes);
+      const restoreCount = mergePlan.filter((item) => item.willRestore).length;
+
+      setMessage(`云端差异检查：${formatSyncComparison(comparison)} 拉取时会恢复 ${restoreCount} 组，本地独有数据会保留。`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "云同步差异检查失败。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleDownloadRecords() {
     if (!supabase || !sessionEmail) {
       setMessage("请先登录账号。");
@@ -122,10 +165,13 @@ export function CloudSyncPanel() {
     try {
       const localSnapshot = createLocalSyncSnapshot("browser");
       const result = await downloadSyncRecords(supabase as unknown as CloudSyncClient, data.user.id);
-      const comparison = compareSyncHashes(summarizeSyncSnapshot(localSnapshot).hashes, result.hashes);
-      const restoredCount = restoreSyncRecords(result.records);
+      const localHashes = summarizeSyncSnapshot(localSnapshot).hashes;
+      const comparison = compareSyncHashes(localHashes, result.hashes);
+      const mergePlan = createSyncMergePlan(localHashes, result.hashes);
+      const recordsToRestore = pickRemoteRecordsToRestore(result.records, mergePlan);
+      const restoredCount = restoreSyncRecords(recordsToRestore);
       setMessage(
-        `已拉取 ${restoredCount} 组云端数据，其中 ${comparison.changed + comparison.remoteOnly} 组会更新本地，刷新页面后生效。`
+        `已拉取 ${restoredCount} 组云端数据。${formatSyncComparison(comparison)} 本地独有数据已保留，刷新页面后生效。`
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "云同步拉取失败。");
@@ -149,7 +195,7 @@ export function CloudSyncPanel() {
       </div>
 
       {sessionEmail ? (
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <div className="mt-4 grid gap-2 sm:grid-cols-4">
           <button
             onClick={handleUploadSnapshot}
             disabled={loading}
@@ -165,6 +211,14 @@ export function CloudSyncPanel() {
           >
             <Cloud className="h-4 w-4 text-accent" />
             拉取云端
+          </button>
+          <button
+            onClick={handleCheckRemoteChanges}
+            disabled={loading}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-panel-strong disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            <RefreshCw className="h-4 w-4 text-accent" />
+            检查差异
           </button>
           <button
             onClick={handleSignOut}

@@ -51,6 +51,16 @@ export type SyncRecordComparison = {
   changed: number;
 };
 
+export type SyncRecordMergeStatus = "same" | "local-only" | "remote-only" | "changed";
+
+export type SyncRecordMergePlanItem = {
+  key: SyncableStorageKey;
+  status: SyncRecordMergeStatus;
+  localHash?: string;
+  remoteHash?: string;
+  willRestore: boolean;
+};
+
 function assertNoSyncError(result: { error?: SyncError | null }, fallback: string) {
   if (result.error) {
     throw new Error(result.error.message || fallback);
@@ -181,4 +191,69 @@ export function compareSyncHashes(
   });
 
   return comparison;
+}
+
+export function createSyncMergePlan(
+  localHashes: Partial<Record<SyncableStorageKey, string>>,
+  remoteHashes: Partial<Record<SyncableStorageKey, string>>
+): SyncRecordMergePlanItem[] {
+  const localKeys = Object.keys(localHashes).filter(isSyncableStorageKey);
+  const remoteKeys = Object.keys(remoteHashes).filter(isSyncableStorageKey);
+  const allKeys = Array.from(new Set<SyncableStorageKey>([...localKeys, ...remoteKeys])).sort();
+
+  return allKeys.map((key) => {
+    const localHash = localHashes[key];
+    const remoteHash = remoteHashes[key];
+
+    if (localHash && remoteHash && localHash === remoteHash) {
+      return {
+        key,
+        status: "same",
+        localHash,
+        remoteHash,
+        willRestore: false
+      };
+    }
+
+    if (localHash && remoteHash && localHash !== remoteHash) {
+      return {
+        key,
+        status: "changed",
+        localHash,
+        remoteHash,
+        willRestore: true
+      };
+    }
+
+    if (localHash) {
+      return {
+        key,
+        status: "local-only",
+        localHash,
+        willRestore: false
+      };
+    }
+
+    return {
+      key,
+      status: "remote-only",
+      remoteHash,
+      willRestore: true
+    };
+  });
+}
+
+export function pickRemoteRecordsToRestore(
+  remoteRecords: Partial<Record<SyncableStorageKey, string>>,
+  mergePlan: SyncRecordMergePlanItem[]
+) {
+  return mergePlan.reduce<Partial<Record<SyncableStorageKey, string>>>((records, item) => {
+    const value = remoteRecords[item.key];
+
+    if (item.willRestore && typeof value === "string") {
+      records[item.key] = value;
+    }
+
+    return records;
+  }, {});
 }

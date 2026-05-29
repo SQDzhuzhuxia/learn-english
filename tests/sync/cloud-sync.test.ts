@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { compareSyncHashes, downloadSyncRecords, uploadSyncSnapshot } from "@/lib/sync/cloud-sync";
+import {
+  compareSyncHashes,
+  createSyncMergePlan,
+  downloadSyncRecords,
+  pickRemoteRecordsToRestore,
+  uploadSyncSnapshot
+} from "@/lib/sync/cloud-sync";
 import type { SyncSnapshotPayload } from "@/lib/sync/sync-snapshot";
 
 function createSnapshot(): SyncSnapshotPayload {
@@ -119,6 +125,55 @@ describe("uploadSyncSnapshot", () => {
       localOnly: 1,
       remoteOnly: 1,
       changed: 1
+    });
+  });
+
+  it("creates a merge plan and only restores remote additions or changes", () => {
+    const localHashes = {
+      "learn-english.materials.v1": "same",
+      "learn-english.review-cards.v1": "local",
+      "learn-english.review-logs.v1": "old"
+    };
+    const remoteHashes = {
+      "learn-english.materials.v1": "same",
+      "learn-english.activity-log.v1": "remote",
+      "learn-english.review-logs.v1": "new"
+    };
+    const plan = createSyncMergePlan(localHashes, remoteHashes);
+    const picked = pickRemoteRecordsToRestore(
+      {
+        "learn-english.materials.v1": "[same]",
+        "learn-english.activity-log.v1": "[remote]",
+        "learn-english.review-logs.v1": "[new]"
+      },
+      plan
+    );
+
+    expect(plan).toEqual([
+      expect.objectContaining({
+        key: "learn-english.activity-log.v1",
+        status: "remote-only",
+        willRestore: true
+      }),
+      expect.objectContaining({
+        key: "learn-english.materials.v1",
+        status: "same",
+        willRestore: false
+      }),
+      expect.objectContaining({
+        key: "learn-english.review-cards.v1",
+        status: "local-only",
+        willRestore: false
+      }),
+      expect.objectContaining({
+        key: "learn-english.review-logs.v1",
+        status: "changed",
+        willRestore: true
+      })
+    ]);
+    expect(picked).toEqual({
+      "learn-english.activity-log.v1": "[remote]",
+      "learn-english.review-logs.v1": "[new]"
     });
   });
 });

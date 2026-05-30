@@ -154,6 +154,58 @@ function createExpectedKeywordsFromReplies(replies: string[]) {
     .slice(0, 3);
 }
 
+function saveAiCorrectionSuggestions(input: {
+  correction: AiWritingCorrection;
+  promptTitle: string;
+  prompt: string;
+  correctedMeaningZh: string;
+  correctedExample: string;
+  createKey: (kind: "corrected-sentence" | "expression", text: string) => string;
+}) {
+  const savedKeys: Record<string, boolean> = {};
+  let created = 0;
+  let total = 0;
+  const correctedKey = input.createKey("corrected-sentence", input.correction.correctedText);
+  const correctedResult = saveWritingItemAsReviewCard({
+    kind: "corrected-sentence",
+    promptTitle: input.promptTitle,
+    prompt: input.prompt,
+    originalText: input.correction.originalText,
+    correctedText: input.correction.correctedText,
+    text: input.correction.correctedText,
+    meaningZh: input.correctedMeaningZh,
+    example: input.correctedExample
+  });
+
+  total += 1;
+  created += correctedResult.created ? 1 : 0;
+  savedKeys[correctedKey] = true;
+
+  input.correction.betterExpressions.forEach((expression) => {
+    const key = input.createKey("expression", expression.text);
+    const result = saveWritingItemAsReviewCard({
+      kind: "expression",
+      promptTitle: input.promptTitle,
+      prompt: input.prompt,
+      originalText: input.correction.originalText,
+      correctedText: input.correction.correctedText,
+      text: expression.text,
+      meaningZh: expression.meaningZh,
+      example: expression.example || input.correction.correctedText
+    });
+
+    total += 1;
+    created += result.created ? 1 : 0;
+    savedKeys[key] = true;
+  });
+
+  return {
+    created,
+    total,
+    savedKeys
+  };
+}
+
 export function PracticeClient() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingMode, setRecordingMode] = useState<RecordingMode | "">("");
@@ -478,6 +530,28 @@ export function PracticeClient() {
       result.created
         ? `已保存表达“${expression.text}”，并生成 ${result.cards?.length ?? 1} 张复习卡。`
         : `表达“${expression.text}”已经在复习系统里。`
+    );
+  }
+
+  function handleSaveAllRetellingAiSuggestions() {
+    if (!retellingAiCorrection) {
+      return;
+    }
+
+    const result = saveAiCorrectionSuggestions({
+      correction: retellingAiCorrection,
+      promptTitle: retellingPractice.title,
+      prompt: retellingPractice.prompt,
+      correctedMeaningZh: "AI 优化后的复述句",
+      correctedExample: retellingAiCorrection.correctedText,
+      createKey: createRetellingAiSaveKey
+    });
+
+    setSavedRetellingAiKeys((current) => ({ ...current, ...result.savedKeys }));
+    setRetellingAiSaveMessage(
+      result.created > 0
+        ? `已一键保存 ${result.created}/${result.total} 个 AI 复述建议。`
+        : "这些 AI 复述建议已经在复习系统里。"
     );
   }
 
@@ -848,6 +922,31 @@ export function PracticeClient() {
     );
   }
 
+  function handleSaveAllRoleplayAiSuggestions() {
+    if (!roleplayAiCorrection) {
+      return;
+    }
+
+    const lastEntry = roleplayTranscript.at(-1);
+    const result = saveAiCorrectionSuggestions({
+      correction: roleplayAiCorrection,
+      promptTitle: `角色扮演：${roleplayScenario.title}`,
+      prompt: lastEntry?.partnerText ?? roleplayScenario.goal,
+      correctedMeaningZh: "AI 优化后的角色回答",
+      correctedExample: lastEntry
+        ? `Front desk: ${lastEntry.partnerText} / Me: ${roleplayAiCorrection.correctedText}`
+        : roleplayAiCorrection.correctedText,
+      createKey: createRoleplayAiSaveKey
+    });
+
+    setSavedRoleplayAiKeys((current) => ({ ...current, ...result.savedKeys }));
+    setRoleplayAiSaveMessage(
+      result.created > 0
+        ? `已一键保存 ${result.created}/${result.total} 个 AI 角色回答建议。`
+        : "这些 AI 角色回答建议已经在复习系统里。"
+    );
+  }
+
   async function handleCorrectWriting() {
     const prompt = writingPrompts[selectedWritingIndex];
 
@@ -960,6 +1059,29 @@ export function PracticeClient() {
       result.created
         ? `已保存表达“${expression.text}”，并生成 ${result.cards?.length ?? 1} 张复习卡。`
         : `表达“${expression.text}”已经在复习系统里。`
+    );
+  }
+
+  function handleSaveAllWritingSuggestions() {
+    if (!writingCorrection) {
+      return;
+    }
+
+    const prompt = writingPrompts[selectedWritingIndex];
+    const result = saveAiCorrectionSuggestions({
+      correction: writingCorrection,
+      promptTitle: prompt.title,
+      prompt: prompt.prompt,
+      correctedMeaningZh: "AI 优化后的写作句子",
+      correctedExample: writingCorrection.correctedText,
+      createKey: createWritingSaveKey
+    });
+
+    setSavedWritingKeys((current) => ({ ...current, ...result.savedKeys }));
+    setWritingSaveMessage(
+      result.created > 0
+        ? `已一键保存 ${result.created}/${result.total} 个写作建议。`
+        : "这些写作建议已经在复习系统里。"
     );
   }
 
@@ -1630,23 +1752,28 @@ export function PracticeClient() {
                 <div className="mt-4 rounded-lg border border-border bg-panel-strong p-3">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm font-semibold text-foreground">AI 角色回答反馈</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleSaveRoleplayAiCorrection}
-                      disabled={
-                        savedRoleplayAiKeys[
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSaveRoleplayAiCorrection}
+                        disabled={
+                          savedRoleplayAiKeys[
+                            createRoleplayAiSaveKey("corrected-sentence", roleplayAiCorrection.correctedText)
+                          ]
+                        }
+                      >
+                        <Plus className="h-4 w-4 text-foreground" />
+                        {savedRoleplayAiKeys[
                           createRoleplayAiSaveKey("corrected-sentence", roleplayAiCorrection.correctedText)
                         ]
-                      }
-                    >
-                      <Plus className="h-4 w-4 text-foreground" />
-                      {savedRoleplayAiKeys[
-                        createRoleplayAiSaveKey("corrected-sentence", roleplayAiCorrection.correctedText)
-                      ]
-                        ? "已保存"
-                        : "保存修正版"}
-                    </Button>
+                          ? "已保存"
+                          : "保存修正版"}
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleSaveAllRoleplayAiSuggestions}>
+                        全部保存
+                      </Button>
+                    </div>
                   </div>
                   <p className="mt-3 rounded-lg border border-border bg-white p-3 text-sm leading-6 text-foreground">
                     {roleplayAiCorrection.correctedText}
@@ -1875,23 +2002,28 @@ export function PracticeClient() {
                 <div className="mt-4 rounded-lg border border-border bg-panel-strong p-3">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm font-semibold text-foreground">AI 自然度反馈</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleSaveRetellingAiCorrection}
-                      disabled={
-                        savedRetellingAiKeys[
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSaveRetellingAiCorrection}
+                        disabled={
+                          savedRetellingAiKeys[
+                            createRetellingAiSaveKey("corrected-sentence", retellingAiCorrection.correctedText)
+                          ]
+                        }
+                      >
+                        <Plus className="h-4 w-4 text-foreground" />
+                        {savedRetellingAiKeys[
                           createRetellingAiSaveKey("corrected-sentence", retellingAiCorrection.correctedText)
                         ]
-                      }
-                    >
-                      <Plus className="h-4 w-4 text-foreground" />
-                      {savedRetellingAiKeys[
-                        createRetellingAiSaveKey("corrected-sentence", retellingAiCorrection.correctedText)
-                      ]
-                        ? "已保存"
-                        : "保存修正版"}
-                    </Button>
+                          ? "已保存"
+                          : "保存修正版"}
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleSaveAllRetellingAiSuggestions}>
+                        全部保存
+                      </Button>
+                    </div>
                   </div>
                   <p className="mt-3 rounded-lg border border-border bg-white p-3 text-sm leading-6 text-foreground">
                     {retellingAiCorrection.correctedText}
@@ -2078,17 +2210,22 @@ export function PracticeClient() {
                 <section>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm font-medium text-muted">更自然写法</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleSaveCorrectedWriting}
-                      disabled={savedWritingKeys[createWritingSaveKey("corrected-sentence", writingCorrection.correctedText)]}
-                    >
-                      <Plus className="h-4 w-4 text-foreground" />
-                      {savedWritingKeys[createWritingSaveKey("corrected-sentence", writingCorrection.correctedText)]
-                        ? "已保存"
-                        : "保存复习卡"}
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSaveCorrectedWriting}
+                        disabled={savedWritingKeys[createWritingSaveKey("corrected-sentence", writingCorrection.correctedText)]}
+                      >
+                        <Plus className="h-4 w-4 text-foreground" />
+                        {savedWritingKeys[createWritingSaveKey("corrected-sentence", writingCorrection.correctedText)]
+                          ? "已保存"
+                          : "保存复习卡"}
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleSaveAllWritingSuggestions}>
+                        全部保存
+                      </Button>
+                    </div>
                   </div>
                   <p className="mt-2 rounded-lg bg-panel-strong p-3 text-sm leading-6 text-foreground">
                     {writingCorrection.correctedText}

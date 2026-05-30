@@ -214,6 +214,11 @@ UI Refresh 第三轮    已完成
 - 开发环境会自动注销已有 Service Worker 并清理旧缓存，避免 Next dev 加载旧客户端包
 - `sw.js` 在 localhost 下会自我注销并清理旧缓存，用于修复历史缓存造成的 hydration mismatch
 - Service Worker 不再缓存 `/_next/` 运行时代码，避免 UI 更新后出现服务端和客户端 class 不一致
+- 新增功能排查记录，开始从“静态 UI 完成”转向“可点击功能稳定”
+- 学习页播放、慢速、循环、跟读按钮已补齐可用动作
+- 练习页模式卡片“进入”按钮已改为可响应入口
+- 材料库和词句本筛选数量已从按钮改为信息展示，避免误导点击
+- 英文朗读已统一为优先英文语音和较慢语速
 - 新增 `components/ui/` 基础 UI 组件
 - 新增 `components.json` shadcn/ui 配置
 - 新增 `lib/utils.ts` 统一 className 合并工具
@@ -256,6 +261,8 @@ UI Refresh 第三轮    已完成
 
 - 内置离线 Whisper 模型打包
 - 真正音素级/发音级跟读评分
+- 高质量云端 TTS 或本地高质量 TTS
+- 场景口语角色扮演闭环
 - 云端同步冲突细粒度合并
 - 离线音频缓存和 AI 请求队列
 
@@ -266,6 +273,7 @@ UI Refresh 第三轮    已完成
 - `page-prototype-v0.1.md`：页面原型，说明每个页面应该有什么。
 - `development-plan-v0.1.md`：开发计划，说明按什么流程、什么 Sprint 去做。
 - `ui-technical-plan-v0.1.md`：UI 技术方案补充，说明 shadcn/ui 选型、视觉方向和迁移路线。
+- `feature-audit-v0.1.md`：功能排查记录，说明当前可点击入口、已修复问题和未完成能力。
 - `sprint-0-status.md`：Sprint 0 的验收记录。
 - `sprint-1-status.md`：Sprint 1 的验收记录。
 - `sprint-2-status.md`：Sprint 2 的验收记录，会随着 Sprint 2 继续更新。

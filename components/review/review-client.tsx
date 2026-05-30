@@ -33,6 +33,7 @@ import {
 import { summarizeReviewLogs } from "@/lib/review/review-diagnostics";
 import { getReviewCardDetail } from "@/lib/review/review-card-detail";
 import { getReviewQueueStats } from "@/lib/review/review-stats";
+import { speakEnglishText } from "@/lib/speech/speech-synthesis";
 import type { LearningItemRecord, ReviewCardRecord, ReviewLogRecord } from "@/lib/review/types";
 import type { ReviewRating } from "@/lib/review/scheduler";
 
@@ -328,18 +329,11 @@ export function ReviewClient() {
     }
   }
 
-  function handleSpeakCard(card: ReviewCardRecord) {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      setMessage("当前浏览器不支持本地朗读。");
-      return;
-    }
-
+  async function handleSpeakCard(card: ReviewCardRecord) {
     const textToSpeak = card.cardType === "recognition" ? card.front : card.back;
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.lang = "en-US";
-    utterance.rate = 0.85;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+    setMessage("正在准备英文朗读...");
+    const result = await speakEnglishText(textToSpeak, { rate: 0.78 });
+    setMessage(result.ok ? `${result.message} 请听完后再看答案。` : result.message);
   }
 
   if (cards.length === 0) {
@@ -526,7 +520,7 @@ export function ReviewClient() {
                 </Badge>
               </div>
               <Button
-                onClick={() => handleSpeakCard(activeCard)}
+                onClick={() => void handleSpeakCard(activeCard)}
                 variant="outline"
                 size="icon"
                 aria-label="播放当前卡片"

@@ -29,6 +29,7 @@ import {
   updateMaterialProgress
 } from "@/lib/content/material-store";
 import { saveExpressionAsReviewCard, saveSegmentAsReviewCard } from "@/lib/review/review-store";
+import { speakEnglishText, stopEnglishSpeech } from "@/lib/speech/speech-synthesis";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,6 +124,8 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
     () => resolveInitialMaterial(materialId)?.currentSegmentOrder ?? 1
   );
   const [saveMessage, setSaveMessage] = useState("");
+  const [playbackMessage, setPlaybackMessage] = useState("");
+  const [isLooping, setIsLooping] = useState(false);
   const [aiState, setAiState] = useState<AiExplanationState>({ status: "idle" });
   const [aiBatchState, setAiBatchState] = useState<AiBatchState>({ status: "idle" });
 
@@ -177,6 +180,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
 
   useEffect(() => {
     setSaveMessage("");
+    setPlaybackMessage("");
 
     if (!material || !current || material.source === "seed") {
       setAiState({ status: "idle" });
@@ -191,6 +195,39 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
       setAiState({ status: "idle" });
     }
   }, [current, material]);
+
+  useEffect(() => {
+    if (!isLooping || !current) {
+      return;
+    }
+
+    let cancelled = false;
+    const intervalMs = Math.max(4200, current.text.split(/\s+/).length * 650 + 1200);
+
+    async function playLoop() {
+      if (cancelled || !current) {
+        return;
+      }
+
+      const result = await speakEnglishText(current.text, { rate: 0.72 });
+
+      if (!cancelled && !result.ok) {
+        setPlaybackMessage(result.message);
+        setIsLooping(false);
+      }
+    }
+
+    void playLoop();
+    const timer = window.setInterval(() => {
+      void playLoop();
+    }, intervalMs);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      stopEnglishSpeech();
+    };
+  }, [current, isLooping]);
 
   function moveTo(order: number) {
     if (!material) {
@@ -213,6 +250,44 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
 
     const result = saveSegmentAsReviewCard(material, current);
     setSaveMessage(result.created ? "已保存到词句本，并生成复习卡。" : "这句话已经在复习队列里。");
+  }
+
+  async function handlePlayCurrentSentence(rate = 0.86) {
+    if (!current) {
+      return;
+    }
+
+    setIsLooping(false);
+    setPlaybackMessage("正在准备英文朗读...");
+    const result = await speakEnglishText(current.text, { rate });
+    setPlaybackMessage(result.ok ? `${result.message} 如果声音仍不自然，后续可以接入云端高质量 TTS。` : result.message);
+  }
+
+  function handleToggleLoop() {
+    if (!current) {
+      return;
+    }
+
+    setIsLooping((enabled) => {
+      const nextEnabled = !enabled;
+      setPlaybackMessage(nextEnabled ? "已开启循环慢速朗读；再次点击可停止。" : "已停止循环朗读。");
+
+      if (!nextEnabled) {
+        stopEnglishSpeech();
+      }
+
+      return nextEnabled;
+    });
+  }
+
+  async function handleShadowingPrompt() {
+    if (!current) {
+      return;
+    }
+
+    setIsLooping(false);
+    setPlaybackMessage("请听慢速原句，然后跟读一遍。录音评分请进入练习页完成。");
+    await speakEnglishText(current.text, { rate: 0.68 });
   }
 
   function handleSaveExpression(expression: SavableExpression) {
@@ -501,7 +576,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button size="icon" aria-label="播放">
+              <Button size="icon" aria-label="播放" onClick={() => void handlePlayCurrentSentence()}>
                 <Play className="h-4 w-4" />
               </Button>
               <Button
@@ -534,26 +609,32 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <Button variant="outline">
-              <Volume2 className="h-4 w-4 text-foreground" />
+            <Button variant="outline" onClick={() => void handlePlayCurrentSentence(0.68)}>
+              <Volume2 className="h-4 w-4" />
               慢速
             </Button>
-            <Button variant="outline">
-              <Repeat2 className="h-4 w-4 text-foreground" />
-              循环
+            <Button variant={isLooping ? "default" : "outline"} onClick={handleToggleLoop}>
+              <Repeat2 className="h-4 w-4" />
+              {isLooping ? "停止循环" : "循环"}
             </Button>
             <Button
               variant="outline"
               onClick={handleSaveCurrentSentence}
             >
-              <BookmarkPlus className="h-4 w-4 text-foreground" />
+              <BookmarkPlus className="h-4 w-4" />
               保存
             </Button>
-            <Button variant="outline">
-              <Mic className="h-4 w-4 text-foreground" />
+            <Button variant="outline" onClick={() => void handleShadowingPrompt()}>
+              <Mic className="h-4 w-4" />
               跟读
             </Button>
           </div>
+
+          {playbackMessage ? (
+            <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
+              {playbackMessage}
+            </p>
+          ) : null}
 
           {saveMessage ? (
             <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">

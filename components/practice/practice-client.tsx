@@ -23,6 +23,7 @@ import {
 } from "@/lib/speech/practice-store";
 import { createShadowingFeedback, type ShadowingFeedback } from "@/lib/speech/shadowing-feedback";
 import { createRetellingFeedback, type RetellingFeedback } from "@/lib/speech/retelling-feedback";
+import { speakEnglishText } from "@/lib/speech/speech-synthesis";
 import { saveWritingItemAsReviewCard } from "@/lib/review/review-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -162,17 +163,38 @@ export function PracticeClient() {
     return () => window.clearInterval(timer);
   }, [isRecording]);
 
-  function playPrompt() {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      setMessage("当前浏览器不支持本地朗读。");
+  async function playPrompt() {
+    setMessage("正在准备英文朗读...");
+    const result = await speakEnglishText(todayPractice.prompt, { rate: 0.72 });
+    setMessage(result.ok ? `${result.message} 请先听两遍，再开始录音。` : result.message);
+  }
+
+  function handleOpenPracticeMode(modeId: string) {
+    const targetMap: Record<string, string> = {
+      shadowing: "practice-shadowing",
+      retelling: "practice-retelling",
+      writing: "practice-writing"
+    };
+    const targetId = targetMap[modeId];
+
+    if (!targetId) {
+      setMessage("场景口语角色扮演还没有进入可用版本；下一步会做成真实 AI 对话闭环。");
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(todayPractice.prompt);
-    utterance.lang = "en-US";
-    utterance.rate = 0.82;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+    document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    if (modeId === "shadowing") {
+      setMessage("已定位到跟读训练。先播放原句，再录音。");
+    }
+
+    if (modeId === "retelling") {
+      setRetellingMessage("已定位到复述训练。可以先用提示句，再提交反馈。");
+    }
+
+    if (modeId === "writing") {
+      setWritingMessage("已定位到短写作教练。写一句英文后点击 AI 修改。");
+    }
   }
 
   function handleUseRetellingStarter(starter: string) {
@@ -654,7 +676,7 @@ export function PracticeClient() {
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-      <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
+      <section id="practice-shadowing" className="scroll-mt-24 grid gap-5 lg:grid-cols-[1fr_360px]">
         <Card>
           <CardHeader className="pb-4">
             <Badge variant="soft" className="w-fit">
@@ -675,7 +697,7 @@ export function PracticeClient() {
                 <p className="mt-2 text-sm leading-6 text-muted">{todayPractice.target}</p>
               </div>
               <Button
-                onClick={playPrompt}
+                onClick={() => void playPrompt()}
                 className="shrink-0"
               >
                 <Volume2 className="h-4 w-4" />
@@ -835,7 +857,7 @@ export function PracticeClient() {
                   {mode.estimatedMinutes} 分钟 · {mode.output}
                 </p>
               </div>
-              <Button variant="outline" className="mt-5 w-full">
+              <Button variant="outline" className="mt-5 w-full" onClick={() => handleOpenPracticeMode(mode.id)}>
                 进入
               </Button>
               </CardContent>
@@ -844,7 +866,7 @@ export function PracticeClient() {
         })}
       </section>
 
-      <Card>
+      <Card id="practice-retelling" className="scroll-mt-24">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
@@ -1081,7 +1103,7 @@ export function PracticeClient() {
         </Card>
       </section>
 
-      <Card>
+      <Card id="practice-writing" className="scroll-mt-24">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">短写作教练</CardTitle>

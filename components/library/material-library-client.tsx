@@ -196,10 +196,10 @@ export function MaterialLibraryClient() {
                 onChange={(event) => setQuery(event.target.value)}
               />
             </label>
-            <Button variant="outline" className="min-h-11">
-              <Filter className="h-4 w-4 text-foreground" />
+            <div className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground">
+              <Filter className="h-4 w-4" />
               {filteredMaterials.length} 篇
-            </Button>
+            </div>
           </div>
 
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">

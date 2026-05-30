@@ -133,6 +133,10 @@ export function PracticeClient() {
   const [retellingTranscriptSource, setRetellingTranscriptSource] = useState<TranscriptSource | "">("");
   const [isRetellingTranscribing, setIsRetellingTranscribing] = useState(false);
   const [savedRetellingKeys, setSavedRetellingKeys] = useState<Record<string, boolean>>({});
+  const [retellingAiCorrection, setRetellingAiCorrection] = useState<AiWritingCorrection | null>(null);
+  const [isCorrectingRetelling, setIsCorrectingRetelling] = useState(false);
+  const [retellingAiSaveMessage, setRetellingAiSaveMessage] = useState("");
+  const [savedRetellingAiKeys, setSavedRetellingAiKeys] = useState<Record<string, boolean>>({});
   const [roleplayTurnIndex, setRoleplayTurnIndex] = useState(0);
   const [roleplayReply, setRoleplayReply] = useState("");
   const [roleplayFeedback, setRoleplayFeedback] = useState<RoleplayFeedback | null>(null);
@@ -256,6 +260,9 @@ export function PracticeClient() {
     setRetellingMessage("已保存本次复述记录。");
     setRetellingSaveMessage("");
     setSavedRetellingKeys({});
+    setRetellingAiCorrection(null);
+    setRetellingAiSaveMessage("");
+    setSavedRetellingAiKeys({});
   }
 
   function createRetellingSaveKey(kind: "sentence" | "expression", text: string) {
@@ -313,6 +320,118 @@ export function PracticeClient() {
       result.created
         ? `已保存表达“${expression}”，并生成 ${result.cards?.length ?? 1} 张复习卡。`
         : `表达“${expression}”已经在复习系统里。`
+    );
+  }
+
+  function createRetellingAiSaveKey(kind: "corrected-sentence" | "expression", text: string) {
+    return `retelling-ai:${kind}:${text.trim().toLowerCase()}`;
+  }
+
+  function markRetellingAiItemSaved(key: string) {
+    setSavedRetellingAiKeys((current) => ({
+      ...current,
+      [key]: true
+    }));
+  }
+
+  async function handleCorrectRetellingWithAi() {
+    if (!retellingText.trim()) {
+      setRetellingMessage("请先完成一段复述，再请求 AI 自然度反馈。");
+      return;
+    }
+
+    setIsCorrectingRetelling(true);
+    setRetellingMessage("正在生成 AI 复述反馈...");
+
+    try {
+      const response = await fetch("/api/ai/correct-writing", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          promptTitle: `复述：${retellingPractice.title}`,
+          prompt: `${retellingPractice.prompt}\n原材料大意：${retellingPractice.sourceSummary}`,
+          level: "A1-A2",
+          userText: retellingText
+        })
+      });
+      const payload = (await response.json()) as {
+        correction?: AiWritingCorrection;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.correction) {
+        throw new Error(payload.error ?? "AI 复述反馈生成失败。");
+      }
+
+      recordStudyActivity({
+        type: "ai",
+        label: `AI 复述反馈：${retellingPractice.title}`,
+        materialTitle: retellingPractice.material
+      });
+      setRetellingAiCorrection(payload.correction);
+      setRetellingAiSaveMessage("");
+      setSavedRetellingAiKeys({});
+      setRetellingMessage(
+        payload.correction.source === "model"
+          ? `已由 ${payload.correction.provider} 生成复述自然度反馈。`
+          : "当前使用本地降级复述反馈，配置 AI 后会调用模型。"
+      );
+    } catch (error) {
+      setRetellingMessage(error instanceof Error ? error.message : "AI 复述反馈生成失败。");
+    } finally {
+      setIsCorrectingRetelling(false);
+    }
+  }
+
+  function handleSaveRetellingAiCorrection() {
+    if (!retellingAiCorrection) {
+      return;
+    }
+
+    const key = createRetellingAiSaveKey("corrected-sentence", retellingAiCorrection.correctedText);
+    const result = saveWritingItemAsReviewCard({
+      kind: "corrected-sentence",
+      promptTitle: retellingPractice.title,
+      prompt: retellingPractice.prompt,
+      originalText: retellingAiCorrection.originalText,
+      correctedText: retellingAiCorrection.correctedText,
+      text: retellingAiCorrection.correctedText,
+      meaningZh: "AI 优化后的复述句",
+      example: retellingAiCorrection.correctedText
+    });
+
+    markRetellingAiItemSaved(key);
+    setRetellingAiSaveMessage(
+      result.created
+        ? `已保存 AI 优化复述句，并生成 ${result.cards?.length ?? 1} 张复习卡。`
+        : "这条 AI 优化复述句已经在复习系统里。"
+    );
+  }
+
+  function handleSaveRetellingAiExpression(expression: AiSegmentExpression) {
+    if (!retellingAiCorrection) {
+      return;
+    }
+
+    const key = createRetellingAiSaveKey("expression", expression.text);
+    const result = saveWritingItemAsReviewCard({
+      kind: "expression",
+      promptTitle: retellingPractice.title,
+      prompt: retellingPractice.prompt,
+      originalText: retellingAiCorrection.originalText,
+      correctedText: retellingAiCorrection.correctedText,
+      text: expression.text,
+      meaningZh: expression.meaningZh,
+      example: expression.example || retellingAiCorrection.correctedText
+    });
+
+    markRetellingAiItemSaved(key);
+    setRetellingAiSaveMessage(
+      result.created
+        ? `已保存表达“${expression.text}”，并生成 ${result.cards?.length ?? 1} 张复习卡。`
+        : `表达“${expression.text}”已经在复习系统里。`
     );
   }
 
@@ -618,6 +737,9 @@ export function PracticeClient() {
         setRetellingMessage("");
         setRetellingSaveMessage("");
         setSavedRetellingKeys({});
+        setRetellingAiCorrection(null);
+        setRetellingAiSaveMessage("");
+        setSavedRetellingAiKeys({});
       } else {
         setAudioUrl("");
         setTranscript("");
@@ -758,6 +880,9 @@ export function PracticeClient() {
       setRetellingFeedback(nextFeedback);
       setRetellingSaveMessage("");
       setSavedRetellingKeys({});
+      setRetellingAiCorrection(null);
+      setRetellingAiSaveMessage("");
+      setSavedRetellingAiKeys({});
       setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
       setRetellingMessage(
         finalTranscript
@@ -1320,6 +1445,15 @@ export function PracticeClient() {
                 <ClipboardCheck className="h-4 w-4" />
                 保存并反馈复述
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => void handleCorrectRetellingWithAi()}
+                disabled={isCorrectingRetelling}
+                className="mt-2 w-full"
+              >
+                <PenLine className="h-4 w-4" />
+                {isCorrectingRetelling ? "生成中..." : "AI 自然度反馈"}
+              </Button>
               {retellingMessage ? (
                 <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
                   {retellingMessage}
@@ -1394,6 +1528,70 @@ export function PracticeClient() {
                         <li key={suggestion}>{suggestion}</li>
                       ))}
                     </ul>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {retellingAiCorrection ? (
+                <div className="mt-4 rounded-lg border border-border bg-panel-strong p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-semibold text-foreground">AI 自然度反馈</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSaveRetellingAiCorrection}
+                      disabled={
+                        savedRetellingAiKeys[
+                          createRetellingAiSaveKey("corrected-sentence", retellingAiCorrection.correctedText)
+                        ]
+                      }
+                    >
+                      <Plus className="h-4 w-4 text-foreground" />
+                      {savedRetellingAiKeys[
+                        createRetellingAiSaveKey("corrected-sentence", retellingAiCorrection.correctedText)
+                      ]
+                        ? "已保存"
+                        : "保存修正版"}
+                    </Button>
+                  </div>
+                  <p className="mt-3 rounded-lg border border-border bg-white p-3 text-sm leading-6 text-foreground">
+                    {retellingAiCorrection.correctedText}
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-muted">{retellingAiCorrection.feedbackZh}</p>
+                  <ul className="mt-3 space-y-1 text-xs leading-5 text-foreground">
+                    {retellingAiCorrection.keyProblems.map((problem) => (
+                      <li key={problem}>{problem}</li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 space-y-2">
+                    {retellingAiCorrection.betterExpressions.map((expression) => (
+                      <div
+                        key={expression.text}
+                        className="flex flex-col gap-3 rounded-lg border border-border bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{expression.text}</p>
+                          <p className="mt-1 text-xs leading-5 text-muted">{expression.meaningZh}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSaveRetellingAiExpression(expression)}
+                          disabled={savedRetellingAiKeys[createRetellingAiSaveKey("expression", expression.text)]}
+                          className="shrink-0"
+                        >
+                          <Plus className="h-4 w-4 text-foreground" />
+                          {savedRetellingAiKeys[createRetellingAiSaveKey("expression", expression.text)]
+                            ? "已保存"
+                            : "保存"}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  {retellingAiSaveMessage ? (
+                    <p className="mt-3 rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground">
+                      {retellingAiSaveMessage}
+                    </p>
                   ) : null}
                 </div>
               ) : null}

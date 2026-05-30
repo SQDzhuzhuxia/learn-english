@@ -85,12 +85,14 @@ AI 能力分层：
 - 浏览器录音
 - 云端语音转文字
 - 本地 Whisper/whisper.cpp 服务端 endpoint 适配
+- 云端或本地 OpenAI-compatible TTS endpoint 适配
 - 原句和转写文本对比
 - 句子级跟读反馈
 
 后续：
 
 - 内置离线 Whisper 模型打包
+- 内置离线 TTS 模型打包
 - 本地音频切片
 - 发音、重音、连读、漏读分析
 - 口语实时对话

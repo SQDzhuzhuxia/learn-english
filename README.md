@@ -60,3 +60,10 @@ Server-side speech recognition is configured with `SPEECH_PROVIDER`.
 - `fallback`: keep browser transcription only.
 - `openai`: use OpenAI-compatible `/audio/transcriptions`.
 - `local-whisper` or `whisper-cpp`: send multipart audio to a local endpoint such as `SPEECH_BASE_URL=http://127.0.0.1:8080` and `SPEECH_ENDPOINT_PATH=/inference`.
+
+Server-side text-to-speech is configured with `TTS_PROVIDER`.
+
+- `fallback`: use browser built-in English speech.
+- `openai`: use `/audio/speech` with `TTS_MODEL`, `TTS_VOICE`, and `OPENAI_API_KEY`.
+- `openai-compatible` or `local`: use a compatible local/cloud endpoint such as `TTS_BASE_URL=http://127.0.0.1:8880/v1`.
+- If TTS is not configured or fails, the app automatically falls back to browser speech.

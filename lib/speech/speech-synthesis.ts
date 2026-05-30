@@ -1,7 +1,11 @@
 type SpeakEnglishOptions = {
+  format?: string;
+  instructions?: string;
   lang?: string;
   pitch?: number;
+  preferServer?: boolean;
   rate?: number;
+  voice?: string;
   volume?: number;
 };
 
@@ -22,6 +26,9 @@ const preferredVoiceNames = [
   "daniel",
   "karen"
 ];
+
+let activeAudio: HTMLAudioElement | undefined;
+let activeAudioUrl: string | undefined;
 
 function getSpeechSynthesis() {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
@@ -55,6 +62,18 @@ export function selectEnglishVoice(voices: SpeechSynthesisVoice[], preferredLang
   );
 }
 
+function stopServerAudio() {
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio = undefined;
+  }
+
+  if (activeAudioUrl) {
+    URL.revokeObjectURL(activeAudioUrl);
+    activeAudioUrl = undefined;
+  }
+}
+
 async function loadVoices(synth: SpeechSynthesis) {
   const initialVoices = synth.getVoices();
 
@@ -85,11 +104,84 @@ async function loadVoices(synth: SpeechSynthesis) {
 export function stopEnglishSpeech() {
   const synth = getSpeechSynthesis();
 
+  stopServerAudio();
+
   if (!synth) {
     return;
   }
 
   synth.cancel();
+}
+
+async function speakWithServerTts(text: string, options: SpeakEnglishOptions): Promise<SpeakEnglishResult> {
+  if (typeof window === "undefined" || typeof Audio === "undefined" || typeof fetch === "undefined") {
+    return {
+      ok: false,
+      message: "当前环境不支持高质量 TTS 播放。"
+    };
+  }
+
+  try {
+    const response = await fetch("/api/speech/synthesize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text,
+        voice: options.voice,
+        format: options.format,
+        instructions: options.instructions ?? "Speak clearly and slowly for a beginner English learner."
+      })
+    });
+
+    const contentType = response.headers.get("Content-Type") ?? "";
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        message: "高质量 TTS 暂不可用。"
+      };
+    }
+
+    if (!contentType.startsWith("audio/")) {
+      const payload = (await response.json()) as {
+        synthesis?: {
+          error?: string;
+          provider?: string;
+        };
+      };
+
+      return {
+        ok: false,
+        message: payload.synthesis?.error ?? payload.synthesis?.provider ?? "高质量 TTS 未配置。"
+      };
+    }
+
+    const blob = await response.blob();
+    stopEnglishSpeech();
+    activeAudioUrl = URL.createObjectURL(blob);
+    activeAudio = new Audio(activeAudioUrl);
+    activeAudio.addEventListener(
+      "ended",
+      () => {
+        stopServerAudio();
+      },
+      { once: true }
+    );
+    await activeAudio.play();
+
+    return {
+      ok: true,
+      message: `正在使用 ${response.headers.get("X-Speech-Provider") ?? "高质量 TTS"} 朗读。`,
+      voiceName: response.headers.get("X-Speech-Voice") ?? undefined
+    };
+  } catch {
+    return {
+      ok: false,
+      message: "高质量 TTS 播放失败，已准备回退到浏览器朗读。"
+    };
+  }
 }
 
 export async function speakEnglishText(text: string, options: SpeakEnglishOptions = {}): Promise<SpeakEnglishResult> {
@@ -101,6 +193,14 @@ export async function speakEnglishText(text: string, options: SpeakEnglishOption
       ok: false,
       message: "没有可播放的英文内容。"
     };
+  }
+
+  if (options.preferServer !== false) {
+    const serverResult = await speakWithServerTts(cleanText, options);
+
+    if (serverResult.ok) {
+      return serverResult;
+    }
   }
 
   if (!synth || typeof SpeechSynthesisUtterance === "undefined") {
@@ -121,6 +221,7 @@ export async function speakEnglishText(text: string, options: SpeakEnglishOption
   utterance.pitch = options.pitch ?? 1;
   utterance.volume = options.volume ?? 1;
 
+  stopServerAudio();
   synth.cancel();
 
   if (synth.paused) {

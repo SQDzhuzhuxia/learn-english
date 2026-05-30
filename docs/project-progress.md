@@ -64,6 +64,7 @@ UI Refresh 第三轮    已完成
 复习卡手动重置       已完成
 复习卡批量暂停恢复   已完成
 复习卡同组切换       已完成
+高质量 TTS 服务端接口 已完成
 ```
 
 ## 里程碑进度
@@ -226,6 +227,10 @@ UI Refresh 第三轮    已完成
 - 练习页模式卡片“进入”按钮已改为可响应入口
 - 材料库和词句本筛选数量已从按钮改为信息展示，避免误导点击
 - 英文朗读已统一为优先英文语音和较慢语速
+- 新增 `/api/speech/synthesize`
+- 支持 `TTS_PROVIDER=openai` 或 `openai-compatible` 调用 `/audio/speech`
+- 支持 `TTS_PROVIDER=local` 接入本地 OpenAI-compatible TTS 服务
+- 前端朗读会优先尝试服务端高质量 TTS，失败或未配置时自动回退浏览器英文朗读
 - 新增 `components/ui/` 基础 UI 组件
 - 新增 `components.json` shadcn/ui 配置
 - 新增 `lib/utils.ts` 统一 className 合并工具
@@ -268,7 +273,7 @@ UI Refresh 第三轮    已完成
 
 - 内置离线 Whisper 模型打包
 - 真正音素级/发音级跟读评分
-- 高质量云端 TTS 或本地高质量 TTS
+- 内置离线 TTS 模型打包
 - AI 增强场景口语反馈和自由对话
 - 云端同步冲突细粒度合并
 - 离线音频缓存和 AI 请求队列
@@ -292,5 +297,5 @@ UI Refresh 第三轮    已完成
 当前下一步：
 
 1. 继续 Sprint 4：增加 AI 复述和角色扮演反馈，关注自然度、中文思维和表达替换。
-2. 增加云端高质量 TTS 或本地高质量 TTS 选项。
+2. 增加 AI 增强写作、复述和角色扮演反馈里的错误表达沉淀。
 3. 增加云端同步冲突细粒度合并。

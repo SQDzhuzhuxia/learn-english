@@ -32,7 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import type { AiSegmentExpression, AiWritingCorrection } from "@/lib/ai/types";
+import type { AiSegmentExpression, AiWritingCorrection, RoleplayTranscriptTurn } from "@/lib/ai/types";
 
 type CloudTranscription = {
   text: string;
@@ -85,6 +85,28 @@ type RoleplayTranscriptEntry = {
   feedback: string;
 };
 
+type PracticeRoleplayTurn = {
+  id: string;
+  partnerLine: string;
+  translation: string;
+  userGoalZh: string;
+  expectedKeywords: string[];
+  suggestedReplies: string[];
+  isAiGenerated?: boolean;
+};
+
+const ROLEPLAY_KEYWORD_STOP_WORDS = new Set([
+  "with",
+  "that",
+  "this",
+  "have",
+  "would",
+  "could",
+  "please",
+  "thank",
+  "your"
+]);
+
 function formatSeconds(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;
@@ -112,6 +134,24 @@ function getPracticeAttemptTypeLabel(type: PracticeAttemptRecord["type"]) {
   };
 
   return labels[type];
+}
+
+function createExpectedKeywordsFromReplies(replies: string[]) {
+  const seen = new Set<string>();
+  const words = replies.join(" ").match(/[A-Za-z][A-Za-z'-]*/g) ?? [];
+
+  return words
+    .map((word) => word.toLowerCase())
+    .filter((word) => word.length > 3 && !ROLEPLAY_KEYWORD_STOP_WORDS.has(word))
+    .filter((word) => {
+      if (seen.has(word)) {
+        return false;
+      }
+
+      seen.add(word);
+      return true;
+    })
+    .slice(0, 3);
 }
 
 export function PracticeClient() {
@@ -148,6 +188,8 @@ export function PracticeClient() {
   const [isCorrectingRoleplay, setIsCorrectingRoleplay] = useState(false);
   const [roleplayAiSaveMessage, setRoleplayAiSaveMessage] = useState("");
   const [savedRoleplayAiKeys, setSavedRoleplayAiKeys] = useState<Record<string, boolean>>({});
+  const [dynamicRoleplayTurns, setDynamicRoleplayTurns] = useState<PracticeRoleplayTurn[]>([]);
+  const [isGeneratingRoleplayTurn, setIsGeneratingRoleplayTurn] = useState(false);
   const [selectedWritingIndex, setSelectedWritingIndex] = useState(0);
   const [writingText, setWritingText] = useState("");
   const [writingCorrection, setWritingCorrection] = useState<AiWritingCorrection | null>(null);
@@ -451,7 +493,7 @@ export function PracticeClient() {
   }
 
   async function handlePlayRoleplayPartnerLine() {
-    const currentTurn = roleplayScenario.turns[roleplayTurnIndex];
+    const currentTurn = allRoleplayTurns[roleplayTurnIndex];
 
     if (!currentTurn) {
       return;
@@ -468,14 +510,14 @@ export function PracticeClient() {
   }
 
   function handleSubmitRoleplayReply() {
-    const currentTurn = roleplayScenario.turns[roleplayTurnIndex];
+    const currentTurn = allRoleplayTurns[roleplayTurnIndex];
 
     if (!currentTurn) {
       return;
     }
 
-    if (roleplayTranscript.length >= roleplayScenario.turns.length) {
-      setRoleplayMessage("这一轮角色扮演已经完成。可以点击重新开始再练一遍。");
+    if (roleplayTranscript.length >= allRoleplayTurns.length) {
+      setRoleplayMessage("这一轮角色扮演已经完成。可以点击 AI 继续追问，或重新开始再练一遍。");
       return;
     }
 
@@ -497,7 +539,7 @@ export function PracticeClient() {
       feedback: nextFeedback.tip
     };
     const nextTranscript = [...roleplayTranscript, nextEntry];
-    const isComplete = nextTranscript.length >= roleplayScenario.turns.length;
+    const isComplete = nextTranscript.length >= allRoleplayTurns.length;
 
     setRoleplayFeedback(nextFeedback);
     setRoleplayTranscript(nextTranscript);
@@ -546,12 +588,96 @@ export function PracticeClient() {
     setRoleplayReply("");
     setRoleplayFeedback(null);
     setRoleplayTranscript([]);
+    setDynamicRoleplayTurns([]);
     setRoleplayMessage("已重新开始。先听第一句，再回答。");
     setRoleplaySaveMessage("");
     setSavedRoleplayKeys({});
     setRoleplayAiCorrection(null);
     setRoleplayAiSaveMessage("");
     setSavedRoleplayAiKeys({});
+  }
+
+  function buildRoleplayTranscriptForAi(entries = roleplayTranscript): RoleplayTranscriptTurn[] {
+    return entries.flatMap((entry) => [
+      {
+        speaker: "partner" as const,
+        text: entry.partnerText
+      },
+      {
+        speaker: "learner" as const,
+        text: entry.learnerText
+      }
+    ]);
+  }
+
+  async function handleGenerateNextRoleplayTurn() {
+    if (roleplayTranscript.length === 0) {
+      setRoleplayMessage("请先完成至少一轮角色扮演，再让 AI 继续追问。");
+      return;
+    }
+
+    setIsGeneratingRoleplayTurn(true);
+    setRoleplayMessage("正在生成下一轮角色扮演问题...");
+
+    try {
+      const response = await fetch("/api/ai/roleplay-next", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          scenarioTitle: roleplayScenario.title,
+          setting: roleplayScenario.setting,
+          goal: roleplayScenario.goal,
+          level: roleplayScenario.level,
+          partnerRole: roleplayScenario.partnerRole,
+          learnerRole: roleplayScenario.learnerRole,
+          transcript: buildRoleplayTranscriptForAi()
+        })
+      });
+      const payload = (await response.json()) as {
+        turn?: {
+          partnerLine: string;
+          translationZh: string;
+          userGoalZh: string;
+          suggestedReplies: string[];
+          source: "model" | "fallback";
+          provider: string;
+        };
+        error?: string;
+      };
+
+      if (!response.ok || !payload.turn) {
+        throw new Error(payload.error ?? "AI 继续追问生成失败。");
+      }
+
+      const nextTurn: PracticeRoleplayTurn = {
+        id: `ai-roleplay-${dynamicRoleplayTurns.length + 1}`,
+        partnerLine: payload.turn.partnerLine,
+        translation: payload.turn.translationZh,
+        userGoalZh: payload.turn.userGoalZh,
+        suggestedReplies: payload.turn.suggestedReplies,
+        expectedKeywords: createExpectedKeywordsFromReplies(payload.turn.suggestedReplies),
+        isAiGenerated: payload.turn.source === "model"
+      };
+
+      setDynamicRoleplayTurns((current) => [...current, nextTurn]);
+      setRoleplayTurnIndex(allRoleplayTurns.length);
+      setRoleplayReply("");
+      setRoleplayFeedback(null);
+      setRoleplayAiCorrection(null);
+      setRoleplayAiSaveMessage("");
+      setSavedRoleplayAiKeys({});
+      setRoleplayMessage(
+        payload.turn.source === "model"
+          ? `已由 ${payload.turn.provider} 生成下一轮追问。`
+          : "当前使用本地降级追问，配置 AI 后会调用模型。"
+      );
+    } catch (error) {
+      setRoleplayMessage(error instanceof Error ? error.message : "AI 继续追问生成失败。");
+    } finally {
+      setIsGeneratingRoleplayTurn(false);
+    }
   }
 
   function handleSaveRoleplayNaturalReply() {
@@ -1107,9 +1233,10 @@ export function PracticeClient() {
 
   const isShadowingRecording = isRecording && recordingMode === "shadowing";
   const isRetellingRecording = isRecording && recordingMode === "retelling";
-  const currentRoleplayTurn = roleplayScenario.turns[roleplayTurnIndex] ?? roleplayScenario.turns[0];
-  const roleplayCompleted = roleplayTranscript.length >= roleplayScenario.turns.length;
-  const roleplayProgressLabel = `${Math.min(roleplayTranscript.length + 1, roleplayScenario.turns.length)}/${roleplayScenario.turns.length}`;
+  const allRoleplayTurns: PracticeRoleplayTurn[] = [...roleplayScenario.turns, ...dynamicRoleplayTurns];
+  const currentRoleplayTurn = allRoleplayTurns[roleplayTurnIndex] ?? allRoleplayTurns[0];
+  const roleplayCompleted = roleplayTranscript.length >= allRoleplayTurns.length;
+  const roleplayProgressLabel = `${Math.min(roleplayTranscript.length + 1, allRoleplayTurns.length)}/${allRoleplayTurns.length}`;
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
@@ -1371,7 +1498,10 @@ export function PracticeClient() {
             <div className="rounded-lg border border-border bg-white p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <Badge variant="outline">第 {roleplayProgressLabel} 轮</Badge>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">第 {roleplayProgressLabel} 轮</Badge>
+                    {currentRoleplayTurn.isAiGenerated ? <Badge variant="soft">AI 追问</Badge> : null}
+                  </div>
                   <p className="mt-3 text-sm font-semibold text-foreground">Front desk</p>
                   <p className="mt-2 rounded-lg border border-border bg-panel-strong p-3 text-base font-semibold leading-7 text-foreground">
                     {currentRoleplayTurn.partnerLine}
@@ -1418,10 +1548,18 @@ export function PracticeClient() {
                 placeholder="Type your reply in simple English..."
               />
 
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 <Button onClick={handleSubmitRoleplayReply} disabled={roleplayCompleted}>
                   <ClipboardCheck className="h-4 w-4" />
                   提交回答
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => void handleGenerateNextRoleplayTurn()}
+                  disabled={!roleplayCompleted || isGeneratingRoleplayTurn}
+                >
+                  <Headphones className="h-4 w-4" />
+                  {isGeneratingRoleplayTurn ? "生成中..." : "AI 继续追问"}
                 </Button>
                 <Button variant="outline" onClick={handleResetRoleplay}>
                   重新开始

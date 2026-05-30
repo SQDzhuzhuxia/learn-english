@@ -74,3 +74,28 @@ export type AiWritingCorrection = {
   provider: string;
   generatedAt: string;
 };
+
+export type RoleplayTranscriptTurn = {
+  speaker: "partner" | "learner";
+  text: string;
+};
+
+export type GenerateRoleplayTurnInput = {
+  scenarioTitle: string;
+  setting: string;
+  goal: string;
+  level: string;
+  partnerRole: string;
+  learnerRole: string;
+  transcript: RoleplayTranscriptTurn[];
+};
+
+export type AiRoleplayTurn = {
+  partnerLine: string;
+  translationZh: string;
+  userGoalZh: string;
+  suggestedReplies: string[];
+  source: AiExplanationSource;
+  provider: string;
+  generatedAt: string;
+};

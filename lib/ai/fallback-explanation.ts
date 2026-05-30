@@ -1,10 +1,12 @@
 import type {
   AiMaterialExplanation,
+  AiRoleplayTurn,
   AiSegmentExplanation,
   AiWritingCorrection,
   CorrectWritingInput,
   ExplainMaterialInput,
-  ExplainSegmentInput
+  ExplainSegmentInput,
+  GenerateRoleplayTurnInput
 } from "@/lib/ai/types";
 
 const STOP_WORDS = new Set([
@@ -156,6 +158,51 @@ export function createFallbackWritingCorrection(
         example: sentence
       }
     ],
+    source: "fallback",
+    provider: reason,
+    generatedAt: new Date().toISOString()
+  };
+}
+
+export function createFallbackRoleplayTurn(
+  input: GenerateRoleplayTurnInput,
+  reason = "AI provider is not configured"
+): AiRoleplayTurn {
+  const learnerTurns = input.transcript.filter((turn) => turn.speaker === "learner");
+  const nextIndex = learnerTurns.length;
+  const fallbackTurns = [
+    {
+      partnerLine: "Could you please repeat your main concern?",
+      translationZh: "你可以再说一下你的主要问题吗？",
+      userGoalZh: "用一句简单英文重复你的主要需求。",
+      suggestedReplies: [
+        "I would like to make an appointment with a doctor.",
+        "I need to see a doctor because I do not feel well."
+      ]
+    },
+    {
+      partnerLine: "Can you tell me when the problem started?",
+      translationZh: "你能告诉我这个问题什么时候开始的吗？",
+      userGoalZh: "说明症状开始的时间。",
+      suggestedReplies: [
+        "It started yesterday.",
+        "I have had this problem since yesterday."
+      ]
+    },
+    {
+      partnerLine: "Is there anything else you would like to ask?",
+      translationZh: "你还有其他想问的吗？",
+      userGoalZh: "询问下一步或确认预约信息。",
+      suggestedReplies: [
+        "What should I bring to the appointment?",
+        "Could you please confirm the appointment time?"
+      ]
+    }
+  ];
+  const selected = fallbackTurns[nextIndex % fallbackTurns.length];
+
+  return {
+    ...selected,
     source: "fallback",
     provider: reason,
     generatedAt: new Date().toISOString()

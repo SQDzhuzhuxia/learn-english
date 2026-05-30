@@ -3,11 +3,18 @@ import {
   correctWritingWithOpenAiCompatible,
   explainMaterialWithOpenAiCompatible,
   explainSegmentWithOpenAiCompatible,
+  generateRoleplayTurnWithOpenAiCompatible,
   parseMaterialExplanationResponse,
+  parseRoleplayTurnResponse,
   parseSegmentExplanationResponse,
   parseWritingCorrectionResponse
 } from "@/lib/ai/openai-compatible";
-import type { CorrectWritingInput, ExplainMaterialInput, ExplainSegmentInput } from "@/lib/ai/types";
+import type {
+  CorrectWritingInput,
+  ExplainMaterialInput,
+  ExplainSegmentInput,
+  GenerateRoleplayTurnInput
+} from "@/lib/ai/types";
 
 const input: ExplainSegmentInput = {
   materialTitle: "Apartment Tour",
@@ -41,6 +48,25 @@ const writingInput: CorrectWritingInput = {
   prompt: "用英文写一句：我想预约医生。",
   level: "A1",
   userText: "I want see doctor."
+};
+
+const roleplayInput: GenerateRoleplayTurnInput = {
+  scenarioTitle: "前台预约医生",
+  setting: "美国诊所前台电话预约",
+  goal: "完成预约医生需求",
+  level: "A1",
+  partnerRole: "诊所前台",
+  learnerRole: "病人",
+  transcript: [
+    {
+      speaker: "partner",
+      text: "Good morning. How can I help you?"
+    },
+    {
+      speaker: "learner",
+      text: "I would like to make an appointment with a doctor."
+    }
+  ]
 };
 
 afterEach(() => {
@@ -139,6 +165,25 @@ describe("parseWritingCorrectionResponse", () => {
     expect(correction.source).toBe("model");
     expect(correction.correctedText).toContain("to see");
     expect(correction.keyProblems[0]).toContain("want");
+  });
+});
+
+describe("parseRoleplayTurnResponse", () => {
+  it("normalizes roleplay turn JSON", () => {
+    const turn = parseRoleplayTurnResponse(
+      JSON.stringify({
+        partnerLine: "What seems to be the problem?",
+        translationZh: "您哪里不舒服？",
+        userGoalZh: "说明你的症状。",
+        suggestedReplies: ["I have a sore throat.", "My throat hurts."]
+      }),
+      roleplayInput,
+      "Test Provider"
+    );
+
+    expect(turn.source).toBe("model");
+    expect(turn.partnerLine).toContain("problem");
+    expect(turn.suggestedReplies).toContain("I have a sore throat.");
   });
 });
 
@@ -296,5 +341,45 @@ describe("explainSegmentWithOpenAiCompatible", () => {
       })
     );
     expect(correction.correctedText).toContain("doctor");
+  });
+
+  it("calls a chat-completions compatible endpoint for roleplay turns", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  partnerLine: "What seems to be the problem?",
+                  translationZh: "您哪里不舒服？",
+                  userGoalZh: "说明你的症状。",
+                  suggestedReplies: ["I have a sore throat.", "My throat hurts."]
+                })
+              }
+            }
+          ]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const turn = await generateRoleplayTurnWithOpenAiCompatible(roleplayInput, {
+      baseUrl: "http://localhost:11434/v1",
+      apiKey: "test-key",
+      model: "test-model",
+      providerLabel: "Local Test",
+      timeoutMs: 5000
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:11434/v1/chat/completions",
+      expect.objectContaining({
+        method: "POST"
+      })
+    );
+    expect(turn.partnerLine).toContain("problem");
   });
 });

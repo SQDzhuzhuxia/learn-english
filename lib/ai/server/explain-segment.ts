@@ -1,14 +1,21 @@
 import {
   createFallbackMaterialExplanation,
   createFallbackSegmentExplanation,
+  createFallbackRoleplayTurn,
   createFallbackWritingCorrection
 } from "@/lib/ai/fallback-explanation";
 import {
   correctWritingWithOpenAiCompatible,
   explainMaterialWithOpenAiCompatible,
-  explainSegmentWithOpenAiCompatible
+  explainSegmentWithOpenAiCompatible,
+  generateRoleplayTurnWithOpenAiCompatible
 } from "@/lib/ai/openai-compatible";
-import type { CorrectWritingInput, ExplainMaterialInput, ExplainSegmentInput } from "@/lib/ai/types";
+import type {
+  CorrectWritingInput,
+  ExplainMaterialInput,
+  ExplainSegmentInput,
+  GenerateRoleplayTurnInput
+} from "@/lib/ai/types";
 
 type Environment = Record<string, string | undefined>;
 
@@ -144,5 +151,20 @@ export async function correctWriting(input: CorrectWritingInput, env: Environmen
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI provider failed";
     return createFallbackWritingCorrection(input, `${config.providerLabel} 暂不可用：${message}`);
+  }
+}
+
+export async function generateRoleplayTurn(input: GenerateRoleplayTurnInput, env: Environment = process.env) {
+  const config = resolveAiRuntimeConfig(env);
+
+  if (config.mode === "fallback") {
+    return createFallbackRoleplayTurn(input, config.reason);
+  }
+
+  try {
+    return await generateRoleplayTurnWithOpenAiCompatible(input, config);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "AI provider failed";
+    return createFallbackRoleplayTurn(input, `${config.providerLabel} 暂不可用：${message}`);
   }
 }

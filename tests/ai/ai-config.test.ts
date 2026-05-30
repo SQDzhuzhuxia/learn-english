@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { correctWriting, explainMaterial, resolveAiRuntimeConfig } from "@/lib/ai/server/explain-segment";
+import {
+  correctWriting,
+  explainMaterial,
+  generateRoleplayTurn,
+  resolveAiRuntimeConfig
+} from "@/lib/ai/server/explain-segment";
 
 describe("resolveAiRuntimeConfig", () => {
   it("uses fallback mode by default", () => {
@@ -65,5 +70,24 @@ describe("resolveAiRuntimeConfig", () => {
 
     expect(correction.source).toBe("fallback");
     expect(correction.feedbackZh).toContain("本地降级");
+  });
+
+  it("returns a fallback roleplay turn when provider is not configured", async () => {
+    const turn = await generateRoleplayTurn(
+      {
+        scenarioTitle: "前台预约医生",
+        setting: "美国诊所前台电话预约",
+        goal: "完成预约",
+        level: "A1",
+        partnerRole: "前台",
+        learnerRole: "病人",
+        transcript: []
+      },
+      {}
+    );
+
+    expect(turn.source).toBe("fallback");
+    expect(turn.partnerLine).toContain("?");
+    expect(turn.suggestedReplies.length).toBeGreaterThan(0);
   });
 });

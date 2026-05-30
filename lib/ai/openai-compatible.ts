@@ -1,12 +1,14 @@
 import type {
   AiMaterialExplanation,
   AiMaterialSegmentExplanation,
+  AiRoleplayTurn,
   AiSegmentExplanation,
   AiSegmentExpression,
   AiWritingCorrection,
   CorrectWritingInput,
   ExplainMaterialInput,
-  ExplainSegmentInput
+  ExplainSegmentInput,
+  GenerateRoleplayTurnInput
 } from "@/lib/ai/types";
 
 export type OpenAiCompatibleConfig = {
@@ -85,6 +87,31 @@ function buildWritingCorrectionPrompt(input: CorrectWritingInput) {
     `任务要求：${input.prompt}`,
     `学习者水平：${input.level}`,
     `用户文本：${input.userText}`
+  ].join("\n");
+}
+
+function buildRoleplayTurnPrompt(input: GenerateRoleplayTurnInput) {
+  const transcript = input.transcript
+    .slice(-12)
+    .map((turn) => `${turn.speaker === "partner" ? "Front desk" : "Learner"}: ${turn.text}`)
+    .join("\n");
+
+  return [
+    "请继续一个英语初级学习者的美国生活场景口语角色扮演。",
+    "你扮演对话伙伴，只输出下一句对方台词，不要代替学习者回答。",
+    "句子必须短、自然、适合 A1-A2。不要突然加难。",
+    "必须输出 JSON，不要输出 markdown。",
+    "JSON 字段：partnerLine, translationZh, userGoalZh, suggestedReplies。",
+    "suggestedReplies 是 2 到 3 个学习者可以照读的英文短句。",
+    "",
+    `场景标题：${input.scenarioTitle}`,
+    `场景：${input.setting}`,
+    `学习目标：${input.goal}`,
+    `学习者水平：${input.level}`,
+    `学习者角色：${input.learnerRole}`,
+    `对话伙伴角色：${input.partnerRole}`,
+    "当前对话：",
+    transcript || "还没有对话记录。"
   ].join("\n");
 }
 
@@ -283,6 +310,29 @@ export function parseWritingCorrectionResponse(
   };
 }
 
+export function parseRoleplayTurnResponse(
+  content: string,
+  input: GenerateRoleplayTurnInput,
+  providerLabel: string
+): AiRoleplayTurn {
+  const parsed = JSON.parse(extractJsonObject(content)) as Record<string, unknown>;
+  const partnerLine = readString(parsed.partnerLine, "Could you please tell me more?");
+  const suggestedReplies = readStringArray(parsed.suggestedReplies, [
+    "Could you please repeat that?",
+    "I would like to explain my situation."
+  ]).slice(0, 3);
+
+  return {
+    partnerLine,
+    translationZh: readString(parsed.translationZh, "请继续用简单英文回答。"),
+    userGoalZh: readString(parsed.userGoalZh, `继续完成“${input.goal}”这个目标。`),
+    suggestedReplies,
+    source: "model",
+    provider: providerLabel,
+    generatedAt: new Date().toISOString()
+  };
+}
+
 async function requestChatCompletion(prompt: string, config: OpenAiCompatibleConfig) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
@@ -356,4 +406,12 @@ export async function correctWritingWithOpenAiCompatible(
 ) {
   const content = await requestChatCompletion(buildWritingCorrectionPrompt(input), config);
   return parseWritingCorrectionResponse(content, input, config.providerLabel);
+}
+
+export async function generateRoleplayTurnWithOpenAiCompatible(
+  input: GenerateRoleplayTurnInput,
+  config: OpenAiCompatibleConfig
+) {
+  const content = await requestChatCompletion(buildRoleplayTurnPrompt(input), config);
+  return parseRoleplayTurnResponse(content, input, config.providerLabel);
 }

@@ -1,50 +1,90 @@
 # Learn English
 
-Personal AI English immersion app for a Chinese-native adult learner preparing for U.S. work, life, and long-term immigration goals.
+> 面向中文母语学习者的 AI 英语沉浸训练系统。
+> English is not only a skill. It is a bridge to work, life, identity, and a wider world.
 
-The first milestone is a Web/PWA product that turns daily English study into a guided loop:
+[English README](README.en.md) · [项目进度](docs/project-progress.md) · [技术方案](docs/technical-plan-v0.1.md) · [贡献指南](CONTRIBUTING.md)
 
-- comprehensible listening and reading input
-- AI explanation in Chinese-first, then gradually more English
-- vocabulary and sentence collection from real materials
-- spaced review
-- guided speaking, shadowing, retelling, and writing
-- U.S. life, work, and naturalization-oriented scenarios
+## 为什么做
 
-## Docs
+很多成人学习英语，不是为了刷题，而是为了真实地生活：听懂医生、租房、面试、会议、邻里交流、移民和入籍流程。
+这个项目的目标，是把英语学习从零散的背单词和短期打卡，变成一个长期可持续的个人训练系统。
 
-- [需求文档 v0.1](docs/requirements-v0.1.md)
-- [技术方案 v0.1](docs/technical-plan-v0.1.md)
-- [页面原型 v0.1](docs/page-prototype-v0.1.md)
-- [开发方案与开发计划 v0.1](docs/development-plan-v0.1.md)
-- [UI 技术方案补充 v0.1](docs/ui-technical-plan-v0.1.md)
-- [项目总进度](docs/project-progress.md)
-- [Supabase 同步表结构草案](docs/supabase-sync-schema-v0.1.sql)
+Learn English 采用“输入驱动 + 输出反馈 + 复习沉淀”的方法：
 
-## Current Direction
+- 大量可理解听读输入，让英语先变得熟悉。
+- 用 AI 降低理解门槛，用中文解释关键难点，再逐步提高英文比例。
+- 跟读、复述、写作、角色扮演都围绕真实生活和工作场景。
+- 每次输出后的错误、好句、表达都会进入词句本和复习系统。
+- 数据优先本地可用，同时为云同步、多端使用和本地模型预留架构。
 
-Start with a Next.js Web/PWA app, use cloud sync for cross-device study, and keep the architecture ready for future mobile, desktop, local speech recognition, and local model support.
+这不是“又一个背单词软件”。
+它想做的是一个认真、长期、可共同维护的英语融入训练工具。
 
-## Tech Stack
+## 当前能力
 
-- App: Next.js 16, React 19, TypeScript
-- UI direction: shadcn/ui, Radix UI, Tailwind CSS 4, lucide-react
-- Data sync: Supabase Auth, Supabase Postgres sync tables, local sync snapshots
-- Local data: browser localStorage first, with a future path to IndexedDB/SQLite
-- AI: OpenAI-compatible provider layer with room for Claude, Gemini, DeepSeek, Qwen, Doubao, and local models
-- Speech: browser recording, cloud STT endpoint, local Whisper/whisper.cpp endpoint adapter
-- Quality: ESLint, TypeScript, Vitest, production build checks
+### 输入学习
 
-## Development
+- 材料库和今日学习驾驶舱
+- 文本材料导入、自动分句、本地保存
+- 动态学习页和逐句学习进度
+- 当前句 AI 解释、整篇批量解释和本地降级解释
+- 重点表达保存到词句本和复习卡
+
+### 输出训练
+
+- 跟读录音、浏览器转写、云端/本地 STT 转写
+- 跟读完整度、漏词、多词和重点词反馈
+- 复述训练、复述录音、关键点反馈
+- AI 复述自然度反馈
+- 短写作 AI 批改
+- 美国生活场景角色扮演
+- AI 角色回答反馈和 AI 继续追问
+- 写作、复述、角色回答的 AI 建议一键沉淀到复习
+
+### 复习系统
+
+- 词句本、搜索、筛选、编辑、归档、恢复、删除
+- 多类型复习卡：识别、输出、拼写、口语、听力
+- 简化间隔复习调度
+- 到期队列、新卡、未来卡、回炉卡、暂停卡筛选
+- 复习诊断、评分趋势、卡片详情、历史记录
+- 单卡暂停/恢复/重置，批量暂停/恢复
+
+### 数据、同步和 PWA
+
+- 浏览器本地数据优先
+- 本地数据导出/导入
+- Supabase 登录、手动上传、手动拉取、差异检查
+- 自动上传开关和同步确认 UI
+- PWA 安装提示、离线状态提示、基础缓存
+- OpenAI-compatible AI Provider 适配层
+- OpenAI-compatible STT / TTS 适配
+- 本地 Whisper/whisper.cpp endpoint 适配
+
+## 技术栈
+
+- App：Next.js 16, React 19, TypeScript
+- UI：shadcn/ui, Radix UI, Tailwind CSS 4, lucide-react
+- 数据：browser localStorage first, sync snapshot, Supabase Auth/Postgres
+- AI：OpenAI-compatible provider layer
+- Speech：browser recording, cloud STT, local Whisper/whisper.cpp, configurable TTS
+- Quality：ESLint, TypeScript, Vitest, production build checks
+
+## 快速开始
 
 ```bash
 npm install
 npm run dev
 ```
 
-Local app: http://localhost:3000
+本地地址：
 
-Quality checks:
+```text
+http://localhost:3000
+```
+
+质量检查：
 
 ```bash
 npm run lint
@@ -53,17 +93,109 @@ npm run test
 npm run build
 ```
 
-## Local Speech
+## 环境变量
 
-Server-side speech recognition is configured with `SPEECH_PROVIDER`.
+复制 `.env.example` 为 `.env.local`，按需配置。
 
-- `fallback`: keep browser transcription only.
-- `openai`: use OpenAI-compatible `/audio/transcriptions`.
-- `local-whisper` or `whisper-cpp`: send multipart audio to a local endpoint such as `SPEECH_BASE_URL=http://127.0.0.1:8080` and `SPEECH_ENDPOINT_PATH=/inference`.
+### AI
 
-Server-side text-to-speech is configured with `TTS_PROVIDER`.
+```env
+AI_PROVIDER=fallback
+AI_BASE_URL=
+AI_MODEL=
+AI_API_KEY=
+```
 
-- `fallback`: use browser built-in English speech.
-- `openai`: use `/audio/speech` with `TTS_MODEL`, `TTS_VOICE`, and `OPENAI_API_KEY`.
-- `openai-compatible` or `local`: use a compatible local/cloud endpoint such as `TTS_BASE_URL=http://127.0.0.1:8880/v1`.
-- If TTS is not configured or fails, the app automatically falls back to browser speech.
+支持方向：
+
+- `fallback`：不调用模型，使用本地降级反馈
+- `openai`
+- `openai-compatible`
+- `local`
+
+### 语音转文字
+
+```env
+SPEECH_PROVIDER=fallback
+SPEECH_BASE_URL=
+SPEECH_MODEL=
+SPEECH_API_KEY=
+```
+
+支持方向：
+
+- 浏览器转写兜底
+- OpenAI-compatible `/audio/transcriptions`
+- 本地 Whisper / whisper.cpp multipart endpoint
+
+### 文字转语音
+
+```env
+TTS_PROVIDER=fallback
+TTS_BASE_URL=
+TTS_MODEL=
+TTS_API_KEY=
+TTS_VOICE=alloy
+```
+
+未配置 TTS 时，应用会自动回退到浏览器内置英文朗读。
+
+### Supabase
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+数据库草案见：[docs/supabase-sync-schema-v0.1.sql](docs/supabase-sync-schema-v0.1.sql)
+
+## 文档
+
+- [需求文档](docs/requirements-v0.1.md)
+- [技术方案](docs/technical-plan-v0.1.md)
+- [页面原型](docs/page-prototype-v0.1.md)
+- [开发计划](docs/development-plan-v0.1.md)
+- [UI 技术方案](docs/ui-technical-plan-v0.1.md)
+- [项目总进度](docs/project-progress.md)
+- [Sprint 4 状态](docs/sprint-4-status.md)
+
+## 路线图
+
+- 更完整的开放式 AI 角色扮演会话记忆和目标跟踪
+- 输出错误类型统计和长期弱项画像
+- 云同步冲突细粒度合并
+- 离线音频缓存和 AI 请求队列
+- 内置离线 Whisper / TTS 模型打包预研
+- 更细的发音、重音、连读和音素级反馈
+- 移动端和桌面端封装
+
+## 贡献
+
+欢迎任何关心英语学习、成人学习、AI 教育、移民生活和开源工具的人参与。
+
+你可以贡献：
+
+- 学习材料和真实生活场景
+- 中文母语学习者常见错误总结
+- UI/UX 改进
+- AI prompt 和反馈质量优化
+- 复习算法、语音、同步、离线能力
+- 测试、文档和国际化
+
+开始前请阅读：[CONTRIBUTING.md](CONTRIBUTING.md)
+
+## 安全和隐私
+
+- 不要提交 `.env`、API key、录音、个人学习数据或数据库文件。
+- 当前默认数据主要存储在浏览器本地。
+- 云同步需要自行配置 Supabase。
+- AI、STT、TTS 请求会发送到你配置的服务商或本地 endpoint。
+
+安全说明见：[SECURITY.md](SECURITY.md)
+
+## 许可证
+
+本项目使用 [MIT License](LICENSE)。
+
+愿这个项目帮助更多人把英语学成真正能生活、能工作、能表达自己的能力。

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Personal AI English immersion app for Chinese-native learners preparing for U.S. work and life.",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

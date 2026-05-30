@@ -144,6 +144,10 @@ export function PracticeClient() {
   const [roleplayMessage, setRoleplayMessage] = useState("");
   const [roleplaySaveMessage, setRoleplaySaveMessage] = useState("");
   const [savedRoleplayKeys, setSavedRoleplayKeys] = useState<Record<string, boolean>>({});
+  const [roleplayAiCorrection, setRoleplayAiCorrection] = useState<AiWritingCorrection | null>(null);
+  const [isCorrectingRoleplay, setIsCorrectingRoleplay] = useState(false);
+  const [roleplayAiSaveMessage, setRoleplayAiSaveMessage] = useState("");
+  const [savedRoleplayAiKeys, setSavedRoleplayAiKeys] = useState<Record<string, boolean>>({});
   const [selectedWritingIndex, setSelectedWritingIndex] = useState(0);
   const [writingText, setWritingText] = useState("");
   const [writingCorrection, setWritingCorrection] = useState<AiWritingCorrection | null>(null);
@@ -499,6 +503,9 @@ export function PracticeClient() {
     setRoleplayTranscript(nextTranscript);
     setRoleplaySaveMessage("");
     setSavedRoleplayKeys({});
+    setRoleplayAiCorrection(null);
+    setRoleplayAiSaveMessage("");
+    setSavedRoleplayAiKeys({});
 
     if (isComplete) {
       const averageScore = Math.round(
@@ -542,6 +549,9 @@ export function PracticeClient() {
     setRoleplayMessage("已重新开始。先听第一句，再回答。");
     setRoleplaySaveMessage("");
     setSavedRoleplayKeys({});
+    setRoleplayAiCorrection(null);
+    setRoleplayAiSaveMessage("");
+    setSavedRoleplayAiKeys({});
   }
 
   function handleSaveRoleplayNaturalReply() {
@@ -592,6 +602,123 @@ export function PracticeClient() {
       result.created
         ? `已保存表达“${expression}”，并生成 ${result.cards?.length ?? 1} 张复习卡。`
         : `表达“${expression}”已经在复习系统里。`
+    );
+  }
+
+  function createRoleplayAiSaveKey(kind: "corrected-sentence" | "expression", text: string) {
+    return `roleplay-ai:${kind}:${text.trim().toLowerCase()}`;
+  }
+
+  function markRoleplayAiItemSaved(key: string) {
+    setSavedRoleplayAiKeys((current) => ({
+      ...current,
+      [key]: true
+    }));
+  }
+
+  async function handleCorrectRoleplayWithAi() {
+    const lastEntry = roleplayTranscript.at(-1);
+
+    if (!lastEntry) {
+      setRoleplayMessage("请先提交一句角色扮演回答，再请求 AI 自然度反馈。");
+      return;
+    }
+
+    setIsCorrectingRoleplay(true);
+    setRoleplayMessage("正在生成 AI 角色回答反馈...");
+
+    try {
+      const response = await fetch("/api/ai/correct-writing", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          promptTitle: `角色扮演：${roleplayScenario.title}`,
+          prompt: `${roleplayScenario.setting}\n前台：${lastEntry.partnerText}\n你的目标：${roleplayScenario.goal}`,
+          level: roleplayScenario.level,
+          userText: lastEntry.learnerText
+        })
+      });
+      const payload = (await response.json()) as {
+        correction?: AiWritingCorrection;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.correction) {
+        throw new Error(payload.error ?? "AI 角色回答反馈生成失败。");
+      }
+
+      recordStudyActivity({
+        type: "ai",
+        label: `AI 角色回答反馈：${roleplayScenario.title}`,
+        materialTitle: roleplayScenario.material
+      });
+      setRoleplayAiCorrection(payload.correction);
+      setRoleplayAiSaveMessage("");
+      setSavedRoleplayAiKeys({});
+      setRoleplayMessage(
+        payload.correction.source === "model"
+          ? `已由 ${payload.correction.provider} 生成角色回答反馈。`
+          : "当前使用本地降级角色回答反馈，配置 AI 后会调用模型。"
+      );
+    } catch (error) {
+      setRoleplayMessage(error instanceof Error ? error.message : "AI 角色回答反馈生成失败。");
+    } finally {
+      setIsCorrectingRoleplay(false);
+    }
+  }
+
+  function handleSaveRoleplayAiCorrection() {
+    if (!roleplayAiCorrection) {
+      return;
+    }
+
+    const lastEntry = roleplayTranscript.at(-1);
+    const key = createRoleplayAiSaveKey("corrected-sentence", roleplayAiCorrection.correctedText);
+    const result = saveWritingItemAsReviewCard({
+      kind: "corrected-sentence",
+      promptTitle: `角色扮演：${roleplayScenario.title}`,
+      prompt: lastEntry?.partnerText ?? roleplayScenario.goal,
+      originalText: roleplayAiCorrection.originalText,
+      correctedText: roleplayAiCorrection.correctedText,
+      text: roleplayAiCorrection.correctedText,
+      meaningZh: "AI 优化后的角色回答",
+      example: lastEntry
+        ? `Front desk: ${lastEntry.partnerText} / Me: ${roleplayAiCorrection.correctedText}`
+        : roleplayAiCorrection.correctedText
+    });
+
+    markRoleplayAiItemSaved(key);
+    setRoleplayAiSaveMessage(
+      result.created
+        ? `已保存 AI 优化角色回答，并生成 ${result.cards?.length ?? 1} 张复习卡。`
+        : "这条 AI 优化角色回答已经在复习系统里。"
+    );
+  }
+
+  function handleSaveRoleplayAiExpression(expression: AiSegmentExpression) {
+    if (!roleplayAiCorrection) {
+      return;
+    }
+
+    const key = createRoleplayAiSaveKey("expression", expression.text);
+    const result = saveWritingItemAsReviewCard({
+      kind: "expression",
+      promptTitle: `角色扮演：${roleplayScenario.title}`,
+      prompt: roleplayScenario.goal,
+      originalText: roleplayAiCorrection.originalText,
+      correctedText: roleplayAiCorrection.correctedText,
+      text: expression.text,
+      meaningZh: expression.meaningZh,
+      example: expression.example || roleplayAiCorrection.correctedText
+    });
+
+    markRoleplayAiItemSaved(key);
+    setRoleplayAiSaveMessage(
+      result.created
+        ? `已保存表达“${expression.text}”，并生成 ${result.cards?.length ?? 1} 张复习卡。`
+        : `表达“${expression.text}”已经在复习系统里。`
     );
   }
 
@@ -1348,6 +1475,80 @@ export function PracticeClient() {
                       ? "已保存自然回答"
                       : "保存自然回答"}
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-0 mt-2 sm:ml-2 sm:mt-3"
+                    onClick={() => void handleCorrectRoleplayWithAi()}
+                    disabled={isCorrectingRoleplay}
+                  >
+                    <PenLine className="h-4 w-4 text-foreground" />
+                    {isCorrectingRoleplay ? "生成中..." : "AI 自然度反馈"}
+                  </Button>
+                </div>
+              ) : null}
+
+              {roleplayAiCorrection ? (
+                <div className="mt-4 rounded-lg border border-border bg-panel-strong p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-semibold text-foreground">AI 角色回答反馈</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSaveRoleplayAiCorrection}
+                      disabled={
+                        savedRoleplayAiKeys[
+                          createRoleplayAiSaveKey("corrected-sentence", roleplayAiCorrection.correctedText)
+                        ]
+                      }
+                    >
+                      <Plus className="h-4 w-4 text-foreground" />
+                      {savedRoleplayAiKeys[
+                        createRoleplayAiSaveKey("corrected-sentence", roleplayAiCorrection.correctedText)
+                      ]
+                        ? "已保存"
+                        : "保存修正版"}
+                    </Button>
+                  </div>
+                  <p className="mt-3 rounded-lg border border-border bg-white p-3 text-sm leading-6 text-foreground">
+                    {roleplayAiCorrection.correctedText}
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-muted">{roleplayAiCorrection.feedbackZh}</p>
+                  <ul className="mt-3 space-y-1 text-xs leading-5 text-foreground">
+                    {roleplayAiCorrection.keyProblems.map((problem) => (
+                      <li key={problem}>{problem}</li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 space-y-2">
+                    {roleplayAiCorrection.betterExpressions.map((expression) => (
+                      <div
+                        key={expression.text}
+                        className="flex flex-col gap-3 rounded-lg border border-border bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{expression.text}</p>
+                          <p className="mt-1 text-xs leading-5 text-muted">{expression.meaningZh}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSaveRoleplayAiExpression(expression)}
+                          disabled={savedRoleplayAiKeys[createRoleplayAiSaveKey("expression", expression.text)]}
+                          className="shrink-0"
+                        >
+                          <Plus className="h-4 w-4 text-foreground" />
+                          {savedRoleplayAiKeys[createRoleplayAiSaveKey("expression", expression.text)]
+                            ? "已保存"
+                            : "保存"}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  {roleplayAiSaveMessage ? (
+                    <p className="mt-3 rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground">
+                      {roleplayAiSaveMessage}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
 

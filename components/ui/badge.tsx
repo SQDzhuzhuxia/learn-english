@@ -11,7 +11,7 @@ const badgeVariants = cva(
         secondary: "border-border bg-panel-strong text-muted",
         outline: "border-border bg-white text-muted",
         soft: "border-border bg-panel-strong text-foreground",
-        warning: "border-amber-200 bg-amber-50 text-amber-800",
+        warning: "border-border bg-panel-strong text-foreground",
         success: "border-border bg-panel-strong text-foreground"
       }
     },

@@ -101,7 +101,7 @@ export function PwaInstallStatus() {
 
   if (displayState === "offline") {
     return (
-      <div className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+      <div className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-border bg-panel-strong px-3 py-2 text-xs font-semibold text-foreground">
         <WifiOff className="h-4 w-4" />
         离线
       </div>
@@ -110,7 +110,7 @@ export function PwaInstallStatus() {
 
   if (displayState === "installed") {
     return (
-      <div className="hidden min-h-9 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 sm:inline-flex">
+      <div className="hidden min-h-9 items-center justify-center gap-2 rounded-lg border border-border bg-panel-strong px-3 py-2 text-xs font-semibold text-foreground sm:inline-flex">
         <CheckCircle2 className="h-4 w-4" />
         已安装
       </div>
@@ -123,7 +123,7 @@ export function PwaInstallStatus() {
         onClick={handleInstall}
         className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-semibold text-foreground hover:bg-panel-strong"
       >
-        <Download className="h-4 w-4 text-accent" />
+        <Download className="h-4 w-4 text-foreground" />
         安装
       </button>
       <button

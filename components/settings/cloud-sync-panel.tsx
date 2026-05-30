@@ -412,16 +412,16 @@ export function CloudSyncPanel() {
         )}
 
         {pendingAction ? (
-          <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <div className="mt-5 rounded-lg border border-border bg-panel-strong p-4">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-amber-700">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-foreground">
                 <AlertTriangle className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-amber-900">
+                <p className="text-sm font-semibold text-foreground">
                   {pendingAction.type === "upload" ? "确认上传本地快照" : "确认拉取云端数据"}
                 </p>
-                <p className="mt-1 text-sm leading-6 text-amber-800">
+                <p className="mt-1 text-sm leading-6 text-foreground">
                   {pendingAction.type === "upload"
                     ? `将上传 ${pendingAction.recordCount} 组本地数据，大小 ${pendingAction.totalBytes} bytes。`
                     : `云端共有 ${pendingAction.downloadedRecords} 组数据，本次会恢复 ${pendingAction.restoreCount} 组。${formatSyncComparison(pendingAction.comparison)}`}
@@ -493,7 +493,7 @@ export function CloudSyncPanel() {
         </div>
 
         {message ? (
-          <p className="mt-5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm leading-6 text-sky-800">
+          <p className="mt-5 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm leading-6 text-foreground">
             {message}
           </p>
         ) : null}

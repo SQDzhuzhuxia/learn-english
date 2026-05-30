@@ -13,8 +13,8 @@ const buttonVariants = cva(
         outline: "border border-border bg-white text-foreground hover:bg-panel-strong",
         ghost: "text-muted hover:bg-panel-strong hover:text-foreground",
         soft: "border border-border bg-panel-strong text-foreground hover:bg-border",
-        destructive: "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
-        warning: "border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100",
+        destructive: "border border-border bg-panel-strong text-foreground hover:bg-border",
+        warning: "border border-border bg-panel-strong text-foreground hover:bg-border",
         link: "min-h-0 rounded-none p-0 text-foreground underline-offset-4 hover:underline"
       },
       size: {

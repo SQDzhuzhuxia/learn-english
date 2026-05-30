@@ -730,50 +730,50 @@ export function PracticeClient() {
             ) : null}
 
             {isTranscribing ? (
-              <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+              <p className="mt-4 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
                 正在请求服务端转写...
               </p>
             ) : null}
 
             {feedback ? (
-              <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <div className="mt-4 rounded-lg border border-border bg-panel-strong p-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-emerald-800">{feedback.label}</p>
-                  <p className="text-sm font-semibold text-emerald-800">{feedback.score}%</p>
+                  <p className="text-sm font-semibold text-foreground">{feedback.label}</p>
+                  <p className="text-sm font-semibold text-foreground">{feedback.score}%</p>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-emerald-700">{feedback.tip}</p>
+                <p className="mt-2 text-sm leading-6 text-foreground">{feedback.tip}</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
-                    <p className="text-xs text-emerald-700">完整度</p>
-                    <p className="mt-1 text-sm font-semibold text-emerald-900">
+                  <div className="rounded-lg border border-border bg-white px-3 py-2">
+                    <p className="text-xs text-foreground">完整度</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
                       {feedback.matchedWords}/{feedback.totalWords}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
-                    <p className="text-xs text-emerald-700">疑似多出</p>
-                    <p className="mt-1 text-sm font-semibold text-emerald-900">
+                  <div className="rounded-lg border border-border bg-white px-3 py-2">
+                    <p className="text-xs text-foreground">疑似多出</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
                       {feedback.extraWords.length}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
-                    <p className="text-xs text-emerald-700">重点词</p>
-                    <p className="mt-1 text-sm font-semibold text-emerald-900">
+                  <div className="rounded-lg border border-border bg-white px-3 py-2">
+                    <p className="text-xs text-foreground">重点词</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
                       {feedback.focusWords.slice(0, 2).join(", ") || "继续保持"}
                     </p>
                   </div>
                 </div>
                 {feedback.missingWords.length > 0 ? (
-                  <p className="mt-2 text-xs leading-5 text-emerald-700">
+                  <p className="mt-2 text-xs leading-5 text-foreground">
                     漏掉：{feedback.missingWords.join(", ")}
                   </p>
                 ) : null}
                 {feedback.extraWords.length > 0 ? (
-                  <p className="mt-2 text-xs leading-5 text-emerald-700">
+                  <p className="mt-2 text-xs leading-5 text-foreground">
                     多出/误识别：{feedback.extraWords.join(", ")}
                   </p>
                 ) : null}
                 {feedback.suggestions.length > 0 ? (
-                  <ul className="mt-2 space-y-1 text-xs leading-5 text-emerald-700">
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-foreground">
                     {feedback.suggestions.slice(0, 2).map((suggestion) => (
                       <li key={suggestion}>{suggestion}</li>
                     ))}
@@ -783,7 +783,7 @@ export function PracticeClient() {
             ) : null}
 
             {message ? (
-              <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+              <p className="mt-4 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
                 {message}
               </p>
             ) : null}
@@ -795,7 +795,7 @@ export function PracticeClient() {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">跟读步骤</CardTitle>
-            {isShadowingRecording ? <MicOff className="h-5 w-5 text-rose-600" /> : <Mic className="h-5 w-5 text-accent" />}
+            {isShadowingRecording ? <MicOff className="h-5 w-5 text-foreground" /> : <Mic className="h-5 w-5 text-foreground" />}
           </div>
           <CardDescription>先低压力模仿，不急着自由发挥。</CardDescription>
           </CardHeader>
@@ -851,7 +851,7 @@ export function PracticeClient() {
               <Badge variant="soft">复述</Badge>
               <CardTitle className="mt-3 text-lg">{retellingPractice.title}</CardTitle>
             </div>
-            <ClipboardCheck className="h-5 w-5 text-accent" />
+            <ClipboardCheck className="h-5 w-5 text-foreground" />
           </div>
           <CardDescription>{retellingPractice.prompt}</CardDescription>
         </CardHeader>
@@ -904,7 +904,7 @@ export function PracticeClient() {
                     onClick={() => startRecording("retelling")}
                     disabled={isRecording}
                   >
-                    <Mic className="h-4 w-4 text-accent" />
+                    <Mic className="h-4 w-4 text-foreground" />
                     录音复述
                   </Button>
                 )}
@@ -920,7 +920,7 @@ export function PracticeClient() {
                 </p>
               ) : null}
               {isRetellingTranscribing ? (
-                <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+                <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
                   正在请求服务端转写复述录音...
                 </p>
               ) : null}
@@ -929,7 +929,7 @@ export function PracticeClient() {
                 保存并反馈复述
               </Button>
               {retellingMessage ? (
-                <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+                <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
                   {retellingMessage}
                 </p>
               ) : null}
@@ -943,7 +943,7 @@ export function PracticeClient() {
                     onClick={handleSaveRetellingSentence}
                     disabled={savedRetellingKeys[createRetellingSaveKey("sentence", retellingText)]}
                   >
-                    <Plus className="h-4 w-4 text-accent" />
+                    <Plus className="h-4 w-4 text-foreground" />
                     {savedRetellingKeys[createRetellingSaveKey("sentence", retellingText)]
                       ? "已保存复述句"
                       : "保存复述句"}
@@ -962,42 +962,42 @@ export function PracticeClient() {
                         disabled={savedRetellingKeys[key]}
                         className="h-8 text-xs"
                       >
-                        <Plus className="h-3.5 w-3.5 text-accent" />
+                        <Plus className="h-3.5 w-3.5 text-foreground" />
                         {savedRetellingKeys[key] ? "已保存" : word}
                       </Button>
                     );
                   })}
                 </div>
                 {retellingSaveMessage ? (
-                  <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                  <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
                     {retellingSaveMessage}
                   </p>
                 ) : null}
               </div>
 
               {retellingFeedback ? (
-                <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <div className="mt-4 rounded-lg border border-border bg-panel-strong p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-emerald-800">{retellingFeedback.label}</p>
-                    <p className="text-sm font-semibold text-emerald-800">{retellingFeedback.score}%</p>
+                    <p className="text-sm font-semibold text-foreground">{retellingFeedback.label}</p>
+                    <p className="text-sm font-semibold text-foreground">{retellingFeedback.score}%</p>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-emerald-700">{retellingFeedback.tip}</p>
+                  <p className="mt-2 text-sm leading-6 text-foreground">{retellingFeedback.tip}</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-lg border border-emerald-200 bg-white p-3">
-                      <p className="text-xs font-medium text-emerald-700">已覆盖</p>
-                      <p className="mt-1 text-sm leading-6 text-emerald-900">
+                    <div className="rounded-lg border border-border bg-white p-3">
+                      <p className="text-xs font-medium text-foreground">已覆盖</p>
+                      <p className="mt-1 text-sm leading-6 text-foreground">
                         {retellingFeedback.coveredPoints.join("、") || "继续补充"}
                       </p>
                     </div>
-                    <div className="rounded-lg border border-emerald-200 bg-white p-3">
-                      <p className="text-xs font-medium text-emerald-700">待补充</p>
-                      <p className="mt-1 text-sm leading-6 text-emerald-900">
+                    <div className="rounded-lg border border-border bg-white p-3">
+                      <p className="text-xs font-medium text-foreground">待补充</p>
+                      <p className="mt-1 text-sm leading-6 text-foreground">
                         {retellingFeedback.missingPoints.join("、") || "已覆盖主要信息"}
                       </p>
                     </div>
                   </div>
                   {retellingFeedback.suggestions.length > 0 ? (
-                    <ul className="mt-3 space-y-1 text-xs leading-5 text-emerald-700">
+                    <ul className="mt-3 space-y-1 text-xs leading-5 text-foreground">
                       {retellingFeedback.suggestions.map((suggestion) => (
                         <li key={suggestion}>{suggestion}</li>
                       ))}
@@ -1015,7 +1015,7 @@ export function PracticeClient() {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">跟读记录</CardTitle>
-            <Play className="h-5 w-5 text-accent" />
+            <Play className="h-5 w-5 text-foreground" />
           </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -1039,7 +1039,7 @@ export function PracticeClient() {
                   </p>
                 ) : null}
                 {typeof attempt.score === "number" ? (
-                  <p className="mt-2 text-xs font-semibold text-accent">跟读匹配度 {attempt.score}%</p>
+                  <p className="mt-2 text-xs font-semibold text-foreground">跟读匹配度 {attempt.score}%</p>
                 ) : null}
               </div>
             ))}
@@ -1055,7 +1055,7 @@ export function PracticeClient() {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">输出后会沉淀什么</CardTitle>
-            <CheckCircle2 className="h-5 w-5 text-accent" />
+            <CheckCircle2 className="h-5 w-5 text-foreground" />
           </div>
           <CardDescription>每次练习都会变成可追踪、可复习的个人学习资产。</CardDescription>
           </CardHeader>
@@ -1074,7 +1074,7 @@ export function PracticeClient() {
           <Button asChild variant="outline">
             <Link href="/review">
               查看会进入复习的内容
-              <ArrowRight className="h-4 w-4 text-accent" />
+              <ArrowRight className="h-4 w-4 text-foreground" />
             </Link>
           </Button>
           </CardContent>
@@ -1085,7 +1085,7 @@ export function PracticeClient() {
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">短写作教练</CardTitle>
-            <PenLine className="h-5 w-5 text-accent" />
+            <PenLine className="h-5 w-5 text-foreground" />
           </div>
           <CardDescription>从一句英文开始，先让 AI 帮你改成自然表达，再沉淀到复习卡。</CardDescription>
         </CardHeader>
@@ -1135,7 +1135,7 @@ export function PracticeClient() {
                 {isCorrectingWriting ? "批改中..." : "AI 批改"}
               </Button>
               {writingMessage ? (
-                <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+                <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
                   {writingMessage}
                 </p>
               ) : null}
@@ -1155,7 +1155,7 @@ export function PracticeClient() {
                       onClick={handleSaveCorrectedWriting}
                       disabled={savedWritingKeys[createWritingSaveKey("corrected-sentence", writingCorrection.correctedText)]}
                     >
-                      <Plus className="h-4 w-4 text-accent" />
+                      <Plus className="h-4 w-4 text-foreground" />
                       {savedWritingKeys[createWritingSaveKey("corrected-sentence", writingCorrection.correctedText)]
                         ? "已保存"
                         : "保存复习卡"}
@@ -1196,7 +1196,7 @@ export function PracticeClient() {
                           disabled={savedWritingKeys[createWritingSaveKey("expression", expression.text)]}
                           className="shrink-0"
                         >
-                          <Plus className="h-4 w-4 text-accent" />
+                          <Plus className="h-4 w-4 text-foreground" />
                           {savedWritingKeys[createWritingSaveKey("expression", expression.text)]
                             ? "已保存"
                             : "保存"}
@@ -1205,7 +1205,7 @@ export function PracticeClient() {
                     ))}
                   </div>
                   {writingSaveMessage ? (
-                    <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                    <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
                       {writingSaveMessage}
                     </p>
                   ) : null}

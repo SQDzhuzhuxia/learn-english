@@ -181,13 +181,13 @@ export function MaterialLibraryClient() {
           </div>
 
           {message ? (
-            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            <p className="mt-4 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
               {message}
             </p>
           ) : null}
 
           <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
-            <label className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-white px-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-ring">
+            <label className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-white px-3 transition-colors focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring">
               <Search className="h-4 w-4 text-muted" />
               <Input
                 className="min-h-0 border-0 bg-transparent px-0 py-0 focus:border-0 focus:ring-0"
@@ -197,7 +197,7 @@ export function MaterialLibraryClient() {
               />
             </label>
             <Button variant="outline" className="min-h-11">
-              <Filter className="h-4 w-4 text-accent" />
+              <Filter className="h-4 w-4 text-foreground" />
               {filteredMaterials.length} 篇
             </Button>
           </div>
@@ -222,7 +222,7 @@ export function MaterialLibraryClient() {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">继续学习</CardTitle>
-            <Headphones className="h-5 w-5 text-accent" />
+            <Headphones className="h-5 w-5 text-foreground" />
           </div>
           <CardDescription>从当前推荐材料继续你的可理解输入。</CardDescription>
           </CardHeader>
@@ -243,7 +243,7 @@ export function MaterialLibraryClient() {
                   onClick={() => setCurrentMaterialId(recommended.id)}
                 >
                   继续学习
-                  <ArrowRight className="h-4 w-4 text-accent" />
+                  <ArrowRight className="h-4 w-4 text-foreground" />
                 </Link>
               </Button>
             </>
@@ -281,7 +281,7 @@ export function MaterialLibraryClient() {
                       variant="outline"
                       size="icon"
                       onClick={() => handleDelete(material)}
-                      className="border-rose-200 text-rose-700 hover:bg-rose-50"
+                      className="border-border text-foreground hover:bg-panel-strong"
                       aria-label="删除材料"
                       title="删除"
                     >
@@ -289,7 +289,7 @@ export function MaterialLibraryClient() {
                     </Button>
                   </>
                 ) : (
-                  <ClipboardList className="h-5 w-5 shrink-0 text-accent" />
+                  <ClipboardList className="h-5 w-5 shrink-0 text-foreground" />
                 )}
               </div>
             </div>
@@ -413,7 +413,7 @@ export function MaterialLibraryClient() {
                 onClick={() => setCurrentMaterialId(material.id)}
               >
                 打开材料
-                <ArrowRight className="h-4 w-4 text-accent" />
+                <ArrowRight className="h-4 w-4 text-foreground" />
               </Link>
             </Button>
             </CardContent>
@@ -433,7 +433,7 @@ export function MaterialLibraryClient() {
           </div>
           <Button asChild variant="outline" size="lg">
             <Link href="/library/import">
-              <Upload className="h-4 w-4 text-accent" />
+              <Upload className="h-4 w-4 text-foreground" />
               准备导入
             </Link>
           </Button>

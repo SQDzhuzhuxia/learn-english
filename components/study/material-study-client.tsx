@@ -455,7 +455,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                   材料库
                 </Link>
               </Button>
-              <p className="mt-4 text-sm font-medium text-accent">
+              <p className="mt-4 text-sm font-medium text-foreground">
                 {material.type} · {material.inputType}
               </p>
               <h1 className="mt-2 text-2xl font-semibold text-foreground">{material.title}</h1>
@@ -535,28 +535,28 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
 
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <Button variant="outline">
-              <Volume2 className="h-4 w-4 text-accent" />
+              <Volume2 className="h-4 w-4 text-foreground" />
               慢速
             </Button>
             <Button variant="outline">
-              <Repeat2 className="h-4 w-4 text-accent" />
+              <Repeat2 className="h-4 w-4 text-foreground" />
               循环
             </Button>
             <Button
               variant="outline"
               onClick={handleSaveCurrentSentence}
             >
-              <BookmarkPlus className="h-4 w-4 text-accent" />
+              <BookmarkPlus className="h-4 w-4 text-foreground" />
               保存
             </Button>
             <Button variant="outline">
-              <Mic className="h-4 w-4 text-accent" />
+              <Mic className="h-4 w-4 text-foreground" />
               跟读
             </Button>
           </div>
 
           {saveMessage ? (
-            <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
               {saveMessage}
             </p>
           ) : null}
@@ -567,7 +567,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">逐句列表</CardTitle>
-            <Headphones className="h-5 w-5 text-accent" />
+            <Headphones className="h-5 w-5 text-foreground" />
           </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -604,7 +604,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">AI 解释</CardTitle>
-            <Languages className="h-5 w-5 text-accent" />
+            <Languages className="h-5 w-5 text-foreground" />
           </div>
           </CardHeader>
           <CardContent>
@@ -630,7 +630,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
 
               <section>
                 <h3 className="text-sm font-semibold text-foreground">中文母语者易错点</h3>
-                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800">
+                <p className="mt-2 rounded-lg border border-border bg-panel-strong p-3 text-sm leading-6 text-foreground">
                   {aiExplanation.commonMistake}
                 </p>
               </section>
@@ -659,9 +659,9 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                   className="w-full"
                 >
                   {aiBatchState.status === "loading" ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                    <Loader2 className="h-4 w-4 animate-spin text-foreground" />
                   ) : (
-                    <Sparkles className="h-4 w-4 text-accent" />
+                    <Sparkles className="h-4 w-4 text-foreground" />
                   )}
                   批量解释整篇
                 </Button>
@@ -671,8 +671,8 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                 <p
                   className={`rounded-lg border px-3 py-2 text-sm leading-6 ${
                     aiState.status === "error"
-                      ? "border-rose-200 bg-rose-50 text-rose-700"
-                      : "border-sky-200 bg-sky-50 text-sky-800"
+                      ? "border-border bg-panel-strong text-foreground"
+                      : "border-border bg-panel-strong text-foreground"
                   }`}
                 >
                   {aiState.message}
@@ -683,8 +683,8 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                 <div
                   className={`rounded-lg border px-3 py-2 text-sm leading-6 ${
                     aiBatchState.status === "error"
-                      ? "border-rose-200 bg-rose-50 text-rose-700"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      ? "border-border bg-panel-strong text-foreground"
+                      : "border-border bg-panel-strong text-foreground"
                   }`}
                 >
                   <p>{aiBatchState.message}</p>
@@ -696,7 +696,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                           variant="outline"
                           size="sm"
                           onClick={handleSaveMaterialExpressions}
-                          className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                          className="w-full border-border text-foreground hover:bg-panel-strong"
                         >
                           <BookmarkPlus className="h-3.5 w-3.5" />
                           保存整篇重点表达
@@ -710,7 +710,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
               {aiState.explanation ? (
                 <>
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-medium text-muted">
-                    <Bot className="h-4 w-4 text-accent" />
+                    <Bot className="h-4 w-4 text-foreground" />
                     {aiState.explanation.source === "model"
                       ? `模型解释 · ${aiState.explanation.provider}`
                       : `本地降级 · ${aiState.explanation.provider}`}
@@ -732,7 +732,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
 
                   <section>
                     <h3 className="text-sm font-semibold text-foreground">中文母语者易错点</h3>
-                    <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800">
+                    <p className="mt-2 rounded-lg border border-border bg-panel-strong p-3 text-sm leading-6 text-foreground">
                       {aiState.explanation.commonMistake}
                     </p>
                   </section>
@@ -765,7 +765,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                     className="h-8 shrink-0 px-2 text-xs"
                     aria-label={`保存表达 ${expression.text}`}
                   >
-                    <BookmarkPlus className="h-3.5 w-3.5 text-accent" />
+                    <BookmarkPlus className="h-3.5 w-3.5 text-foreground" />
                     保存
                   </Button>
                 </div>
@@ -775,11 +775,11 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
             ))}
           </div>
           {saveMessage ? (
-            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            <p className="mt-4 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
               {saveMessage}
             </p>
           ) : null}
-          <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-800">
+          <p className="mt-4 rounded-lg border border-border bg-panel-strong p-3 text-sm leading-6 text-foreground">
             {material.source === "seed"
               ? aiExplanation.shadowingTip
               : aiState.explanation?.shadowingTip ??

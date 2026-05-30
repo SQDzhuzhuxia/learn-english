@@ -77,20 +77,20 @@ function getReviewState(item: LearningItemRecord, cards: ReviewCardRecord[]) {
   if (isCardDue(card)) {
     return {
       label: "到期",
-      tone: "border-amber-200 bg-amber-50 text-amber-700"
+      tone: "border-border bg-panel-strong text-foreground"
     };
   }
 
   if (card.status === "new") {
     return {
       label: "新卡",
-      tone: "border-sky-200 bg-sky-50 text-sky-700"
+      tone: "border-border bg-panel-strong text-foreground"
     };
   }
 
   return {
     label: "已安排",
-    tone: "border-emerald-200 bg-emerald-50 text-emerald-700"
+    tone: "border-border bg-panel-strong text-foreground"
   };
 }
 
@@ -322,13 +322,13 @@ export function NotebookClient() {
           </div>
 
           {message ? (
-            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            <p className="mt-4 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
               {message}
             </p>
           ) : null}
 
           <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
-            <label className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-white px-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-ring">
+            <label className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-white px-3 transition-colors focus-within:border-foreground focus-within:ring-2 focus-within:ring-ring">
               <Search className="h-4 w-4 text-muted" />
               <Input
                 className="min-h-0 border-0 bg-transparent px-0 py-0 focus:border-0 focus:ring-0"
@@ -338,7 +338,7 @@ export function NotebookClient() {
               />
             </label>
             <Button variant="outline" className="min-h-11">
-              <Filter className="h-4 w-4 text-accent" />
+              <Filter className="h-4 w-4 text-foreground" />
               {filteredItems.length} 条
             </Button>
           </div>
@@ -368,7 +368,7 @@ export function NotebookClient() {
                   variant="outline"
                   onClick={handleToggleSelectFiltered}
                 >
-                  <Check className="h-4 w-4 text-accent" />
+                  <Check className="h-4 w-4 text-foreground" />
                   {allFilteredSelected ? "取消当前结果" : "选择当前结果"}
                 </Button>
                 <Button
@@ -391,7 +391,7 @@ export function NotebookClient() {
                   variant="outline"
                   onClick={handleBulkRestore}
                   disabled={selectedArchivedItems.length === 0}
-                  className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  className="border-border text-foreground hover:bg-panel-strong"
                 >
                   <ArchiveRestore className="h-4 w-4" />
                   批量恢复
@@ -400,7 +400,7 @@ export function NotebookClient() {
                   variant="outline"
                   onClick={handleBulkDelete}
                   disabled={selectedItems.length === 0}
-                  className="border-rose-200 text-rose-700 hover:bg-rose-50"
+                  className="border-border text-foreground hover:bg-panel-strong"
                 >
                   <Trash2 className="h-4 w-4" />
                   批量删除
@@ -415,7 +415,7 @@ export function NotebookClient() {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">词句概览</CardTitle>
-            <BookMarked className="h-5 w-5 text-accent" />
+            <BookMarked className="h-5 w-5 text-foreground" />
           </div>
           <CardDescription>复习队列会随着保存、归档、恢复自动同步。</CardDescription>
           </CardHeader>
@@ -438,7 +438,7 @@ export function NotebookClient() {
               <p className="mt-1 text-xs text-muted">归档</p>
             </div>
           </div>
-          <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-800">
+          <p className="mt-4 rounded-lg border border-border bg-panel-strong p-3 text-sm leading-6 text-foreground">
             词句修改会同步更新关联复习卡；归档会暂停复习，恢复后会重新进入队列。
           </p>
           </CardContent>
@@ -489,7 +489,7 @@ export function NotebookClient() {
                       variant="outline"
                       size="icon"
                       onClick={() => handleRestore(item.id)}
-                      className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                      className="border-border text-foreground hover:bg-panel-strong"
                       aria-label="恢复词句"
                       title="恢复"
                     >
@@ -510,7 +510,7 @@ export function NotebookClient() {
                     variant="outline"
                     size="icon"
                     onClick={() => handleDelete(item.id)}
-                    className="border-rose-200 text-rose-700 hover:bg-rose-50"
+                    className="border-border text-foreground hover:bg-panel-strong"
                     aria-label="删除词句"
                     title="删除"
                   >
@@ -607,7 +607,7 @@ export function NotebookClient() {
                       <Button asChild variant="outline">
                         <Link href={createReviewCardHref(card.id)}>
                           查看复习卡
-                          <ArrowRight className="h-4 w-4 text-accent" />
+                          <ArrowRight className="h-4 w-4 text-foreground" />
                         </Link>
                       </Button>
                     ) : null}

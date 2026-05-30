@@ -452,7 +452,7 @@ export function ReviewClient() {
             </div>
 
             {message ? (
-              <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              <p className="mt-4 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
                 {message}
               </p>
             ) : null}
@@ -463,7 +463,7 @@ export function ReviewClient() {
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle>复习原则</CardTitle>
-              <CheckCircle2 className="h-5 w-5 text-accent" />
+              <CheckCircle2 className="h-5 w-5 text-foreground" />
             </div>
             <CardDescription>
               看到英文能理解，听到能反应，最后再尝试看中文说英文。
@@ -531,12 +531,12 @@ export function ReviewClient() {
                 size="icon"
                 aria-label="播放当前卡片"
               >
-                <Volume2 className="h-4 w-4 text-accent" />
+                <Volume2 className="h-4 w-4 text-foreground" />
               </Button>
             </div>
 
             <div className="mt-8 rounded-lg border border-border bg-panel-strong p-5">
-              <p className="mb-3 text-sm font-medium text-accent">
+              <p className="mb-3 text-sm font-medium text-foreground">
                 {cardTypeInstructions[activeCard.cardType]}
               </p>
               <p className="text-2xl font-semibold leading-10 text-foreground">{activeCard.front}</p>
@@ -544,9 +544,9 @@ export function ReviewClient() {
             </div>
 
             {activeCard.status === "suspended" ? (
-              <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <p className="text-sm font-semibold text-amber-800">这张卡已暂停</p>
-                <p className="mt-2 text-sm leading-6 text-amber-800">
+              <div className="mt-5 rounded-lg border border-border bg-panel-strong p-4">
+                <p className="text-sm font-semibold text-foreground">这张卡已暂停</p>
+                <p className="mt-2 text-sm leading-6 text-foreground">
                   暂停卡不会进入日常复习队列。恢复后会按照原来的间隔重新进入复习。
                 </p>
                 <Button
@@ -569,7 +569,7 @@ export function ReviewClient() {
                 size="lg"
                 className="mt-5 w-full"
               >
-                <Eye className="h-4 w-4 text-accent" />
+                <Eye className="h-4 w-4 text-foreground" />
                 显示答案
               </Button>
             )}
@@ -664,8 +664,8 @@ export function ReviewClient() {
                     </div>
                   </div>
                 ) : null}
-                <div className="mt-4 border-l-2 border-accent pl-3">
-                  <p className="text-xs font-medium text-accent">
+                <div className="mt-4 border-l-2 border-foreground/20 pl-3">
+                  <p className="text-xs font-medium text-foreground">
                     {activeCardDetail.needsAttention ? "回炉建议" : "练习建议"}
                   </p>
                   <p className="mt-1 text-sm leading-6 text-muted">{activeCardDetail.suggestion}</p>
@@ -741,7 +741,7 @@ export function ReviewClient() {
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle>复习队列</CardTitle>
-              <RotateCcw className="h-5 w-5 text-accent" />
+              <RotateCcw className="h-5 w-5 text-foreground" />
             </div>
             <CardDescription>当前筛选下的卡片和批量管理。</CardDescription>
           </CardHeader>

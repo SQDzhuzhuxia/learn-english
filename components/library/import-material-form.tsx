@@ -68,7 +68,7 @@ export function ImportMaterialForm() {
           </div>
           <Button asChild variant="outline">
             <Link href="/library">
-              <ArrowLeft className="h-4 w-4 text-accent" />
+              <ArrowLeft className="h-4 w-4 text-foreground" />
               返回材料库
             </Link>
           </Button>
@@ -86,7 +86,7 @@ export function ImportMaterialForm() {
           <Label>
             难度
             <select
-              className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-accent"
+              className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-foreground"
               value={level}
               onChange={(event) => setLevel(event.target.value)}
             >
@@ -99,7 +99,7 @@ export function ImportMaterialForm() {
           <Label>
             类型
             <select
-              className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-accent"
+              className="mt-2 min-h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-foreground"
               value={type}
               onChange={(event) => setType(event.target.value)}
             >
@@ -125,7 +125,7 @@ export function ImportMaterialForm() {
         </Label>
 
         {error ? (
-          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
             {error}
           </p>
         ) : null}
@@ -146,7 +146,7 @@ export function ImportMaterialForm() {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">导入预览</CardTitle>
-            <FileText className="h-5 w-5 text-accent" />
+            <FileText className="h-5 w-5 text-foreground" />
           </div>
           <CardDescription>系统会先分句，再进入学习页逐句精学。</CardDescription>
           </CardHeader>
@@ -168,7 +168,7 @@ export function ImportMaterialForm() {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">前 5 句</CardTitle>
-            <Sparkles className="h-5 w-5 text-accent" />
+            <Sparkles className="h-5 w-5 text-foreground" />
           </div>
           </CardHeader>
           <CardContent className="space-y-3">

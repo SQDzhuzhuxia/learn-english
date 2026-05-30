@@ -144,7 +144,7 @@ export function ProgressClient() {
                 不只看打卡，更看输入量、输出次数、复习完成和真实场景能力。
               </p>
             </div>
-            <BarChart3 className="h-5 w-5 text-accent" />
+            <BarChart3 className="h-5 w-5 text-foreground" />
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -163,7 +163,7 @@ export function ProgressClient() {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">学习比例</CardTitle>
-            <TrendingUp className="h-5 w-5 text-accent" />
+            <TrendingUp className="h-5 w-5 text-foreground" />
           </div>
           <CardDescription>输入、输出和复习要保持可持续配比。</CardDescription>
           </CardHeader>
@@ -188,7 +188,7 @@ export function ProgressClient() {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">每日分布</CardTitle>
-            <Clock3 className="h-5 w-5 text-accent" />
+            <Clock3 className="h-5 w-5 text-foreground" />
           </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -225,7 +225,7 @@ export function ProgressClient() {
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">当前弱项</CardTitle>
-            <AlertCircle className="h-5 w-5 text-accent" />
+            <AlertCircle className="h-5 w-5 text-foreground" />
           </div>
           <CardDescription>后续会逐步从真实复习和练习记录中生成。</CardDescription>
           </CardHeader>
@@ -247,7 +247,7 @@ export function ProgressClient() {
         <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">场景能力地图</CardTitle>
-          <Map className="h-5 w-5 text-accent" />
+          <Map className="h-5 w-5 text-foreground" />
         </div>
         <CardDescription>把学习目标落到美国生活、工作和移民场景里。</CardDescription>
         </CardHeader>
@@ -260,7 +260,7 @@ export function ProgressClient() {
                   <p className="font-semibold text-foreground">{scenario.name}</p>
                   <p className="mt-1 text-sm text-muted">{scenario.status}</p>
                 </div>
-                <Activity className="h-4 w-4 shrink-0 text-accent" />
+                <Activity className="h-4 w-4 shrink-0 text-foreground" />
               </div>
               <Progress value={scenario.progress} className="mt-3" />
             </div>

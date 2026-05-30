@@ -1,21 +1,22 @@
 /* global self, caches, fetch, URL, Response */
 
-const CACHE_VERSION = "learn-english-v1";
+const CACHE_VERSION = "learn-english-v2";
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 const APP_SHELL_URLS = [
-  "/",
-  "/library",
-  "/library/import",
-  "/study",
-  "/notebook",
-  "/review",
-  "/practice",
-  "/progress",
-  "/settings",
   "/manifest.webmanifest",
   "/pwa-icon.svg"
 ];
 
+const NEVER_CACHE_PREFIXES = ["/_next/", "/__nextjs"];
+const NEVER_CACHE_PATHS = ["/sw.js"];
+const IS_LOCAL_DEV = LOCAL_HOSTNAMES.has(self.location.hostname);
+
 self.addEventListener("install", (event) => {
+  if (IS_LOCAL_DEV) {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
+
   event.waitUntil(
     caches
       .open(CACHE_VERSION)
@@ -25,14 +26,41 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  if (IS_LOCAL_DEV) {
+    event.waitUntil(
+      caches
+        .keys()
+        .then((keys) =>
+          Promise.all(
+            keys
+              .filter((key) => key.startsWith("learn-english-"))
+              .map((key) => caches.delete(key))
+          )
+        )
+        .then(() => self.registration.unregister())
+        .then(() => self.clients.claim())
+    );
+    return;
+  }
+
   event.waitUntil(
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key)))
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith("learn-english-") && key !== CACHE_VERSION)
+            .map((key) => caches.delete(key))
+        )
       )
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 async function networkFirst(request) {
@@ -72,7 +100,19 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  if (IS_LOCAL_DEV) {
+    return;
+  }
+
   if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) {
+    return;
+  }
+
+  if (
+    NEVER_CACHE_PATHS.includes(url.pathname) ||
+    NEVER_CACHE_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))
+  ) {
+    event.respondWith(fetch(request));
     return;
   }
 

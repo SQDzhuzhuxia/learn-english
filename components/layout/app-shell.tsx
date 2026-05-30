@@ -170,7 +170,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="pb-20 lg:pb-0">{children}</div>
         </div>
 
-        <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-5 border-t border-border bg-panel/95 px-2 py-2 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-5 border-t border-border bg-panel px-2 py-2 backdrop-blur lg:hidden">
           {navigation.slice(0, 5).map((item) => {
             const active = isActive(pathname, item.href);
 

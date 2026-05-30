@@ -209,8 +209,11 @@ UI Refresh 第三轮    已完成
 - 新增 UI 技术方案补充文档
 - UI 色调已调整为接近 ChatGPT 官网的浅灰白、黑灰文字和细边框风格
 - 第二轮 ChatGPT 风格收敛已完成：大面积绿色高亮、绿色按钮、绿色进度条和绿色选中态已改为中性黑灰
-- 绿色已收敛为备用品牌色，不再作为主要交互色
-- PWA theme color 和图标颜色已同步到新的浅灰白/绿色体系
+- 绿色已从主界面和 PWA 图标中移除，不再作为品牌色或主要交互色
+- PWA theme color 和图标颜色已同步到黑白灰体系
+- 开发环境会自动注销已有 Service Worker 并清理旧缓存，避免 Next dev 加载旧客户端包
+- `sw.js` 在 localhost 下会自我注销并清理旧缓存，用于修复历史缓存造成的 hydration mismatch
+- Service Worker 不再缓存 `/_next/` 运行时代码，避免 UI 更新后出现服务端和客户端 class 不一致
 - 新增 `components/ui/` 基础 UI 组件
 - 新增 `components.json` shadcn/ui 配置
 - 新增 `lib/utils.ts` 统一 className 合并工具

@@ -81,7 +81,7 @@ export function SettingsClient() {
         </CardHeader>
         {message ? (
           <CardContent>
-            <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+            <p className="rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
               {message}
             </p>
           </CardContent>

@@ -94,7 +94,7 @@ export default function TodayPage() {
                 {dailyPlan.currentMaterial.title}
               </h2>
             </div>
-            <BookOpenText className="h-5 w-5 text-accent" />
+            <BookOpenText className="h-5 w-5 text-foreground" />
           </div>
 
           <div className="mt-4 space-y-4">
@@ -134,7 +134,7 @@ export default function TodayPage() {
               <Badge variant="soft">今日队列</Badge>
               <CardTitle className="mt-3">下一步做什么</CardTitle>
             </div>
-            <Headphones className="h-5 w-5 text-accent" />
+            <Headphones className="h-5 w-5 text-foreground" />
           </div>
           </CardHeader>
           <CardContent>
@@ -164,7 +164,7 @@ export default function TodayPage() {
             <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle>今日复习</CardTitle>
-              <CalendarCheck className="h-5 w-5 text-accent" />
+              <CalendarCheck className="h-5 w-5 text-foreground" />
             </div>
             <CardDescription>
               {dueCards.length} 张词句卡到期，优先复习来自真实材料的句子。
@@ -186,7 +186,7 @@ export default function TodayPage() {
             <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle>本周进度</CardTitle>
-              <CheckCircle2 className="h-5 w-5 text-accent" />
+              <CheckCircle2 className="h-5 w-5 text-foreground" />
             </div>
             </CardHeader>
             <CardContent>

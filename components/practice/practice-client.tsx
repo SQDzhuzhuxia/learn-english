@@ -6,6 +6,7 @@ import {
   ArrowRight,
   CheckCircle2,
   ClipboardCheck,
+  Headphones,
   Mic,
   MicOff,
   PenLine,
@@ -14,7 +15,7 @@ import {
   Square,
   Volume2
 } from "lucide-react";
-import { practiceModes, retellingPractice, todayPractice, writingPrompts } from "@/lib/mock-data";
+import { practiceModes, retellingPractice, roleplayScenario, todayPractice, writingPrompts } from "@/lib/mock-data";
 import { recordStudyActivity } from "@/lib/analytics/progress-store";
 import {
   addPracticeAttempt,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/speech/practice-store";
 import { createShadowingFeedback, type ShadowingFeedback } from "@/lib/speech/shadowing-feedback";
 import { createRetellingFeedback, type RetellingFeedback } from "@/lib/speech/retelling-feedback";
+import { createRoleplayFeedback, type RoleplayFeedback } from "@/lib/speech/roleplay-feedback";
 import { speakEnglishText } from "@/lib/speech/speech-synthesis";
 import { saveWritingItemAsReviewCard } from "@/lib/review/review-store";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +77,14 @@ type SpeechWindow = Window & {
   webkitSpeechRecognition?: SpeechRecognitionConstructor;
 };
 
+type RoleplayTranscriptEntry = {
+  turnId: string;
+  partnerText: string;
+  learnerText: string;
+  score: number;
+  feedback: string;
+};
+
 function formatSeconds(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;
@@ -123,6 +133,13 @@ export function PracticeClient() {
   const [retellingTranscriptSource, setRetellingTranscriptSource] = useState<TranscriptSource | "">("");
   const [isRetellingTranscribing, setIsRetellingTranscribing] = useState(false);
   const [savedRetellingKeys, setSavedRetellingKeys] = useState<Record<string, boolean>>({});
+  const [roleplayTurnIndex, setRoleplayTurnIndex] = useState(0);
+  const [roleplayReply, setRoleplayReply] = useState("");
+  const [roleplayFeedback, setRoleplayFeedback] = useState<RoleplayFeedback | null>(null);
+  const [roleplayTranscript, setRoleplayTranscript] = useState<RoleplayTranscriptEntry[]>([]);
+  const [roleplayMessage, setRoleplayMessage] = useState("");
+  const [roleplaySaveMessage, setRoleplaySaveMessage] = useState("");
+  const [savedRoleplayKeys, setSavedRoleplayKeys] = useState<Record<string, boolean>>({});
   const [selectedWritingIndex, setSelectedWritingIndex] = useState(0);
   const [writingText, setWritingText] = useState("");
   const [writingCorrection, setWritingCorrection] = useState<AiWritingCorrection | null>(null);
@@ -173,12 +190,13 @@ export function PracticeClient() {
     const targetMap: Record<string, string> = {
       shadowing: "practice-shadowing",
       retelling: "practice-retelling",
+      roleplay: "practice-roleplay",
       writing: "practice-writing"
     };
     const targetId = targetMap[modeId];
 
     if (!targetId) {
-      setMessage("场景口语角色扮演还没有进入可用版本；下一步会做成真实 AI 对话闭环。");
+      setMessage("这个练习入口还没有配置目标区域。");
       return;
     }
 
@@ -190,6 +208,10 @@ export function PracticeClient() {
 
     if (modeId === "retelling") {
       setRetellingMessage("已定位到复述训练。可以先用提示句，再提交反馈。");
+    }
+
+    if (modeId === "roleplay") {
+      setRoleplayMessage("已定位到场景口语。先听前台台词，再输入你的回答。");
     }
 
     if (modeId === "writing") {
@@ -288,6 +310,166 @@ export function PracticeClient() {
 
     markRetellingItemSaved(key);
     setRetellingSaveMessage(
+      result.created
+        ? `已保存表达“${expression}”，并生成 ${result.cards?.length ?? 1} 张复习卡。`
+        : `表达“${expression}”已经在复习系统里。`
+    );
+  }
+
+  function createRoleplaySaveKey(kind: "natural-reply" | "expression", text: string) {
+    return `roleplay:${kind}:${text.trim().toLowerCase()}`;
+  }
+
+  function markRoleplayItemSaved(key: string) {
+    setSavedRoleplayKeys((current) => ({
+      ...current,
+      [key]: true
+    }));
+  }
+
+  async function handlePlayRoleplayPartnerLine() {
+    const currentTurn = roleplayScenario.turns[roleplayTurnIndex];
+
+    if (!currentTurn) {
+      return;
+    }
+
+    setRoleplayMessage("正在播放前台台词...");
+    const result = await speakEnglishText(currentTurn.partnerLine, { rate: 0.78 });
+    setRoleplayMessage(result.ok ? `${result.message} 听完后输入你的回答。` : result.message);
+  }
+
+  function handleUseRoleplaySuggestedReply(reply: string) {
+    setRoleplayReply(reply);
+    setRoleplayMessage("已填入推荐回答，可以直接提交，也可以改成你自己的说法。");
+  }
+
+  function handleSubmitRoleplayReply() {
+    const currentTurn = roleplayScenario.turns[roleplayTurnIndex];
+
+    if (!currentTurn) {
+      return;
+    }
+
+    if (roleplayTranscript.length >= roleplayScenario.turns.length) {
+      setRoleplayMessage("这一轮角色扮演已经完成。可以点击重新开始再练一遍。");
+      return;
+    }
+
+    if (!roleplayReply.trim()) {
+      setRoleplayMessage("请先输入一句英文回答；不会说可以点推荐回答。");
+      return;
+    }
+
+    const nextFeedback = createRoleplayFeedback({
+      reply: roleplayReply,
+      expectedKeywords: currentTurn.expectedKeywords,
+      suggestedReply: currentTurn.suggestedReplies[0]
+    });
+    const nextEntry: RoleplayTranscriptEntry = {
+      turnId: currentTurn.id,
+      partnerText: currentTurn.partnerLine,
+      learnerText: roleplayReply.trim(),
+      score: nextFeedback.score,
+      feedback: nextFeedback.tip
+    };
+    const nextTranscript = [...roleplayTranscript, nextEntry];
+    const isComplete = nextTranscript.length >= roleplayScenario.turns.length;
+
+    setRoleplayFeedback(nextFeedback);
+    setRoleplayTranscript(nextTranscript);
+    setRoleplaySaveMessage("");
+    setSavedRoleplayKeys({});
+
+    if (isComplete) {
+      const averageScore = Math.round(
+        nextTranscript.reduce((sum, entry) => sum + entry.score, 0) / nextTranscript.length
+      );
+      const transcriptText = nextTranscript
+        .map((entry) => `Front desk: ${entry.partnerText}\nMe: ${entry.learnerText}`)
+        .join("\n\n");
+      const attempt = addPracticeAttempt({
+        type: "roleplay",
+        prompt: roleplayScenario.title,
+        materialTitle: roleplayScenario.material,
+        durationSeconds: Math.max(90, nextTranscript.length * 45),
+        transcript: transcriptText,
+        score: averageScore,
+        feedback: `场景口语平均完成度 ${averageScore}%。`
+      });
+
+      recordStudyActivity({
+        type: "output",
+        label: `角色扮演：${roleplayScenario.title}`,
+        minutes: Math.max(3, nextTranscript.length),
+        materialTitle: roleplayScenario.material
+      });
+      setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
+      setRoleplayReply("");
+      setRoleplayMessage(`已完成角色扮演并保存记录，平均完成度 ${averageScore}%。`);
+      return;
+    }
+
+    setRoleplayTurnIndex((index) => index + 1);
+    setRoleplayReply("");
+    setRoleplayMessage("这一轮已保存反馈，继续下一句对话。");
+  }
+
+  function handleResetRoleplay() {
+    setRoleplayTurnIndex(0);
+    setRoleplayReply("");
+    setRoleplayFeedback(null);
+    setRoleplayTranscript([]);
+    setRoleplayMessage("已重新开始。先听第一句，再回答。");
+    setRoleplaySaveMessage("");
+    setSavedRoleplayKeys({});
+  }
+
+  function handleSaveRoleplayNaturalReply() {
+    if (!roleplayFeedback) {
+      setRoleplaySaveMessage("请先提交一句角色扮演回答。");
+      return;
+    }
+
+    const lastEntry = roleplayTranscript.at(-1);
+    const key = createRoleplaySaveKey("natural-reply", roleplayFeedback.naturalReply);
+    const result = saveWritingItemAsReviewCard({
+      kind: "corrected-sentence",
+      promptTitle: `角色扮演：${roleplayScenario.title}`,
+      prompt: lastEntry?.partnerText ?? roleplayScenario.goal,
+      originalText: roleplayFeedback.originalReply,
+      correctedText: roleplayFeedback.naturalReply,
+      text: roleplayFeedback.naturalReply,
+      meaningZh: "场景口语自然回答",
+      example: lastEntry
+        ? `Front desk: ${lastEntry.partnerText} / Me: ${roleplayFeedback.naturalReply}`
+        : roleplayFeedback.naturalReply
+    });
+
+    markRoleplayItemSaved(key);
+    setRoleplaySaveMessage(
+      result.created
+        ? `已保存自然回答，并生成 ${result.cards?.length ?? 1} 张复习卡。`
+        : "这句自然回答已经在复习系统里。"
+    );
+  }
+
+  function handleSaveRoleplayExpression(expression: string) {
+    const lastEntry = roleplayTranscript.at(-1);
+    const key = createRoleplaySaveKey("expression", expression);
+    const result = saveWritingItemAsReviewCard({
+      kind: "expression",
+      promptTitle: `角色扮演：${roleplayScenario.title}`,
+      prompt: roleplayScenario.goal,
+      originalText: roleplayFeedback?.originalReply ?? "",
+      correctedText: roleplayFeedback?.naturalReply ?? expression,
+      text: expression,
+      meaningZh: "场景口语高频表达",
+      example: lastEntry?.learnerText || roleplayFeedback?.naturalReply || expression
+    });
+
+    markRoleplayItemSaved(key);
+    setRoleplaySaveMessage(
       result.created
         ? `已保存表达“${expression}”，并生成 ${result.cards?.length ?? 1} 张复习卡。`
         : `表达“${expression}”已经在复习系统里。`
@@ -673,6 +855,9 @@ export function PracticeClient() {
 
   const isShadowingRecording = isRecording && recordingMode === "shadowing";
   const isRetellingRecording = isRecording && recordingMode === "retelling";
+  const currentRoleplayTurn = roleplayScenario.turns[roleplayTurnIndex] ?? roleplayScenario.turns[0];
+  const roleplayCompleted = roleplayTranscript.length >= roleplayScenario.turns.length;
+  const roleplayProgressLabel = `${Math.min(roleplayTranscript.length + 1, roleplayScenario.turns.length)}/${roleplayScenario.turns.length}`;
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
@@ -865,6 +1050,191 @@ export function PracticeClient() {
           );
         })}
       </section>
+
+      <Card id="practice-roleplay" className="scroll-mt-24">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <Badge variant="soft">场景口语</Badge>
+              <CardTitle className="mt-3 text-lg">{roleplayScenario.title}</CardTitle>
+            </div>
+            <Headphones className="h-5 w-5 text-foreground" />
+          </div>
+          <CardDescription>
+            {roleplayScenario.setting} · {roleplayScenario.goal}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border bg-white p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-semibold text-foreground">角色设定</p>
+                  <Badge variant="outline">{roleplayScenario.level}</Badge>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-muted">{roleplayScenario.learnerRole}</p>
+                <p className="mt-2 text-sm leading-6 text-muted">{roleplayScenario.partnerRole}</p>
+              </div>
+
+              <div className="rounded-lg border border-border bg-panel-strong p-4">
+                <p className="text-sm font-semibold text-foreground">可保存高频表达</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {roleplayScenario.usefulExpressions.map((expression) => {
+                    const key = createRoleplaySaveKey("expression", expression);
+
+                    return (
+                      <Button
+                        key={expression}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSaveRoleplayExpression(expression)}
+                        disabled={savedRoleplayKeys[key]}
+                        className="h-8 text-xs"
+                      >
+                        <Plus className="h-3.5 w-3.5 text-foreground" />
+                        {savedRoleplayKeys[key] ? "已保存" : expression}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {roleplayTranscript.length > 0 ? (
+                <div className="rounded-lg border border-border bg-white p-4">
+                  <p className="text-sm font-semibold text-foreground">本轮对话记录</p>
+                  <div className="mt-3 space-y-3">
+                    {roleplayTranscript.map((entry, index) => (
+                      <div key={`${entry.turnId}-${index}`} className="rounded-lg border border-border bg-panel-strong p-3">
+                        <p className="text-xs text-muted">Front desk</p>
+                        <p className="mt-1 text-sm leading-6 text-foreground">{entry.partnerText}</p>
+                        <p className="mt-2 text-xs text-muted">Me · {entry.score}%</p>
+                        <p className="mt-1 text-sm leading-6 text-foreground">{entry.learnerText}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="rounded-lg border border-border bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <Badge variant="outline">第 {roleplayProgressLabel} 轮</Badge>
+                  <p className="mt-3 text-sm font-semibold text-foreground">Front desk</p>
+                  <p className="mt-2 rounded-lg border border-border bg-panel-strong p-3 text-base font-semibold leading-7 text-foreground">
+                    {currentRoleplayTurn.partnerLine}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted">{currentRoleplayTurn.translation}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => void handlePlayRoleplayPartnerLine()}
+                  disabled={roleplayCompleted}
+                  className="shrink-0"
+                >
+                  <Volume2 className="h-4 w-4" />
+                  播放台词
+                </Button>
+              </div>
+
+              <Separator className="my-4" />
+
+              <p className="text-sm font-semibold text-foreground">你的任务</p>
+              <p className="mt-2 text-sm leading-6 text-muted">{currentRoleplayTurn.userGoalZh}</p>
+              <div className="mt-3 grid gap-2">
+                {currentRoleplayTurn.suggestedReplies.map((reply) => (
+                  <Button
+                    key={reply}
+                    variant="outline"
+                    className="h-auto justify-start whitespace-normal p-3 text-left"
+                    onClick={() => handleUseRoleplaySuggestedReply(reply)}
+                    disabled={roleplayCompleted}
+                  >
+                    {reply}
+                  </Button>
+                ))}
+              </div>
+
+              <Textarea
+                value={roleplayReply}
+                onChange={(event) => {
+                  setRoleplayReply(event.target.value);
+                  setRoleplayMessage("");
+                }}
+                disabled={roleplayCompleted}
+                className="mt-4 min-h-28"
+                placeholder="Type your reply in simple English..."
+              />
+
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <Button onClick={handleSubmitRoleplayReply} disabled={roleplayCompleted}>
+                  <ClipboardCheck className="h-4 w-4" />
+                  提交回答
+                </Button>
+                <Button variant="outline" onClick={handleResetRoleplay}>
+                  重新开始
+                </Button>
+              </div>
+
+              {roleplayMessage ? (
+                <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
+                  {roleplayMessage}
+                </p>
+              ) : null}
+
+              {roleplayFeedback ? (
+                <div className="mt-4 rounded-lg border border-border bg-panel-strong p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground">{roleplayFeedback.label}</p>
+                    <p className="text-sm font-semibold text-foreground">{roleplayFeedback.score}%</p>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-foreground">{roleplayFeedback.tip}</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border border-border bg-white p-3">
+                      <p className="text-xs font-medium text-foreground">已说出</p>
+                      <p className="mt-1 text-sm leading-6 text-foreground">
+                        {roleplayFeedback.matchedKeywords.join("、") || "继续补充"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-white p-3">
+                      <p className="text-xs font-medium text-foreground">待补充</p>
+                      <p className="mt-1 text-sm leading-6 text-foreground">
+                        {roleplayFeedback.missingKeywords.join("、") || "关键信息完整"}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 rounded-lg border border-border bg-white p-3 text-sm leading-6 text-foreground">
+                    更自然说法：{roleplayFeedback.naturalReply}
+                  </p>
+                  <ul className="mt-3 space-y-1 text-xs leading-5 text-foreground">
+                    {roleplayFeedback.suggestions.map((suggestion) => (
+                      <li key={suggestion}>{suggestion}</li>
+                    ))}
+                  </ul>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={handleSaveRoleplayNaturalReply}
+                    disabled={savedRoleplayKeys[createRoleplaySaveKey("natural-reply", roleplayFeedback.naturalReply)]}
+                  >
+                    <Plus className="h-4 w-4 text-foreground" />
+                    {savedRoleplayKeys[createRoleplaySaveKey("natural-reply", roleplayFeedback.naturalReply)]
+                      ? "已保存自然回答"
+                      : "保存自然回答"}
+                  </Button>
+                </div>
+              ) : null}
+
+              {roleplaySaveMessage ? (
+                <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
+                  {roleplaySaveMessage}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card id="practice-retelling" className="scroll-mt-24">
         <CardHeader className="pb-4">

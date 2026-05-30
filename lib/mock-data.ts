@@ -415,7 +415,7 @@ export const practiceModes = [
     icon: Headphones,
     todayTask: "前台预约角色扮演",
     estimatedMinutes: 8,
-    status: "稍后",
+    status: "可用",
     output: "对话记录"
   }
 ];
@@ -458,6 +458,58 @@ export const retellingPractice = {
     "I would like to make an appointment with a doctor.",
     "I have had a sore throat since yesterday.",
     "I want to ask if there are any openings this afternoon."
+  ]
+};
+
+export const roleplayScenario = {
+  title: "前台预约医生",
+  material: "A Visit to the Doctor",
+  level: "A1+",
+  setting: "美国诊所前台电话预约",
+  learnerRole: "你是病人，需要预约医生并说明嗓子疼。",
+  partnerRole: "AI 扮演诊所前台，按简单英文一步一步问你。",
+  goal: "完成预约需求、说明症状、确认下午 3 点是否可以。",
+  usefulExpressions: [
+    "I would like to make an appointment.",
+    "I have had a sore throat since yesterday.",
+    "Does 3 p.m. work for you?",
+    "That works for me.",
+    "Thank you for your help."
+  ],
+  turns: [
+    {
+      id: "opening",
+      partnerLine: "Good morning. How can I help you?",
+      translation: "早上好。有什么可以帮您？",
+      userGoalZh: "告诉前台：你想预约医生。",
+      expectedKeywords: ["appointment", "doctor"],
+      suggestedReplies: [
+        "I would like to make an appointment with a doctor.",
+        "Can I make an appointment with a doctor, please?"
+      ]
+    },
+    {
+      id: "symptom",
+      partnerLine: "What seems to be the problem?",
+      translation: "您哪里不舒服？",
+      userGoalZh: "说明：你从昨天开始嗓子疼。",
+      expectedKeywords: ["sore throat", "yesterday"],
+      suggestedReplies: [
+        "I have had a sore throat since yesterday.",
+        "My throat has been sore since yesterday."
+      ]
+    },
+    {
+      id: "time",
+      partnerLine: "We have an opening at 3 p.m. Does that work for you?",
+      translation: "我们下午 3 点有空档。这个时间可以吗？",
+      userGoalZh: "确认 3 点可以，并表示感谢。",
+      expectedKeywords: ["works", "thank"],
+      suggestedReplies: [
+        "Yes, that works for me. Thank you.",
+        "Yes, 3 p.m. works for me. Thank you for your help."
+      ]
+    }
   ]
 };
 

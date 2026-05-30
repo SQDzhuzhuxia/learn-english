@@ -789,7 +789,7 @@ export function ReviewClient() {
                 key={card.id}
                 className={cn(
                   "rounded-lg border p-3 transition-colors",
-                  card.id === activeCard?.id ? "border-accent bg-accent-soft" : "border-border bg-white"
+                  card.id === activeCard?.id ? "border-foreground/15 bg-panel-strong" : "border-border bg-white"
                 )}
               >
                 <div className="flex items-start gap-3">

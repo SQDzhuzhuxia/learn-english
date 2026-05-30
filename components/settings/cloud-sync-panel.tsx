@@ -353,7 +353,7 @@ export function CloudSyncPanel() {
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-panel-strong text-foreground">
               <Cloud className="h-5 w-5" />
             </div>
             <div>
@@ -445,7 +445,7 @@ export function CloudSyncPanel() {
 
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-panel-strong text-accent">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-panel-strong text-foreground">
               <CheckCircle2 className="h-4 w-4" />
             </div>
             <div>

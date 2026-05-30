@@ -517,7 +517,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
           </CardHeader>
 
           <CardContent>
-          <div className="rounded-lg border border-accent bg-accent-soft p-5">
+          <div className="rounded-lg border border-foreground/15 bg-panel-strong p-5">
             <p className="text-xl font-semibold leading-9 text-foreground">{current.text}</p>
             {current.translation ? (
               <p className="mt-3 text-sm leading-6 text-muted">{current.translation}</p>
@@ -577,7 +577,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                 onClick={() => moveTo(segment.order)}
                 className={`block w-full rounded-lg border p-4 text-left ${
                   segment.order === currentOrder
-                    ? "border-accent bg-accent-soft"
+                    ? "border-foreground/15 bg-panel-strong"
                     : "border-border bg-white hover:bg-panel-strong"
                 }`}
               >

@@ -667,7 +667,7 @@ export function PracticeClient() {
           </CardHeader>
           <CardContent>
 
-          <div className="rounded-lg border border-accent bg-accent-soft p-5">
+          <div className="rounded-lg border border-foreground/15 bg-panel-strong p-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <Badge variant="default">今日推荐</Badge>
@@ -802,7 +802,7 @@ export function PracticeClient() {
           <CardContent className="space-y-3">
             {todayPractice.steps.map((step, index) => (
               <div key={step} className="flex gap-3 rounded-lg border border-border bg-white p-3">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-sm font-semibold text-accent">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-panel-strong text-sm font-semibold text-foreground">
                   {index + 1}
                 </div>
                 <p className="text-sm leading-6 text-muted">{step}</p>
@@ -820,7 +820,7 @@ export function PracticeClient() {
             <Card key={mode.id}>
               <CardContent className="pt-5">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-panel-strong text-foreground">
                   <Icon className="h-5 w-5" />
                 </div>
                 <Badge variant="outline">

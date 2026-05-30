@@ -100,12 +100,12 @@ export function SettingsClient() {
               {group.items.map((item) => (
                 <div key={item.label} className="rounded-lg border border-border bg-white p-4">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-panel-strong text-foreground">
                       <item.icon className="h-5 w-5" />
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{item.label}</p>
-                      <p className="mt-1 text-sm font-medium text-accent">{item.value}</p>
+                      <p className="mt-1 text-sm font-medium text-muted">{item.value}</p>
                     </div>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-muted">{item.detail}</p>
@@ -123,7 +123,7 @@ export function SettingsClient() {
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-panel-strong text-foreground">
                 <Database className="h-5 w-5" />
               </div>
               <div>
@@ -171,7 +171,7 @@ export function SettingsClient() {
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-panel-strong text-foreground">
                 <KeyRound className="h-5 w-5" />
               </div>
               <div>

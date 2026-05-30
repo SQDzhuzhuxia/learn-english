@@ -207,7 +207,9 @@ UI Refresh 第三轮    已完成
 - README 已补充项目技术栈
 - 技术方案已明确采用 shadcn/ui + Radix UI + Tailwind CSS + lucide-react
 - 新增 UI 技术方案补充文档
-- UI 色调已调整为接近 ChatGPT 官网的浅灰白、黑灰文字、低饱和绿色强调风格
+- UI 色调已调整为接近 ChatGPT 官网的浅灰白、黑灰文字和细边框风格
+- 第二轮 ChatGPT 风格收敛已完成：大面积绿色高亮、绿色按钮、绿色进度条和绿色选中态已改为中性黑灰
+- 绿色已收敛为备用品牌色，不再作为主要交互色
 - PWA theme color 和图标颜色已同步到新的浅灰白/绿色体系
 - 新增 `components/ui/` 基础 UI 组件
 - 新增 `components.json` shadcn/ui 配置
@@ -272,5 +274,5 @@ UI Refresh 第三轮    已完成
 当前下一步：
 
 1. 继续 Sprint 4：增加 AI 复述反馈，关注自然度、中文思维和表达替换。
-2. 继续 UI Refresh：剩余细节控件和交互状态打磨。
+2. 继续 UI Refresh：剩余细节控件、页面间距和交互状态打磨。
 3. 增加云端同步冲突细粒度合并。

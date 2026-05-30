@@ -207,9 +207,9 @@ export function ProgressClient() {
                   </div>
                   <div className="mt-3 h-3 rounded-full bg-panel-strong">
                     <div className="flex h-3 overflow-hidden rounded-full" style={{ width: `${width}%` }}>
-                      <div className="bg-accent" style={{ width: `${inputWidth}%` }} />
-                      <div className="bg-sky-500" style={{ width: `${outputWidth}%` }} />
-                      <div className="bg-amber-500" style={{ width: `${reviewWidth}%` }} />
+                      <div className="bg-foreground" style={{ width: `${inputWidth}%` }} />
+                      <div className="bg-muted" style={{ width: `${outputWidth}%` }} />
+                      <div className="bg-border" style={{ width: `${reviewWidth}%` }} />
                     </div>
                   </div>
                   <p className="mt-2 text-xs text-muted">

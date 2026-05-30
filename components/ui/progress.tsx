@@ -17,7 +17,7 @@ function Progress({ className, value = 0, ...props }: ProgressProps) {
       aria-valuenow={safeValue}
       {...props}
     >
-      <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${safeValue}%` }} />
+      <div className="h-full rounded-full bg-foreground transition-all" style={{ width: `${safeValue}%` }} />
     </div>
   );
 }

@@ -51,12 +51,12 @@ export default function TodayPage() {
                 key={step.id}
                 className={`rounded-lg border p-4 ${
                   step.status === "current"
-                    ? "border-accent bg-accent-soft"
+                    ? "border-foreground/15 bg-panel-strong"
                     : "border-border bg-white"
                 }`}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-accent shadow-sm">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white text-foreground">
                     <step.icon className="h-4 w-4" />
                   </div>
                   <span className="text-xs font-medium text-muted">{step.minutes} 分钟</span>
@@ -89,7 +89,7 @@ export default function TodayPage() {
           <CardContent className="pt-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-accent">当前材料</p>
+              <p className="text-sm font-medium text-muted">当前材料</p>
               <h2 className="mt-2 text-xl font-semibold text-foreground">
                 {dailyPlan.currentMaterial.title}
               </h2>
@@ -146,7 +146,7 @@ export default function TodayPage() {
                 className="flex items-center justify-between gap-4 p-4 transition hover:bg-panel-strong"
               >
                 <div>
-                  <p className="text-xs font-medium text-accent">{item.label}</p>
+                  <p className="text-xs font-medium text-muted">{item.label}</p>
                   <p className="mt-1 text-sm font-semibold text-foreground">{item.title}</p>
                 </div>
                 <span className="inline-flex items-center gap-1 text-sm font-medium text-muted">

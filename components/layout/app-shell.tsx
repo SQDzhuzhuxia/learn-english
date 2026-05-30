@@ -78,9 +78,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background text-foreground">
-        <aside className="fixed left-0 top-0 hidden h-screen w-72 border-r border-border bg-panel/95 px-4 py-5 shadow-sm lg:block">
+        <aside className="fixed left-0 top-0 hidden h-screen w-72 border-r border-border bg-panel-strong px-4 py-5 lg:block">
           <Link href="/" className="flex items-center gap-3 rounded-lg px-2 py-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-white shadow-none">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-foreground text-background">
               <Sparkles className="h-5 w-5" />
             </div>
             <div className="min-w-0">
@@ -89,7 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </Link>
 
-          <div className="mt-5 rounded-lg border border-border bg-panel-strong p-3">
+          <div className="mt-5 rounded-lg border border-border bg-panel p-3">
             <p className="text-xs font-medium text-muted">Daily Focus</p>
             <p className="mt-1 text-sm font-semibold text-foreground">30-60 min input loop</p>
             <div className="mt-3 flex items-center gap-2">
@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   className={cn(
                     "group flex min-h-11 items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition",
                     active
-                      ? "border border-border bg-panel-strong text-foreground"
+                      ? "border border-border bg-panel text-foreground"
                       : "text-muted hover:bg-panel-strong hover:text-foreground"
                   )}
                 >
@@ -134,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="min-w-0">
                 <p className="text-xs font-medium text-muted">美国工作 · 生活 · 移民</p>
                 <div className="mt-1 flex items-center gap-2">
-                  <activeItem.icon className="h-4 w-4 shrink-0 text-accent" />
+                  <activeItem.icon className="h-4 w-4 shrink-0 text-foreground" />
                   <p className="truncate text-sm font-semibold text-foreground">{activeItem.label}</p>
                 </div>
               </div>

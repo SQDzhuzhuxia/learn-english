@@ -19,6 +19,11 @@ import {
   Volume2
 } from "lucide-react";
 import { aiExplanation } from "@/lib/mock-data";
+import {
+  getCachedAiExplanation,
+  setCachedAiExplanation,
+  setCachedAiExplanations
+} from "@/lib/ai/explanation-cache";
 import { requestAiJsonWithQueue } from "@/lib/ai/request-queue";
 import { recordStudyActivity } from "@/lib/analytics/progress-store";
 import {
@@ -39,8 +44,6 @@ import { Separator } from "@/components/ui/separator";
 import type { StudyMaterialRecord } from "@/lib/content/types";
 import type { AiMaterialExplanation, AiSegmentExplanation } from "@/lib/ai/types";
 
-const AI_EXPLANATION_CACHE_KEY = "learn-english.ai-segment-explanations.v1";
-
 type AiExplanationState = {
   status: "idle" | "loading" | "success" | "error";
   explanation?: AiSegmentExplanation;
@@ -59,55 +62,6 @@ type SavableExpression = {
   meaning: string;
   example: string;
 };
-
-function canUseLocalStorage() {
-  return typeof window !== "undefined" && Boolean(window.localStorage);
-}
-
-function readAiExplanationCache() {
-  if (!canUseLocalStorage()) {
-    return {};
-  }
-
-  const raw = window.localStorage.getItem(AI_EXPLANATION_CACHE_KEY);
-
-  if (!raw) {
-    return {};
-  }
-
-  try {
-    return JSON.parse(raw) as Record<string, AiSegmentExplanation>;
-  } catch {
-    window.localStorage.removeItem(AI_EXPLANATION_CACHE_KEY);
-    return {};
-  }
-}
-
-function getCachedAiExplanation(cacheKey: string) {
-  return readAiExplanationCache()[cacheKey];
-}
-
-function setCachedAiExplanation(cacheKey: string, explanation: AiSegmentExplanation) {
-  if (!canUseLocalStorage()) {
-    return;
-  }
-
-  const cache = readAiExplanationCache();
-  cache[cacheKey] = explanation;
-  window.localStorage.setItem(AI_EXPLANATION_CACHE_KEY, JSON.stringify(cache));
-}
-
-function setCachedAiExplanations(entries: Array<{ cacheKey: string; explanation: AiSegmentExplanation }>) {
-  if (!canUseLocalStorage()) {
-    return;
-  }
-
-  const cache = readAiExplanationCache();
-  entries.forEach((entry) => {
-    cache[entry.cacheKey] = entry.explanation;
-  });
-  window.localStorage.setItem(AI_EXPLANATION_CACHE_KEY, JSON.stringify(cache));
-}
 
 function resolveInitialMaterial(materialId?: string) {
   const seedMaterials = getSeedMaterials();
@@ -380,6 +334,9 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
         kind: "explain-segment",
         endpoint: "/api/ai/explain-segment",
         payload: requestPayload,
+        metadata: {
+          cacheKey: aiCacheKey
+        },
         errorMessage: "AI 解释生成失败。"
       });
 
@@ -452,6 +409,9 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
         kind: "explain-material",
         endpoint: "/api/ai/explain-material",
         payload: requestPayload,
+        metadata: {
+          materialId: material.id
+        },
         errorMessage: "批量解释生成失败。"
       });
 

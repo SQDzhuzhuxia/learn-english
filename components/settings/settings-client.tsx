@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Cloud, Database, Download, KeyRound, Trash2, Upload } from "lucide-react";
+import { Cloud, Database, Download, KeyRound, RotateCw, Trash2, Upload } from "lucide-react";
 import { CloudSyncPanel } from "@/components/settings/cloud-sync-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
 } from "@/lib/sync/local-backup";
 import { summarizeSyncSnapshot } from "@/lib/sync/sync-snapshot";
 import { clearCachedTtsAudio } from "@/lib/speech/tts-audio-cache";
-import { clearAiRequestQueue, loadAiRequestQueue } from "@/lib/ai/request-queue";
+import { clearAiRequestQueue, loadAiRequestQueue, retryQueuedAiRequests } from "@/lib/ai/request-queue";
 
 function createBackupFileName() {
   return `learn-english-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -90,6 +90,16 @@ export function SettingsClient() {
       clearedCount > 0
         ? `已清理 ${clearedCount} 条本机 AI 请求队列。`
         : "当前没有待处理的本机 AI 请求。"
+    );
+  }
+
+  async function handleRetryAiRequestQueue() {
+    const summary = await retryQueuedAiRequests({ limit: 10 });
+    setAiQueueCount(summary.remaining);
+    setMessage(
+      summary.attempted > 0
+        ? `已重试 ${summary.attempted} 条 AI 请求，成功 ${summary.completed} 条，失败 ${summary.failed} 条，剩余 ${summary.remaining} 条。`
+        : `当前没有可自动回写的 AI 请求。剩余队列 ${summary.remaining} 条。`
     );
   }
 
@@ -168,7 +178,7 @@ export function SettingsClient() {
             ))}
           </div>
           <Separator className="my-5" />
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
             <Button onClick={handleExport}>
               <Download className="h-4 w-4" />
               导出数据
@@ -184,6 +194,10 @@ export function SettingsClient() {
             <Button onClick={() => void handleClearTtsAudioCache()} variant="outline">
               <Trash2 className="h-4 w-4" />
               清理音频
+            </Button>
+            <Button onClick={() => void handleRetryAiRequestQueue()} variant="outline">
+              <RotateCw className="h-4 w-4" />
+              重试队列
             </Button>
             <Button onClick={handleClearAiRequestQueue} variant="outline">
               <Trash2 className="h-4 w-4" />

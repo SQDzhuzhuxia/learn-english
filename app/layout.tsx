@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AiRequestAutoRetry } from "@/components/ai/ai-request-auto-retry";
 import { AppShell } from "@/components/layout/app-shell";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { CloudAutoSync } from "@/components/sync/cloud-auto-sync";
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body>
         <ServiceWorkerRegister />
         <CloudAutoSync />
+        <AiRequestAutoRetry />
         <AppShell>{children}</AppShell>
       </body>
     </html>

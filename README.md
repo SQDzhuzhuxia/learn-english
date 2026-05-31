@@ -154,6 +154,16 @@ TTS_VOICE=alloy
 
 未配置 TTS 时，应用会自动回退到浏览器内置英文朗读。
 
+### 本地语音检查
+
+如果你要走本地 Whisper / whisper.cpp 和本地 TTS 路线，可以先运行：
+
+```bash
+npm run speech:check
+```
+
+这个命令会读取 `.env` 和 `.env.local`，检查 STT/TTS 当前是本地可用、云端可用还是未配置。设置页里的“离线语音准备”也会展示同样的诊断结果。
+
 ### Supabase
 
 ```env

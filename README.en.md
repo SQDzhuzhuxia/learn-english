@@ -156,6 +156,16 @@ TTS_VOICE=alloy
 
 If TTS is not configured or fails, the app automatically falls back to browser speech.
 
+### Local Speech Check
+
+If you want to use local Whisper / whisper.cpp and local TTS, run:
+
+```bash
+npm run speech:check
+```
+
+The command reads `.env` and `.env.local` and reports whether STT/TTS are local-ready, cloud-only, or not configured. The Settings page shows the same readiness signal in the offline speech section.
+
 ### Supabase
 
 ```env

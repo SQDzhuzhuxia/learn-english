@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "speech:check": "node scripts/local-speech/check-local-speech.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {

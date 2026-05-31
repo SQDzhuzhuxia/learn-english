@@ -14,7 +14,9 @@ import {
   type ActivitySummary,
   type WeeklyActivityDay
 } from "@/lib/analytics/progress-store";
+import { summarizeOutputErrors, type OutputErrorSummary } from "@/lib/analytics/output-error-stats";
 import { loadLearningItems } from "@/lib/review/review-store";
+import { loadPracticeAttempts } from "@/lib/speech/practice-store";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -35,6 +37,7 @@ type ProgressViewState = {
   stats: ProgressStat[];
   balance: BalanceItem[];
   timeline: WeeklyActivityDay[];
+  outputErrorSummary: OutputErrorSummary;
 };
 
 function createBalance(summary: ActivitySummary): BalanceItem[] {
@@ -96,7 +99,8 @@ function createInitialState(): ProgressViewState {
   return {
     stats: progressStats,
     balance: learningBalance,
-    timeline: weeklyTimeline
+    timeline: weeklyTimeline,
+    outputErrorSummary: summarizeOutputErrors([])
   };
 }
 
@@ -113,11 +117,13 @@ export function ProgressClient() {
 
       const summary = summarizeStudyActivities();
       const activeItemCount = loadLearningItems().filter((item) => item.status !== "archived").length;
+      const outputErrorSummary = summarizeOutputErrors(loadPracticeAttempts());
 
       setViewState({
         stats: createStats(summary, activeItemCount),
         balance: createBalance(summary),
-        timeline: summary.weeklyTimeline
+        timeline: summary.weeklyTimeline,
+        outputErrorSummary
       });
     });
 
@@ -224,21 +230,50 @@ export function ProgressClient() {
         <Card>
           <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">当前弱项</CardTitle>
+            <CardTitle className="text-lg">输出薄弱项</CardTitle>
             <AlertCircle className="h-5 w-5 text-foreground" />
           </div>
-          <CardDescription>后续会逐步从真实复习和练习记录中生成。</CardDescription>
+          <CardDescription>
+            {viewState.outputErrorSummary.attemptCount > 0
+              ? `来自 ${viewState.outputErrorSummary.attemptCount} 条练习记录，平均完成度 ${
+                  viewState.outputErrorSummary.averageScore ? `${viewState.outputErrorSummary.averageScore}%` : "-"
+                }。`
+              : "完成跟读、复述、写作或角色练习后，这里会生成真实薄弱项。"}
+          </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {weaknessInsights.map((insight) => (
-              <article key={insight.title} className="rounded-lg border border-border bg-white p-4">
-                <h3 className="font-semibold text-foreground">{insight.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-muted">{insight.detail}</p>
-                <p className="mt-3 rounded-lg bg-panel-strong px-3 py-2 text-sm leading-6 text-muted">
-                  {insight.action}
-                </p>
-              </article>
-            ))}
+            {viewState.outputErrorSummary.categories.length > 0 ? (
+              viewState.outputErrorSummary.categories.slice(0, 4).map((category) => (
+                <article key={category.id} className="rounded-lg border border-border bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-foreground">{category.label}</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted">{category.detail}</p>
+                    </div>
+                    <Badge variant="outline">{category.count} 次</Badge>
+                  </div>
+                  <Progress value={category.severity} className="mt-3" />
+                  <p className="mt-3 rounded-lg bg-panel-strong px-3 py-2 text-sm leading-6 text-muted">
+                    {category.action}
+                  </p>
+                  {category.examples.length > 0 ? (
+                    <p className="mt-2 text-xs leading-5 text-muted">
+                      来源：{category.examples.join("、")}
+                    </p>
+                  ) : null}
+                </article>
+              ))
+            ) : (
+              weaknessInsights.map((insight) => (
+                <article key={insight.title} className="rounded-lg border border-border bg-white p-4">
+                  <h3 className="font-semibold text-foreground">{insight.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted">{insight.detail}</p>
+                  <p className="mt-3 rounded-lg bg-panel-strong px-3 py-2 text-sm leading-6 text-muted">
+                    {insight.action}
+                  </p>
+                </article>
+              ))
+            )}
           </CardContent>
         </Card>
       </section>

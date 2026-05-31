@@ -25,6 +25,7 @@ describe("createShadowingFeedback", () => {
     expect(feedback.missingWords).toContain("would");
     expect(feedback.extraWords).toContain("want");
     expect(feedback.focusWords).toContain("would");
+    expect(feedback.pronunciationFocus.map((item) => item.id)).toContain("v-w");
     expect(feedback.suggestions.length).toBeGreaterThan(0);
   });
 

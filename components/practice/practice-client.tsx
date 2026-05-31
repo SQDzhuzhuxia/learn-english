@@ -1738,6 +1738,20 @@ export function PracticeClient() {
                     多出/误识别：{feedback.extraWords.join(", ")}
                   </p>
                 ) : null}
+                {feedback.pronunciationFocus.length > 0 ? (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {feedback.pronunciationFocus.slice(0, 4).map((item) => (
+                      <div key={item.id} className="rounded-lg border border-border bg-white p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-foreground">{item.label}</p>
+                          <span className="text-xs text-muted">{item.sound}</span>
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-foreground">{item.words.join(", ")}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted">{item.tip}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 {feedback.suggestions.length > 0 ? (
                   <ul className="mt-2 space-y-1 text-xs leading-5 text-foreground">
                     {feedback.suggestions.slice(0, 2).map((suggestion) => (

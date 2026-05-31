@@ -1,3 +1,5 @@
+import { createPronunciationFocus, type PronunciationFocus } from "@/lib/speech/pronunciation-focus";
+
 export type ShadowingFeedback = {
   score: number;
   completeness: number;
@@ -6,6 +8,7 @@ export type ShadowingFeedback = {
   missingWords: string[];
   extraWords: string[];
   focusWords: string[];
+  pronunciationFocus: PronunciationFocus[];
   suggestions: string[];
   label: string;
   tip: string;
@@ -112,6 +115,7 @@ export function createShadowingFeedback(prompt: string, transcript: string): Sha
   const uniqueMissingWords = uniqueFirst(missingWords);
   const uniqueExtraWords = uniqueFirst(extraWords);
   const focusWords = findPronunciationFocus(targetWords, uniqueMissingWords);
+  const pronunciationFocus = createPronunciationFocus(focusWords.length > 0 ? focusWords : targetWords);
   const suggestions = createSuggestions({
     score,
     missingWords: uniqueMissingWords,
@@ -128,6 +132,7 @@ export function createShadowingFeedback(prompt: string, transcript: string): Sha
       missingWords: uniqueMissingWords,
       extraWords: uniqueExtraWords,
       focusWords,
+      pronunciationFocus,
       suggestions,
       label: "很接近",
       tip: "这一遍已经比较完整，可以继续模仿语调、弱读和连读。"
@@ -143,6 +148,7 @@ export function createShadowingFeedback(prompt: string, transcript: string): Sha
       missingWords: uniqueMissingWords,
       extraWords: uniqueExtraWords,
       focusWords,
+      pronunciationFocus,
       suggestions,
       label: "基本说出",
       tip: "先补齐漏掉的词，再慢速跟读一遍。"
@@ -157,6 +163,7 @@ export function createShadowingFeedback(prompt: string, transcript: string): Sha
     missingWords: uniqueMissingWords,
     extraWords: uniqueExtraWords,
     focusWords,
+    pronunciationFocus,
     suggestions,
     label: "需要慢速重来",
     tip: "先听原句，再分成两小段跟读。"

@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Cloud, Database, Download, KeyRound, RotateCw, Trash2, Upload } from "lucide-react";
+import { Cloud, Database, Download, KeyRound, Mic, RotateCw, Trash2, Upload, Volume2 } from "lucide-react";
 import { CloudSyncPanel } from "@/components/settings/cloud-sync-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import type { LocalSpeechReadiness, SpeechReadinessStatus } from "@/lib/speech/server/local-speech-readiness";
 import { settingsGroups } from "@/lib/mock-data";
 import {
   createLocalBackup,
@@ -37,18 +38,42 @@ function downloadJsonFile(fileName: string, payload: unknown) {
   URL.revokeObjectURL(url);
 }
 
+function getSpeechStatusLabel(status: SpeechReadinessStatus) {
+  if (status === "local") {
+    return "本地可用";
+  }
+
+  if (status === "cloud") {
+    return "云端可用";
+  }
+
+  return "未配置";
+}
+
 export function SettingsClient() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [message, setMessage] = useState("");
   const [aiQueueCount, setAiQueueCount] = useState(0);
   const [aiResultCount, setAiResultCount] = useState(0);
   const [confirmClearAiResults, setConfirmClearAiResults] = useState(false);
+  const [speechReadiness, setSpeechReadiness] = useState<LocalSpeechReadiness | null>(null);
 
   useEffect(() => {
     queueMicrotask(() => {
       setAiQueueCount(loadAiRequestQueue().length);
       setAiResultCount(loadAiResultInbox().length);
     });
+
+    void fetch("/api/speech/readiness")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: LocalSpeechReadiness | null) => {
+        if (payload) {
+          setSpeechReadiness(payload);
+        }
+      })
+      .catch(() => {
+        setSpeechReadiness(null);
+      });
   }, []);
 
   function handleExport() {
@@ -246,6 +271,66 @@ export function SettingsClient() {
               onChange={(event) => void handleImport(event.target.files?.[0])}
             />
           </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-panel-strong text-foreground">
+                <Mic className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle>离线语音准备</CardTitle>
+                <CardDescription>检查本地 Whisper/STT 和本地 TTS endpoint 是否具备。</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {speechReadiness ? (
+              <div className="space-y-3">
+                {[speechReadiness.stt, speechReadiness.tts].map((item) => {
+                  const Icon = item.id === "stt" ? Mic : Volume2;
+
+                  return (
+                    <div key={item.id} className="rounded-lg border border-border bg-white p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-panel-strong text-foreground">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground">{item.label}</p>
+                            <p className="mt-1 text-xs text-muted">{item.provider}</p>
+                          </div>
+                        </div>
+                        <Badge variant={item.status === "local" ? "default" : "outline"}>
+                          {getSpeechStatusLabel(item.status)}
+                        </Badge>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-muted">{item.detail}</p>
+                      <p className="mt-2 text-xs leading-5 text-muted">
+                        关键配置：{item.requiredEnv.join("、")}
+                      </p>
+                    </div>
+                  );
+                })}
+                <div className="rounded-lg border border-border bg-panel-strong p-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    {speechReadiness.offlineReady ? "本机离线语音链路已准备好" : "下一步"}
+                  </p>
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
+                    {speechReadiness.nextSteps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <p className="rounded-lg border border-border bg-white p-4 text-sm leading-6 text-muted">
+                正在检查语音配置...
+              </p>
+            )}
           </CardContent>
         </Card>
 

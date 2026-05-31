@@ -14,6 +14,7 @@ import {
   Target
 } from "lucide-react";
 import { PwaInstallStatus } from "@/components/pwa/pwa-install-status";
+import { SyncStatusPill } from "@/components/sync/sync-status-pill";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -139,6 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <SyncStatusPill />
                 <PwaInstallStatus />
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -170,8 +172,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="pb-20 lg:pb-0">{children}</div>
         </div>
 
-        <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-5 border-t border-border bg-panel px-2 py-2 backdrop-blur lg:hidden">
-          {navigation.slice(0, 5).map((item) => {
+        <nav className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-6 border-t border-border bg-panel px-2 py-2 backdrop-blur lg:hidden">
+          {navigation.slice(0, 6).map((item) => {
             const active = isActive(pathname, item.href);
 
             return (

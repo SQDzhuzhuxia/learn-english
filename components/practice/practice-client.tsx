@@ -159,6 +159,13 @@ function getAiResultTurn(record: AiResultInboxRecord) {
   return payload.turn;
 }
 
+function getAiResultRequest(record: AiResultInboxRecord) {
+  return record.requestPayload as {
+    promptTitle?: string;
+    userText?: string;
+  };
+}
+
 function createExpectedKeywordsFromReplies(replies: string[]) {
   const seen = new Set<string>();
   const words = replies.join(" ").match(/[A-Za-z][A-Za-z'-]*/g) ?? [];
@@ -336,7 +343,7 @@ export function PracticeClient() {
     setMessage(result.ok ? `${result.message} 请先听两遍，再开始录音。` : result.message);
   }
 
-  function handleOpenPracticeMode(modeId: string) {
+  function scrollToPracticeMode(modeId: string) {
     const targetMap: Record<string, string> = {
       shadowing: "practice-shadowing",
       retelling: "practice-retelling",
@@ -346,11 +353,18 @@ export function PracticeClient() {
     const targetId = targetMap[modeId];
 
     if (!targetId) {
-      setMessage("这个练习入口还没有配置目标区域。");
-      return;
+      return false;
     }
 
     document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return true;
+  }
+
+  function handleOpenPracticeMode(modeId: string) {
+    if (!scrollToPracticeMode(modeId)) {
+      setMessage("这个练习入口还没有配置目标区域。");
+      return;
+    }
 
     if (modeId === "shadowing") {
       setMessage("已定位到跟读训练。先播放原句，再录音。");
@@ -366,6 +380,64 @@ export function PracticeClient() {
 
     if (modeId === "writing") {
       setWritingMessage("已定位到短写作教练。写一句英文后点击 AI 修改。");
+    }
+  }
+
+  function handleApplyAiResult(result: AiResultInboxRecord) {
+    const correction = getAiResultCorrection(result);
+    const turn = getAiResultTurn(result);
+    const request = getAiResultRequest(result);
+
+    if (correction) {
+      const sourceText = request.userText ?? correction.originalText;
+
+      if (request.promptTitle?.startsWith("复述：")) {
+        setRetellingText(sourceText);
+        setRetellingAiCorrection(correction);
+        setRetellingAiSaveMessage("");
+        setSavedRetellingAiKeys({});
+        scrollToPracticeMode("retelling");
+        setRetellingMessage("已载入 AI 复述反馈。");
+        return;
+      }
+
+      if (request.promptTitle?.startsWith("角色扮演：")) {
+        setRoleplayReply(sourceText);
+        setRoleplayAiCorrection(correction);
+        setRoleplayAiSaveMessage("");
+        setSavedRoleplayAiKeys({});
+        scrollToPracticeMode("roleplay");
+        setRoleplayMessage("已载入 AI 角色回答反馈。");
+        return;
+      }
+
+      setWritingText(sourceText);
+      setWritingCorrection(correction);
+      setWritingSaveMessage("");
+      setSavedWritingKeys({});
+      scrollToPracticeMode("writing");
+      setWritingMessage("已载入 AI 写作反馈。");
+      return;
+    }
+
+    if (turn) {
+      const nextTurn: PracticeRoleplayTurn = {
+        id: `inbox-roleplay-${Date.parse(result.createdAt)}-${result.id.slice(-6)}`,
+        partnerLine: turn.partnerLine,
+        translation: turn.translationZh,
+        userGoalZh: turn.userGoalZh,
+        expectedKeywords: createExpectedKeywordsFromReplies(turn.suggestedReplies),
+        suggestedReplies: turn.suggestedReplies,
+        isAiGenerated: true
+      };
+
+      setDynamicRoleplayTurns((current) =>
+        current.some((item) => item.partnerLine === nextTurn.partnerLine)
+          ? current
+          : [...current, nextTurn]
+      );
+      scrollToPracticeMode("roleplay");
+      setRoleplayMessage("已把 AI 追问加入角色扮演。");
     }
   }
 
@@ -2254,9 +2326,14 @@ export function PracticeClient() {
                         <Badge variant="outline">{getAiResultInboxTypeLabel(result.kind)}</Badge>
                         <p className="mt-2 text-sm font-semibold text-foreground">{result.title}</p>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteAiResult(result.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button variant="outline" size="sm" onClick={() => handleApplyAiResult(result)}>
+                          载入
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAiResult(result.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <p className="mt-3 text-sm leading-6 text-foreground">{result.summary}</p>
                     {correction ? (

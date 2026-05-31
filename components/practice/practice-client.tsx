@@ -45,6 +45,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import type { AiRoleplayTurn, AiSegmentExpression, AiWritingCorrection, RoleplayTranscriptTurn } from "@/lib/ai/types";
+import type { PronunciationScoringResult } from "@/lib/speech/server/pronunciation-score";
 
 type CloudTranscription = {
   text: string;
@@ -267,6 +268,8 @@ export function PracticeClient() {
   const [transcriptSource, setTranscriptSource] = useState<TranscriptSource | "">("");
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [feedback, setFeedback] = useState<ShadowingFeedback | null>(null);
+  const [pronunciationScore, setPronunciationScore] = useState<PronunciationScoringResult | null>(null);
+  const [isScoringPronunciation, setIsScoringPronunciation] = useState(false);
   const [attempts, setAttempts] = useState<PracticeAttemptRecord[]>([]);
   const [aiResults, setAiResults] = useState<AiResultInboxRecord[]>([]);
   const [retellingText, setRetellingText] = useState("");
@@ -1373,6 +1376,8 @@ export function PracticeClient() {
         setTranscriptSource("");
         setIsTranscribing(false);
         setFeedback(null);
+        setPronunciationScore(null);
+        setIsScoringPronunciation(false);
         setMessage("");
       }
       transcriptRef.current = "";
@@ -1422,6 +1427,31 @@ export function PracticeClient() {
     }
 
     return payload.transcription;
+  }
+
+  async function requestPronunciationScoring(blob: Blob, referenceText: string, transcriptText: string) {
+    const file = new File([blob], "shadowing.webm", {
+      type: blob.type || "audio/webm"
+    });
+    const formData = new FormData();
+    formData.set("file", file);
+    formData.set("referenceText", referenceText);
+    formData.set("transcript", transcriptText);
+
+    const response = await fetch("/api/speech/pronunciation-score", {
+      method: "POST",
+      body: formData
+    });
+    const payload = (await response.json()) as {
+      pronunciation?: PronunciationScoringResult;
+      error?: string;
+    };
+
+    if (!response.ok || !payload.pronunciation) {
+      throw new Error(payload.error ?? "音频级发音评分失败。");
+    }
+
+    return payload.pronunciation;
   }
 
   async function handleRecordingStopped(
@@ -1546,6 +1576,7 @@ export function PracticeClient() {
     setTranscript(finalTranscript);
     setTranscriptSource(finalTranscriptSource ?? "");
     setFeedback(nextFeedback);
+    setPronunciationScore(null);
     setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
     setMessage(
       finalTranscript
@@ -1555,6 +1586,31 @@ export function PracticeClient() {
     stream.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     setRecordingMode("");
+
+    if (finalTranscript) {
+      setIsScoringPronunciation(true);
+
+      try {
+        const scoring = await requestPronunciationScoring(blob, todayPractice.prompt, finalTranscript);
+        setPronunciationScore(scoring);
+
+        if (scoring.source === "local") {
+          setMessage(`已保存本次跟读，并完成音频级发音评分：${scoring.score ?? "-"}%。`);
+        } else if (scoring.error) {
+          setMessage(`已保存本次跟读。音频级发音评分未启用：${scoring.error}`);
+        }
+      } catch (error) {
+        setPronunciationScore({
+          source: "fallback",
+          provider: "发音评分请求失败",
+          wordScores: [],
+          phonemeFocus: [],
+          error: error instanceof Error ? error.message : "音频级发音评分失败。"
+        });
+      } finally {
+        setIsScoringPronunciation(false);
+      }
+    }
   }
 
   function stopRecording() {
@@ -1761,6 +1817,63 @@ export function PracticeClient() {
                     ))}
                   </ul>
                 ) : null}
+              </div>
+            ) : null}
+
+            {isScoringPronunciation ? (
+              <p className="mt-4 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
+                正在请求音频级发音评分...
+              </p>
+            ) : null}
+
+            {pronunciationScore ? (
+              <div className="mt-4 rounded-lg border border-border bg-white p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-semibold text-foreground">音频级发音评分</p>
+                  <Badge variant={pronunciationScore.source === "local" ? "default" : "outline"}>
+                    {pronunciationScore.source === "local" ? `${pronunciationScore.score ?? "-"}%` : "未配置"}
+                  </Badge>
+                </div>
+                {pronunciationScore.source === "local" ? (
+                  <>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <div className="rounded-lg border border-border bg-panel-strong p-3">
+                        <p className="text-xs text-muted">发音</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {pronunciationScore.pronunciationScore ?? "-"}%
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-panel-strong p-3">
+                        <p className="text-xs text-muted">流利度</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {pronunciationScore.fluencyScore ?? "-"}%
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-panel-strong p-3">
+                        <p className="text-xs text-muted">对齐</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {pronunciationScore.alignmentScore ?? "-"}%
+                        </p>
+                      </div>
+                    </div>
+                    {pronunciationScore.feedbackZh ? (
+                      <p className="mt-3 text-sm leading-6 text-muted">{pronunciationScore.feedbackZh}</p>
+                    ) : null}
+                    {pronunciationScore.wordScores.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {pronunciationScore.wordScores.slice(0, 6).map((item) => (
+                          <Badge key={`${item.word}-${item.score}`} variant="outline">
+                            {item.word} {item.score}%
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    {pronunciationScore.error ?? "配置本地发音评分 endpoint 后，这里会显示音频强制对齐结果。"}
+                  </p>
+                )}
               </div>
             ) : null}
 

@@ -39,6 +39,7 @@ It aims to become a serious, long-term, community-maintained tool for English in
 
 - Shadowing recording, browser transcription, cloud/local STT
 - Shadowing completeness, missing words, extra words, and focus-word feedback
+- Audio-level pronunciation scoring endpoint for local alignment or pronunciation services
 - Retelling practice, recorded retelling, and key-point feedback
 - AI retelling naturalness feedback
 - Short writing correction with AI
@@ -165,6 +166,17 @@ npm run speech:check
 ```
 
 The command reads `.env` and `.env.local` and reports whether STT/TTS are local-ready, cloud-only, or not configured. The Settings page shows the same readiness signal in the offline speech section.
+
+### Audio-Level Pronunciation Scoring
+
+```env
+PRONUNCIATION_PROVIDER=fallback
+PRONUNCIATION_BASE_URL=
+PRONUNCIATION_MODEL=
+PRONUNCIATION_ENDPOINT_PATH=/score-pronunciation
+```
+
+When this is not configured, shadowing still uses text-level completeness and pronunciation-focus diagnostics. After a local endpoint is configured, completed shadowing recordings call `/api/speech/pronunciation-score` and show pronunciation, fluency, alignment, and word-level scores.
 
 ### Supabase
 

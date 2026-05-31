@@ -37,6 +37,7 @@ Learn English 采用“输入驱动 + 输出反馈 + 复习沉淀”的方法：
 
 - 跟读录音、浏览器转写、云端/本地 STT 转写
 - 跟读完整度、漏词、多词和重点词反馈
+- 音频级发音评分接口，可接入本地强制对齐或发音评分服务
 - 复述训练、复述录音、关键点反馈
 - AI 复述自然度反馈
 - 短写作 AI 批改
@@ -163,6 +164,17 @@ npm run speech:check
 ```
 
 这个命令会读取 `.env` 和 `.env.local`，检查 STT/TTS 当前是本地可用、云端可用还是未配置。设置页里的“离线语音准备”也会展示同样的诊断结果。
+
+### 音频级发音评分
+
+```env
+PRONUNCIATION_PROVIDER=fallback
+PRONUNCIATION_BASE_URL=
+PRONUNCIATION_MODEL=
+PRONUNCIATION_ENDPOINT_PATH=/score-pronunciation
+```
+
+未配置时，跟读仍会使用文本级完整度和发音重点诊断。配置本地 endpoint 后，跟读录音结束会请求 `/api/speech/pronunciation-score`，并展示发音、流利度、对齐和词级评分。
 
 ### Supabase
 

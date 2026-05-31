@@ -104,7 +104,7 @@ Vercel is the recommended first deployment target for this Next.js Web/PWA proje
 After deployment, add the live URL here and to the GitHub About section:
 
 ```text
-Live Demo: TBD
+Live Demo: https://learn-english-mauve-nine.vercel.app
 ```
 
 See the full guide: [docs/deployment-guide.md](docs/deployment-guide.md)

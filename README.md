@@ -102,7 +102,7 @@ npm run build
 部署完成后，把线上地址补到这里和 GitHub About：
 
 ```text
-Live Demo: 待添加
+Live Demo: https://learn-english-mauve-nine.vercel.app
 ```
 
 完整步骤见：[docs/deployment-guide.md](docs/deployment-guide.md)

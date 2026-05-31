@@ -1,6 +1,6 @@
 # 项目总进度
 
-日期：2026-05-30
+日期：2026-05-31
 
 ## 当前阶段
 
@@ -69,6 +69,9 @@ UI Refresh 第三轮    已完成
 复习卡批量暂停恢复   已完成
 复习卡同组切换       已完成
 高质量 TTS 服务端接口 已完成
+开源发布准备         已完成
+部署指南             已完成
+GitHub Actions CI    已完成
 ```
 
 ## 里程碑进度
@@ -130,6 +133,9 @@ UI Refresh 第三轮    已完成
 | Sprint 4F | 已完成 | 场景口语新增 AI 自然度反馈，角色回答修正版和推荐表达可保存为复习卡 |
 | Sprint 4G | 已完成 | 场景口语新增 AI 继续追问，固定脚本完成后可生成下一轮对话 |
 | Sprint 4H | 已完成 | 写作、复述和角色 AI 反馈支持一键保存全部修正版和推荐表达 |
+| Open Source A | 已完成 | 补充中英文 README、MIT License、贡献指南、安全策略和 Issue/PR 模板 |
+| Open Source B | 已完成 | 新增公开发布和 Vercel 部署指南 |
+| Open Source C | 已完成 | 新增 GitHub Actions CI，自动执行 lint、typecheck、test 和 build |
 | Sprint 4 | 进行中 | 跟读、复述、写作练习真实闭环 |
 | Sprint 5 | 未开始 | 同步冲突高级合并、离线音频缓存、AI 请求队列和跨端体验打磨 |
 
@@ -248,6 +254,9 @@ UI Refresh 第三轮    已完成
 - 支持 `TTS_PROVIDER=openai` 或 `openai-compatible` 调用 `/audio/speech`
 - 支持 `TTS_PROVIDER=local` 接入本地 OpenAI-compatible TTS 服务
 - 前端朗读会优先尝试服务端高质量 TTS，失败或未配置时自动回退浏览器英文朗读
+- README 已补充 CI 状态和部署指南入口
+- 新增公开发布和 Vercel 部署指南
+- 新增 GitHub Actions CI，公开仓库后可自动展示质量检查结果
 - 新增 `components/ui/` 基础 UI 组件
 - 新增 `components.json` shadcn/ui 配置
 - 新增 `lib/utils.ts` 统一 className 合并工具

@@ -3,7 +3,9 @@
 > 面向中文母语学习者的 AI 英语沉浸训练系统。
 > English is not only a skill. It is a bridge to work, life, identity, and a wider world.
 
-[English README](README.en.md) · [项目进度](docs/project-progress.md) · [技术方案](docs/technical-plan-v0.1.md) · [贡献指南](CONTRIBUTING.md)
+[![CI](https://github.com/SQDzhuzhuxia/learn-english/actions/workflows/ci.yml/badge.svg)](https://github.com/SQDzhuzhuxia/learn-english/actions/workflows/ci.yml)
+
+[English README](README.en.md) · [项目进度](docs/project-progress.md) · [技术方案](docs/technical-plan-v0.1.md) · [部署指南](docs/deployment-guide.md) · [贡献指南](CONTRIBUTING.md)
 
 ## 为什么做
 
@@ -93,6 +95,18 @@ npm run test
 npm run build
 ```
 
+## 在线部署
+
+推荐使用 Vercel 部署当前 Next.js Web/PWA 项目。首次公开演示可以使用 fallback 环境变量，不需要暴露任何 AI、语音或数据库密钥。
+
+部署完成后，把线上地址补到这里和 GitHub About：
+
+```text
+Live Demo: 待添加
+```
+
+完整步骤见：[docs/deployment-guide.md](docs/deployment-guide.md)
+
 ## 环境变量
 
 复制 `.env.example` 为 `.env.local`，按需配置。
@@ -157,6 +171,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 - [页面原型](docs/page-prototype-v0.1.md)
 - [开发计划](docs/development-plan-v0.1.md)
 - [UI 技术方案](docs/ui-technical-plan-v0.1.md)
+- [公开发布和部署指南](docs/deployment-guide.md)
 - [项目总进度](docs/project-progress.md)
 - [Sprint 4 状态](docs/sprint-4-status.md)
 

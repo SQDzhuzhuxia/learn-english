@@ -3,7 +3,9 @@
 > An AI-powered English immersion training system for Chinese-native learners.  
 > English is not only a skill. It is a bridge to work, life, identity, and a wider world.
 
-[中文 README](README.md) · [Project Progress](docs/project-progress.md) · [Technical Plan](docs/technical-plan-v0.1.md) · [Contributing](CONTRIBUTING.md)
+[![CI](https://github.com/SQDzhuzhuxia/learn-english/actions/workflows/ci.yml/badge.svg)](https://github.com/SQDzhuzhuxia/learn-english/actions/workflows/ci.yml)
+
+[中文 README](README.md) · [Project Progress](docs/project-progress.md) · [Technical Plan](docs/technical-plan-v0.1.md) · [Deployment Guide](docs/deployment-guide.md) · [Contributing](CONTRIBUTING.md)
 
 ## Why This Exists
 
@@ -95,6 +97,18 @@ npm run test
 npm run build
 ```
 
+## Deployment
+
+Vercel is the recommended first deployment target for this Next.js Web/PWA project. The public demo can start with fallback environment variables, so no AI, speech, or database secrets are required.
+
+After deployment, add the live URL here and to the GitHub About section:
+
+```text
+Live Demo: TBD
+```
+
+See the full guide: [docs/deployment-guide.md](docs/deployment-guide.md)
+
 ## Environment Variables
 
 Copy `.env.example` to `.env.local` and configure only what you need.
@@ -159,6 +173,7 @@ Schema draft: [docs/supabase-sync-schema-v0.1.sql](docs/supabase-sync-schema-v0.
 - [Page Prototype](docs/page-prototype-v0.1.md)
 - [Development Plan](docs/development-plan-v0.1.md)
 - [UI Technical Plan](docs/ui-technical-plan-v0.1.md)
+- [Public Release and Deployment Guide](docs/deployment-guide.md)
 - [Project Progress](docs/project-progress.md)
 - [Sprint 4 Status](docs/sprint-4-status.md)
 

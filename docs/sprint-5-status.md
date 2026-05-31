@@ -19,7 +19,7 @@ Sprint 5G 跨端状态提示        已完成
 Sprint 5H 结果转入练习        已完成
 Sprint 5I 手机端布局小修      已完成
 Sprint 5J 结果直接沉淀        已完成
-Sprint 5K 移动端截图记录      未开始
+Sprint 5K 移动端截图记录      已完成
 Sprint 5L 清空结果确认        已完成
 ```
 
@@ -259,6 +259,30 @@ Sprint 5L 清空结果确认        已完成
 
 ## 下一步
 
+## Sprint 5K：移动端截图回归记录
+
+已完成内容：
+
+- 使用 headless Chrome 生成 `390x844` 手机视口截图。
+- 覆盖核心页面：
+  - 今日页 `/`
+  - 材料库 `/library`
+  - 学习页 `/study`
+  - 复习页 `/review`
+  - 练习页 `/practice`
+  - 进度页 `/progress`
+  - 设置页 `/settings`
+- 截图保存到 `docs/qa/screenshots/2026-05-31-mobile/`。
+- 新增回归记录：`docs/qa/mobile-visual-regression-2026-05-31.md`。
+- 截图检查发现材料库主按钮在移动端 headless 截图里文字不可见。
+- 已修复共享 Button 默认样式，明确使用白色前景文本。
+- 修复后重新生成全部截图。
+
+验收记录：
+
+- 核心页面本地响应均为 200。
+- 已通过截图人工检查。
+
 ## Sprint 5L：AI 结果清空确认
 
 已完成内容：
@@ -273,5 +297,5 @@ Sprint 5L 清空结果确认        已完成
 
 ## 下一步
 
-- Sprint 5K：继续补充移动端视觉回归检查和关键路径截图记录。
-- Sprint 6A：开放式角色扮演长期会话目标和结束总结。
+- Sprint 6F：补充跨场景 AI 角色扮演任务迁移。
+- Sprint 6G：继续预研音频强制对齐级发音评分。

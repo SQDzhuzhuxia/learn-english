@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-项目当前处于 **Sprint 4：跟读、复述、写作练习真实闭环**，同时继续保留 Sprint 3 的 UI 和同步细节打磨。
+项目当前处于 **Sprint 5：跨端同步、离线韧性和长期使用体验打磨**，同时继续保留 Sprint 4 的输出练习闭环优化。
 
 总体状态：
 
@@ -72,6 +72,7 @@ UI Refresh 第三轮    已完成
 开源发布准备         已完成
 部署指南             已完成
 GitHub Actions CI    已完成
+同步冲突细粒度合并   已完成
 ```
 
 ## 里程碑进度
@@ -137,7 +138,8 @@ GitHub Actions CI    已完成
 | Open Source B | 已完成 | 新增公开发布和 Vercel 部署指南 |
 | Open Source C | 已完成 | 新增 GitHub Actions CI，自动执行 lint、typecheck、test 和 build |
 | Sprint 4 | 进行中 | 跟读、复述、写作练习真实闭环 |
-| Sprint 5 | 未开始 | 同步冲突高级合并、离线音频缓存、AI 请求队列和跨端体验打磨 |
+| Sprint 5A | 已完成 | 拉取云端数据时对材料、词句、复习卡、日志、练习记录和 AI 解释缓存做细粒度合并 |
+| Sprint 5 | 进行中 | 同步冲突高级合并、离线音频缓存、AI 请求队列和跨端体验打磨 |
 
 ## 当前可用能力
 
@@ -257,6 +259,8 @@ GitHub Actions CI    已完成
 - README 已补充 CI 状态和部署指南入口
 - 新增公开发布和 Vercel 部署指南
 - 新增 GitHub Actions CI，公开仓库后可自动展示质量检查结果
+- 云同步拉取已升级为细粒度合并：本地新增保留，云端新增补入，双方同一条记录按更新时间选择更新版本
+- 设置页拉取云端确认区会展示整组恢复、细粒度合并、保留本地冲突和合并条目摘要
 - 新增 `components/ui/` 基础 UI 组件
 - 新增 `components.json` shadcn/ui 配置
 - 新增 `lib/utils.ts` 统一 className 合并工具
@@ -301,7 +305,6 @@ GitHub Actions CI    已完成
 - 真正音素级/发音级跟读评分
 - 内置离线 TTS 模型打包
 - 更完整的开放式 AI 角色扮演会话记忆和目标跟踪
-- 云端同步冲突细粒度合并
 - 离线音频缓存和 AI 请求队列
 
 ## 文档说明
@@ -316,6 +319,7 @@ GitHub Actions CI    已完成
 - `sprint-1-status.md`：Sprint 1 的验收记录。
 - `sprint-2-status.md`：Sprint 2 的验收记录，会随着 Sprint 2 继续更新。
 - `sprint-4-status.md`：Sprint 4 的验收记录，会随着输出练习闭环继续更新。
+- `sprint-5-status.md`：Sprint 5 的验收记录，会随着同步、离线和跨端能力继续更新。
 - `project-progress.md`：项目总进度看板，也就是当前文件。
 
 ## 下一步

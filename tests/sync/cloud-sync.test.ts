@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   compareSyncHashes,
   createSyncMergePlan,
+  createSyncRestorePlan,
   downloadSyncRecords,
   pickRemoteRecordsToRestore,
   uploadSyncSnapshot
@@ -175,5 +176,126 @@ describe("uploadSyncSnapshot", () => {
       "learn-english.activity-log.v1": "[remote]",
       "learn-english.review-logs.v1": "[new]"
     });
+  });
+
+  it("creates a granular restore plan for changed array records", () => {
+    const localMaterials = [
+      {
+        id: "material-a",
+        title: "Local newer",
+        updatedAt: "2026-05-31T10:00:00.000Z"
+      },
+      {
+        id: "material-b",
+        title: "Local only",
+        updatedAt: "2026-05-30T10:00:00.000Z"
+      }
+    ];
+    const remoteMaterials = [
+      {
+        id: "material-a",
+        title: "Remote older",
+        updatedAt: "2026-05-30T10:00:00.000Z"
+      },
+      {
+        id: "material-c",
+        title: "Remote only",
+        updatedAt: "2026-05-31T11:00:00.000Z"
+      }
+    ];
+
+    const restorePlan = createSyncRestorePlan(
+      {
+        "learn-english.materials.v1": JSON.stringify(localMaterials)
+      },
+      {
+        "learn-english.materials.v1": JSON.stringify(remoteMaterials)
+      },
+      {
+        "learn-english.materials.v1": "local"
+      },
+      {
+        "learn-english.materials.v1": "remote"
+      }
+    );
+    const restoredMaterials = JSON.parse(
+      restorePlan.recordsToRestore["learn-english.materials.v1"] ?? "[]"
+    ) as Array<{ id: string; title: string }>;
+
+    expect(restorePlan.restoreCount).toBe(1);
+    expect(restorePlan.mergedRecords).toBe(1);
+    expect(restorePlan.mergedAdded).toBe(1);
+    expect(restorePlan.mergedUpdated).toBe(0);
+    expect(restoredMaterials).toEqual([
+      expect.objectContaining({ id: "material-a", title: "Local newer" }),
+      expect.objectContaining({ id: "material-b", title: "Local only" }),
+      expect.objectContaining({ id: "material-c", title: "Remote only" })
+    ]);
+  });
+
+  it("uses the remote record when the remote array item is newer", () => {
+    const restorePlan = createSyncRestorePlan(
+      {
+        "learn-english.review-cards.v1": JSON.stringify([
+          {
+            id: "card-a",
+            status: "learning",
+            updatedAt: "2026-05-30T10:00:00.000Z"
+          }
+        ])
+      },
+      {
+        "learn-english.review-cards.v1": JSON.stringify([
+          {
+            id: "card-a",
+            status: "review",
+            updatedAt: "2026-05-31T10:00:00.000Z"
+          }
+        ])
+      },
+      {
+        "learn-english.review-cards.v1": "local"
+      },
+      {
+        "learn-english.review-cards.v1": "remote"
+      }
+    );
+    const restoredCards = JSON.parse(
+      restorePlan.recordsToRestore["learn-english.review-cards.v1"] ?? "[]"
+    ) as Array<{ id: string; status: string }>;
+
+    expect(restorePlan.mergedUpdated).toBe(1);
+    expect(restoredCards[0]).toEqual(expect.objectContaining({ id: "card-a", status: "review" }));
+  });
+
+  it("merges AI explanation cache objects without replacing local-only entries", () => {
+    const restorePlan = createSyncRestorePlan(
+      {
+        "learn-english.ai-segment-explanations.v1": JSON.stringify({
+          local: { summary: "local" },
+          shared: { summary: "keep local" }
+        })
+      },
+      {
+        "learn-english.ai-segment-explanations.v1": JSON.stringify({
+          remote: { summary: "remote" },
+          shared: { summary: "remote conflict" }
+        })
+      },
+      {
+        "learn-english.ai-segment-explanations.v1": "local"
+      },
+      {
+        "learn-english.ai-segment-explanations.v1": "remote"
+      }
+    );
+    const restoredCache = JSON.parse(
+      restorePlan.recordsToRestore["learn-english.ai-segment-explanations.v1"] ?? "{}"
+    ) as Record<string, { summary: string }>;
+
+    expect(restorePlan.mergedAdded).toBe(1);
+    expect(restoredCache.local.summary).toBe("local");
+    expect(restoredCache.remote.summary).toBe("remote");
+    expect(restoredCache.shared.summary).toBe("keep local");
   });
 });

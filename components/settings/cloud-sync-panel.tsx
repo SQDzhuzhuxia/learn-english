@@ -22,12 +22,11 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 import {
   compareSyncHashes,
-  createSyncMergePlan,
+  createSyncRestorePlan,
   downloadSyncRecords,
-  pickRemoteRecordsToRestore,
   uploadSyncSnapshot
 } from "@/lib/sync/cloud-sync";
-import type { CloudSyncClient } from "@/lib/sync/cloud-sync";
+import type { CloudSyncClient, SyncRecordRestorePlan } from "@/lib/sync/cloud-sync";
 import {
   createSyncSnapshotFingerprint,
   loadAutoSyncUploadState,
@@ -54,12 +53,24 @@ type PendingSyncAction =
       type: "download";
       recordsToRestore: Partial<Record<SyncableStorageKey, string>>;
       comparison: ReturnType<typeof compareSyncHashes>;
+      restorePlan: SyncRecordRestorePlan;
       restoreCount: number;
       downloadedRecords: number;
     };
 
 function formatSyncComparison(comparison: ReturnType<typeof compareSyncHashes>) {
   return `相同 ${comparison.same} 组，本地独有 ${comparison.localOnly} 组，云端新增 ${comparison.remoteOnly} 组，双方不同 ${comparison.changed} 组。`;
+}
+
+function formatSyncRestorePlan(plan: SyncRecordRestorePlan) {
+  return `整组恢复 ${plan.remoteRestores} 组，细粒度合并 ${plan.mergedRecords} 组，保留本地冲突 ${plan.keptLocalRecords} 组；合并新增 ${plan.mergedAdded} 条，更新 ${plan.mergedUpdated} 条。`;
+}
+
+function createSnapshotRecordMap(snapshot: SyncSnapshotPayload) {
+  return snapshot.records.reduce<Partial<Record<SyncableStorageKey, string>>>((records, record) => {
+    records[record.key] = record.value;
+    return records;
+  }, {});
 }
 
 function formatDateTime(value: string) {
@@ -221,19 +232,21 @@ export function CloudSyncPanel() {
     try {
       const localSnapshot = createLocalSyncSnapshot("browser");
       const result = await downloadSyncRecords(supabase as unknown as CloudSyncClient, data.user.id);
+      const localRecords = createSnapshotRecordMap(localSnapshot);
       const localHashes = summarizeSyncSnapshot(localSnapshot).hashes;
       const comparison = compareSyncHashes(localHashes, result.hashes);
-      const mergePlan = createSyncMergePlan(localHashes, result.hashes);
-      const restoreCount = mergePlan.filter((item) => item.willRestore).length;
+      const restorePlan = createSyncRestorePlan(localRecords, result.records, localHashes, result.hashes);
       const event = createLastEvent({
         type: "check",
-        message: `云端差异检查完成：拉取时会恢复 ${restoreCount} 组。`,
+        message: `云端差异检查完成：拉取时会恢复 ${restorePlan.restoreCount} 组。`,
         recordCount: result.downloadedRecords
       });
 
       rememberSyncEvent(event);
       setPendingAction(null);
-      setMessage(`云端差异检查：${formatSyncComparison(comparison)} 拉取时会恢复 ${restoreCount} 组，本地独有数据会保留。`);
+      setMessage(
+        `云端差异检查：${formatSyncComparison(comparison)} ${formatSyncRestorePlan(restorePlan)}`
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "云同步差异检查失败。");
     } finally {
@@ -261,21 +274,21 @@ export function CloudSyncPanel() {
     try {
       const localSnapshot = createLocalSyncSnapshot("browser");
       const result = await downloadSyncRecords(supabase as unknown as CloudSyncClient, data.user.id);
+      const localRecords = createSnapshotRecordMap(localSnapshot);
       const localHashes = summarizeSyncSnapshot(localSnapshot).hashes;
       const comparison = compareSyncHashes(localHashes, result.hashes);
-      const mergePlan = createSyncMergePlan(localHashes, result.hashes);
-      const recordsToRestore = pickRemoteRecordsToRestore(result.records, mergePlan);
-      const restoreCount = mergePlan.filter((item) => item.willRestore).length;
+      const restorePlan = createSyncRestorePlan(localRecords, result.records, localHashes, result.hashes);
 
       setPendingAction({
         type: "download",
-        recordsToRestore,
+        recordsToRestore: restorePlan.recordsToRestore,
         comparison,
-        restoreCount,
+        restorePlan,
+        restoreCount: restorePlan.restoreCount,
         downloadedRecords: result.downloadedRecords
       });
       setMessage(
-        `准备拉取云端数据：${formatSyncComparison(comparison)} 确认后会恢复 ${restoreCount} 组，本地独有数据会保留。`
+        `准备拉取云端数据：${formatSyncComparison(comparison)} ${formatSyncRestorePlan(restorePlan)}`
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "云同步拉取失败。");
@@ -424,8 +437,30 @@ export function CloudSyncPanel() {
                 <p className="mt-1 text-sm leading-6 text-foreground">
                   {pendingAction.type === "upload"
                     ? `将上传 ${pendingAction.recordCount} 组本地数据，大小 ${pendingAction.totalBytes} bytes。`
-                    : `云端共有 ${pendingAction.downloadedRecords} 组数据，本次会恢复 ${pendingAction.restoreCount} 组。${formatSyncComparison(pendingAction.comparison)}`}
+                    : `云端共有 ${pendingAction.downloadedRecords} 组数据，本次会恢复 ${pendingAction.restoreCount} 组。${formatSyncComparison(pendingAction.comparison)} ${formatSyncRestorePlan(pendingAction.restorePlan)}`}
                 </p>
+                {pendingAction.type === "download" ? (
+                  <div className="mt-3 grid gap-2 text-xs text-muted">
+                    {pendingAction.restorePlan.items
+                      .filter((item) => item.action !== "none")
+                      .slice(0, 6)
+                      .map((item) => (
+                        <div
+                          key={item.key}
+                          className="rounded-md border border-border bg-panel px-3 py-2"
+                        >
+                          <p className="font-medium text-foreground">{item.key}</p>
+                          <p className="mt-1 leading-5">
+                            {item.action === "merge-records"
+                              ? `细粒度合并：新增 ${item.mergedAdded ?? 0} 条，更新 ${item.mergedUpdated ?? 0} 条，保留 ${item.mergedKept ?? 0} 条。`
+                              : item.action === "restore-remote"
+                                ? "按云端版本恢复。"
+                                : "保留本地版本。"}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                ) : null}
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   <Button onClick={handleConfirmPendingAction} disabled={loading}>
                     <CheckCircle2 className="h-4 w-4" />

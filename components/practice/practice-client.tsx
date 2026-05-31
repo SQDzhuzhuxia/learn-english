@@ -34,6 +34,7 @@ import {
 import { createShadowingFeedback, type ShadowingFeedback } from "@/lib/speech/shadowing-feedback";
 import { createRetellingFeedback, type RetellingFeedback } from "@/lib/speech/retelling-feedback";
 import { createRoleplayFeedback, type RoleplayFeedback } from "@/lib/speech/roleplay-feedback";
+import { summarizeRoleplayMemory } from "@/lib/speech/roleplay-memory";
 import { summarizeRoleplaySession } from "@/lib/speech/roleplay-session-summary";
 import { speakEnglishText } from "@/lib/speech/speech-synthesis";
 import { saveWritingItemAsReviewCard } from "@/lib/review/review-store";
@@ -121,6 +122,23 @@ function formatSeconds(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;
   return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+function formatShortDate(value?: string) {
+  if (!value) {
+    return "暂无";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "暂无";
+  }
+
+  return date.toLocaleDateString("zh-CN", {
+    month: "numeric",
+    day: "numeric"
+  });
 }
 
 function getTimestampMs() {
@@ -1598,6 +1616,7 @@ export function PracticeClient() {
     totalTurns: allRoleplayTurns.length,
     entries: roleplayTranscript
   });
+  const roleplayMemory = summarizeRoleplayMemory(attempts, roleplayScenario.title);
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
@@ -1814,6 +1833,54 @@ export function PracticeClient() {
                 </div>
                 <p className="mt-2 text-sm leading-6 text-muted">{roleplayScenario.learnerRole}</p>
                 <p className="mt-2 text-sm leading-6 text-muted">{roleplayScenario.partnerRole}</p>
+              </div>
+
+              <div className="rounded-lg border border-border bg-white p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-semibold text-foreground">长期记忆</p>
+                  <Badge variant={roleplayMemory.sessionCount > 0 ? "outline" : "soft"}>
+                    {roleplayMemory.trendLabel}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs text-muted">历史次数</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{roleplayMemory.sessionCount}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs text-muted">历史均分</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {roleplayMemory.sessionCount > 0 ? `${roleplayMemory.averageScore}%` : "-"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs text-muted">上次练习</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {formatShortDate(roleplayMemory.lastPracticedAt)}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm leading-6 text-foreground">
+                  {roleplayMemory.nextGoal}
+                </p>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">已经沉淀</p>
+                    <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
+                      {roleplayMemory.masteredSignals.slice(0, 2).map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">继续补强</p>
+                    <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
+                      {roleplayMemory.focusAreas.slice(0, 2).map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
 
               <div className="rounded-lg border border-border bg-panel-strong p-4">

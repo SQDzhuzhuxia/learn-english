@@ -34,6 +34,7 @@ import {
 import { createShadowingFeedback, type ShadowingFeedback } from "@/lib/speech/shadowing-feedback";
 import { createRetellingFeedback, type RetellingFeedback } from "@/lib/speech/retelling-feedback";
 import { createRoleplayFeedback, type RoleplayFeedback } from "@/lib/speech/roleplay-feedback";
+import { summarizeRoleplaySession } from "@/lib/speech/roleplay-session-summary";
 import { speakEnglishText } from "@/lib/speech/speech-synthesis";
 import { saveWritingItemAsReviewCard } from "@/lib/review/review-store";
 import { Badge } from "@/components/ui/badge";
@@ -817,6 +818,12 @@ export function PracticeClient() {
     };
     const nextTranscript = [...roleplayTranscript, nextEntry];
     const isComplete = nextTranscript.length >= allRoleplayTurns.length;
+    const nextSessionSummary = summarizeRoleplaySession({
+      scenarioTitle: roleplayScenario.title,
+      goal: roleplayScenario.goal,
+      totalTurns: allRoleplayTurns.length,
+      entries: nextTranscript
+    });
 
     setRoleplayFeedback(nextFeedback);
     setRoleplayTranscript(nextTranscript);
@@ -827,9 +834,6 @@ export function PracticeClient() {
     setSavedRoleplayAiKeys({});
 
     if (isComplete) {
-      const averageScore = Math.round(
-        nextTranscript.reduce((sum, entry) => sum + entry.score, 0) / nextTranscript.length
-      );
       const transcriptText = nextTranscript
         .map((entry) => `Front desk: ${entry.partnerText}\nMe: ${entry.learnerText}`)
         .join("\n\n");
@@ -839,8 +843,8 @@ export function PracticeClient() {
         materialTitle: roleplayScenario.material,
         durationSeconds: Math.max(90, nextTranscript.length * 45),
         transcript: transcriptText,
-        score: averageScore,
-        feedback: `场景口语平均完成度 ${averageScore}%。`
+        score: nextSessionSummary.averageScore,
+        feedback: nextSessionSummary.summaryZh
       });
 
       recordStudyActivity({
@@ -851,13 +855,15 @@ export function PracticeClient() {
       });
       setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
       setRoleplayReply("");
-      setRoleplayMessage(`已完成角色扮演并保存记录，平均完成度 ${averageScore}%。`);
+      setRoleplayMessage(
+        `已完成角色扮演并保存记录，平均完成度 ${nextSessionSummary.averageScore}%。${nextSessionSummary.nextPractice[0]}`
+      );
       return;
     }
 
     setRoleplayTurnIndex((index) => index + 1);
     setRoleplayReply("");
-    setRoleplayMessage("这一轮已保存反馈，继续下一句对话。");
+    setRoleplayMessage(`这一轮已保存反馈，当前平均完成度 ${nextSessionSummary.averageScore}%，继续下一句对话。`);
   }
 
   function handleResetRoleplay() {
@@ -1586,6 +1592,12 @@ export function PracticeClient() {
   const currentRoleplayTurn = allRoleplayTurns[roleplayTurnIndex] ?? allRoleplayTurns[0];
   const roleplayCompleted = roleplayTranscript.length >= allRoleplayTurns.length;
   const roleplayProgressLabel = `${Math.min(roleplayTranscript.length + 1, allRoleplayTurns.length)}/${allRoleplayTurns.length}`;
+  const roleplaySessionSummary = summarizeRoleplaySession({
+    scenarioTitle: roleplayScenario.title,
+    goal: roleplayScenario.goal,
+    totalTurns: allRoleplayTurns.length,
+    entries: roleplayTranscript
+  });
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
@@ -1842,6 +1854,64 @@ export function PracticeClient() {
                   </div>
                 </div>
               ) : null}
+
+              <div className="rounded-lg border border-border bg-white p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-semibold text-foreground">会话目标和总结</p>
+                  <Badge variant={roleplayCompleted ? "default" : "outline"}>
+                    {roleplayCompleted ? roleplaySessionSummary.levelLabel : "进行中"}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-muted">{roleplaySessionSummary.summaryZh}</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs text-muted">完成轮次</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {roleplaySessionSummary.completedTurns}/{roleplaySessionSummary.totalTurns}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs text-muted">平均完成度</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {roleplaySessionSummary.completedTurns > 0 ? `${roleplaySessionSummary.averageScore}%` : "-"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs text-muted">场景完成率</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {roleplaySessionSummary.completionRate}%
+                    </p>
+                  </div>
+                </div>
+                {roleplayTranscript.length > 0 ? (
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">已经做到</p>
+                      <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
+                        {roleplaySessionSummary.strengths.slice(0, 2).map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">下一步补强</p>
+                      <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
+                        {roleplaySessionSummary.focusAreas.slice(0, 2).map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">下次目标</p>
+                      <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
+                        {roleplaySessionSummary.nextPractice.slice(0, 2).map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             <div className="rounded-lg border border-border bg-white p-4">

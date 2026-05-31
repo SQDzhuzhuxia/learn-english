@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Cloud, Database, Download, KeyRound, Trash2, Upload } from "lucide-react";
 import { CloudSyncPanel } from "@/components/settings/cloud-sync-panel";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import {
 } from "@/lib/sync/local-backup";
 import { summarizeSyncSnapshot } from "@/lib/sync/sync-snapshot";
 import { clearCachedTtsAudio } from "@/lib/speech/tts-audio-cache";
+import { clearAiRequestQueue, loadAiRequestQueue } from "@/lib/ai/request-queue";
 
 function createBackupFileName() {
   return `learn-english-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -38,6 +39,13 @@ function downloadJsonFile(fileName: string, payload: unknown) {
 export function SettingsClient() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [message, setMessage] = useState("");
+  const [aiQueueCount, setAiQueueCount] = useState(0);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setAiQueueCount(loadAiRequestQueue().length);
+    });
+  }, []);
 
   function handleExport() {
     const payload = createLocalBackup();
@@ -73,6 +81,16 @@ export function SettingsClient() {
   async function handleClearTtsAudioCache() {
     const cleared = await clearCachedTtsAudio();
     setMessage(cleared ? "已清理本机离线朗读音频缓存。" : "当前浏览器没有可清理的离线朗读音频缓存。");
+  }
+
+  function handleClearAiRequestQueue() {
+    const clearedCount = clearAiRequestQueue();
+    setAiQueueCount(0);
+    setMessage(
+      clearedCount > 0
+        ? `已清理 ${clearedCount} 条本机 AI 请求队列。`
+        : "当前没有待处理的本机 AI 请求。"
+    );
   }
 
   return (
@@ -140,7 +158,7 @@ export function SettingsClient() {
           </CardHeader>
           <CardContent>
           <div className="grid gap-2 sm:grid-cols-2">
-            {["材料", "词句", "复习记录", "练习反馈", "离线朗读音频缓存"].map((item) => (
+            {["材料", "词句", "复习记录", "练习反馈", "离线朗读音频缓存", `AI 请求队列 ${aiQueueCount} 条`].map((item) => (
               <div
                 key={item}
                 className="rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-muted"
@@ -150,7 +168,7 @@ export function SettingsClient() {
             ))}
           </div>
           <Separator className="my-5" />
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
             <Button onClick={handleExport}>
               <Download className="h-4 w-4" />
               导出数据
@@ -166,6 +184,10 @@ export function SettingsClient() {
             <Button onClick={() => void handleClearTtsAudioCache()} variant="outline">
               <Trash2 className="h-4 w-4" />
               清理音频
+            </Button>
+            <Button onClick={handleClearAiRequestQueue} variant="outline">
+              <Trash2 className="h-4 w-4" />
+              清理队列
             </Button>
             <input
               ref={fileInputRef}

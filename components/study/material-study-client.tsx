@@ -19,6 +19,7 @@ import {
   Volume2
 } from "lucide-react";
 import { aiExplanation } from "@/lib/mock-data";
+import { requestAiJsonWithQueue } from "@/lib/ai/request-queue";
 import { recordStudyActivity } from "@/lib/analytics/progress-store";
 import {
   findMaterialById,
@@ -365,26 +366,35 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
     }));
 
     try {
-      const response = await fetch("/api/ai/explain-segment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          materialTitle: material.title,
-          materialType: material.type,
-          level: material.level,
-          sentence: current.text,
-          contextText: material.contentText
-        })
-      });
-
-      const payload = (await response.json()) as {
+      const requestPayload = {
+        materialTitle: material.title,
+        materialType: material.type,
+        level: material.level,
+        sentence: current.text,
+        contextText: material.contentText
+      };
+      const result = await requestAiJsonWithQueue<{
         explanation?: AiSegmentExplanation;
         error?: string;
-      };
+      }>({
+        kind: "explain-segment",
+        endpoint: "/api/ai/explain-segment",
+        payload: requestPayload,
+        errorMessage: "AI 解释生成失败。"
+      });
 
-      if (!response.ok || !payload.explanation) {
+      if (result.queued) {
+        setAiState((previous) => ({
+          status: "error",
+          explanation: previous.explanation,
+          message: `AI 请求暂不可用，已加入本地队列。稍后恢复网络后可重新点击生成。队列记录：${result.queueItem.id.slice(-8)}`
+        }));
+        return;
+      }
+
+      const payload = result.payload;
+
+      if (!payload.explanation) {
         throw new Error(payload.error ?? "AI 解释生成失败。");
       }
 
@@ -424,30 +434,38 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
     });
 
     try {
-      const response = await fetch("/api/ai/explain-material", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          materialTitle: material.title,
-          materialType: material.type,
-          level: material.level,
-          contextText: material.contentText,
-          segments: material.segments.map((segment) => ({
-            id: segment.id,
-            order: segment.order,
-            text: segment.text
-          }))
-        })
-      });
-
-      const payload = (await response.json()) as {
+      const requestPayload = {
+        materialTitle: material.title,
+        materialType: material.type,
+        level: material.level,
+        contextText: material.contentText,
+        segments: material.segments.map((segment) => ({
+          id: segment.id,
+          order: segment.order,
+          text: segment.text
+        }))
+      };
+      const result = await requestAiJsonWithQueue<{
         explanation?: AiMaterialExplanation;
         error?: string;
-      };
+      }>({
+        kind: "explain-material",
+        endpoint: "/api/ai/explain-material",
+        payload: requestPayload,
+        errorMessage: "批量解释生成失败。"
+      });
 
-      if (!response.ok || !payload.explanation) {
+      if (result.queued) {
+        setAiBatchState({
+          status: "error",
+          message: `AI 批量解释暂不可用，已加入本地队列。稍后恢复网络后可重新点击生成。队列记录：${result.queueItem.id.slice(-8)}`
+        });
+        return;
+      }
+
+      const payload = result.payload;
+
+      if (!payload.explanation) {
         throw new Error(payload.error ?? "批量解释生成失败。");
       }
 

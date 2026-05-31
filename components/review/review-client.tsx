@@ -533,7 +533,7 @@ export function ReviewClient() {
               <p className="mb-3 text-sm font-medium text-foreground">
                 {cardTypeInstructions[activeCard.cardType]}
               </p>
-              <p className="text-2xl font-semibold leading-10 text-foreground">{activeCard.front}</p>
+              <p className="break-words text-2xl font-semibold leading-10 text-foreground">{activeCard.front}</p>
               <p className="mt-4 text-sm leading-6 text-muted">{activeCard.example}</p>
             </div>
 

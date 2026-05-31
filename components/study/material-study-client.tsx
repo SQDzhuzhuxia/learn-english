@@ -516,7 +516,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                 当前第 {currentOrder} / {material.segments.length} 句，约 {material.minutes} 分钟。
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-sm">
+            <div className="grid w-full grid-cols-3 gap-2 text-sm lg:w-auto">
               <div className="rounded-lg border border-border bg-white px-3 py-2">
                 <p className="text-xs text-muted">难度</p>
                 <p className="mt-1 font-semibold text-foreground">{material.level}</p>
@@ -571,7 +571,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
 
           <CardContent>
           <div className="rounded-lg border border-foreground/15 bg-panel-strong p-5">
-            <p className="text-xl font-semibold leading-9 text-foreground">{current.text}</p>
+            <p className="break-words text-xl font-semibold leading-9 text-foreground">{current.text}</p>
             {current.translation ? (
               <p className="mt-3 text-sm leading-6 text-muted">{current.translation}</p>
             ) : null}

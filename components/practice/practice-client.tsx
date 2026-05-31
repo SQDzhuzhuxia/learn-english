@@ -2321,10 +2321,10 @@ export function PracticeClient() {
 
                 return (
                   <div key={result.id} className="rounded-lg border border-border bg-white p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
                         <Badge variant="outline">{getAiResultInboxTypeLabel(result.kind)}</Badge>
-                        <p className="mt-2 text-sm font-semibold text-foreground">{result.title}</p>
+                        <p className="mt-2 break-words text-sm font-semibold text-foreground">{result.title}</p>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
                         <Button variant="outline" size="sm" onClick={() => handleApplyAiResult(result)}>

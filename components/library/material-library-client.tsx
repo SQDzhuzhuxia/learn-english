@@ -172,7 +172,7 @@ export function MaterialLibraryClient() {
                 先选择略高于当前水平的材料。用户导入材料现在可以编辑和删除。
               </p>
             </div>
-            <Button asChild size="lg">
+            <Button asChild size="lg" className="w-full sm:w-fit">
               <Link href="/library/import">
                 <FilePlus2 className="h-4 w-4" />
                 导入材料

@@ -87,10 +87,10 @@ export default function TodayPage() {
 
         <Card>
           <CardContent className="pt-5">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
               <p className="text-sm font-medium text-muted">当前材料</p>
-              <h2 className="mt-2 text-xl font-semibold text-foreground">
+              <h2 className="mt-2 break-words text-xl font-semibold text-foreground">
                 {dailyPlan.currentMaterial.title}
               </h2>
             </div>
@@ -143,13 +143,13 @@ export default function TodayPage() {
               <Link
                 href={item.href}
                 key={item.id}
-                className="flex items-center justify-between gap-4 p-4 transition hover:bg-panel-strong"
+                className="flex flex-col gap-3 p-4 transition hover:bg-panel-strong sm:flex-row sm:items-center sm:justify-between sm:gap-4"
               >
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-medium text-muted">{item.label}</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">{item.title}</p>
+                  <p className="mt-1 break-words text-sm font-semibold text-foreground">{item.title}</p>
                 </div>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-muted">
+                <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-muted">
                   {item.action}
                   <ArrowRight className="h-4 w-4" />
                 </span>

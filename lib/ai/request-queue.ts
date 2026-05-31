@@ -4,7 +4,13 @@ import {
   setCachedAiExplanation,
   setCachedAiExplanations
 } from "@/lib/ai/explanation-cache";
-import type { AiMaterialExplanation, AiSegmentExplanation } from "@/lib/ai/types";
+import { addAiResultInboxItem } from "@/lib/ai/result-inbox";
+import type {
+  AiMaterialExplanation,
+  AiRoleplayTurn,
+  AiSegmentExplanation,
+  AiWritingCorrection
+} from "@/lib/ai/types";
 
 export type AiRequestQueueKind =
   | "explain-segment"
@@ -41,7 +47,9 @@ const AI_REQUEST_QUEUE_KEY = "learn-english.ai-request-queue.v1";
 const MAX_AI_REQUEST_QUEUE_SIZE = 100;
 const AUTO_RETRYABLE_KINDS = new Set<AiRequestQueueKind>([
   "explain-segment",
-  "explain-material"
+  "explain-material",
+  "correct-writing",
+  "roleplay-next"
 ]);
 
 function canUseStorage() {
@@ -187,6 +195,15 @@ function getRecordString(record: AiRequestQueueRecord, key: string) {
   return typeof value === "string" ? value : undefined;
 }
 
+function getPayloadString(record: AiRequestQueueRecord, key: string) {
+  if (!isRecord(record.payload)) {
+    return undefined;
+  }
+
+  const value = record.payload[key];
+  return typeof value === "string" ? value : undefined;
+}
+
 function canAutoRetryRecord(record: AiRequestQueueRecord) {
   if (!AUTO_RETRYABLE_KINDS.has(record.kind)) {
     return false;
@@ -200,7 +217,7 @@ function canAutoRetryRecord(record: AiRequestQueueRecord) {
     return Boolean(getRecordString(record, "materialId"));
   }
 
-  return false;
+  return true;
 }
 
 function getErrorMessage(payload: unknown, fallback: string) {
@@ -257,6 +274,46 @@ function applyAiRequestResult(record: AiRequestQueueRecord, payload: unknown) {
       }))
     );
     return `已回写整篇解释 ${explanation.segments.length} 句。`;
+  }
+
+  if (record.kind === "correct-writing") {
+    const payloadRecord = getPayloadRecord(payload);
+    const correction = payloadRecord.correction as AiWritingCorrection | undefined;
+
+    if (!correction) {
+      throw new Error(getErrorMessage(payload, "AI 写作反馈返回结果缺少 correction。"));
+    }
+
+    addAiResultInboxItem({
+      requestId: record.id,
+      kind: record.kind,
+      title: getPayloadString(record, "promptTitle") ?? "AI 写作反馈",
+      summary: correction.correctedText || correction.feedbackZh || "AI 写作反馈已生成。",
+      endpoint: record.endpoint,
+      requestPayload: record.payload,
+      resultPayload: payload
+    });
+    return "已保存 AI 写作反馈到结果收件箱。";
+  }
+
+  if (record.kind === "roleplay-next") {
+    const payloadRecord = getPayloadRecord(payload);
+    const turn = payloadRecord.turn as AiRoleplayTurn | undefined;
+
+    if (!turn) {
+      throw new Error(getErrorMessage(payload, "AI 角色追问返回结果缺少 turn。"));
+    }
+
+    addAiResultInboxItem({
+      requestId: record.id,
+      kind: record.kind,
+      title: getPayloadString(record, "scenarioTitle") ?? "AI 角色追问",
+      summary: turn.partnerLine,
+      endpoint: record.endpoint,
+      requestPayload: record.payload,
+      resultPayload: payload
+    });
+    return "已保存 AI 角色追问到结果收件箱。";
   }
 
   return undefined;

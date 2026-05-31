@@ -277,7 +277,8 @@ const ARRAY_RECORD_KEYS = new Set<SyncableStorageKey>([
   "learn-english.review-cards.v1",
   "learn-english.review-logs.v1",
   "learn-english.activity-log.v1",
-  "learn-english.practice-attempts.v1"
+  "learn-english.practice-attempts.v1",
+  "learn-english.ai-result-inbox.v1"
 ]);
 
 const OBJECT_RECORD_KEYS = new Set<SyncableStorageKey>([
@@ -290,7 +291,8 @@ const TIMESTAMP_FIELDS_BY_KEY: Partial<Record<SyncableStorageKey, string[]>> = {
   "learn-english.review-cards.v1": ["updatedAt", "createdAt", "dueAt"],
   "learn-english.review-logs.v1": ["reviewedAt"],
   "learn-english.activity-log.v1": ["createdAt"],
-  "learn-english.practice-attempts.v1": ["createdAt"]
+  "learn-english.practice-attempts.v1": ["createdAt"],
+  "learn-english.ai-result-inbox.v1": ["updatedAt", "createdAt"]
 };
 
 function safeJsonParse(value: string): unknown {

@@ -54,6 +54,7 @@ describe("sync snapshot", () => {
 
   it("recognizes syncable storage keys", () => {
     expect(isSyncableStorageKey("learn-english.practice-attempts.v1")).toBe(true);
+    expect(isSyncableStorageKey("learn-english.ai-result-inbox.v1")).toBe(true);
     expect(isSyncableStorageKey("learn-english.random.v1")).toBe(false);
   });
 });

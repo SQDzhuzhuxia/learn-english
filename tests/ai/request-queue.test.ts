@@ -8,6 +8,7 @@ import {
   retryQueuedAiRequests
 } from "@/lib/ai/request-queue";
 import { getCachedAiExplanation } from "@/lib/ai/explanation-cache";
+import { loadAiResultInbox } from "@/lib/ai/result-inbox";
 
 function setupLocalStorage() {
   const store = new Map<string, string>();
@@ -212,14 +213,51 @@ describe("AI request queue", () => {
     expect(queue[0]?.lastError).toBe("rate limited");
   });
 
-  it("skips queued requests that cannot be written back automatically", async () => {
-    const fetcher = vi.fn();
-
+  it("retries writing feedback requests and stores results in the AI inbox", async () => {
     enqueueAiRequest({
       kind: "correct-writing",
       endpoint: "/api/ai/correct-writing",
       payload: {
-        userText: "I want go bank."
+        promptTitle: "Work email",
+        userText: "I want go office."
+      },
+      error: "offline"
+    });
+
+    const summary = await retryQueuedAiRequests({
+      fetcher: vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          correction: {
+            originalText: "I want go office.",
+            correctedText: "I want to go to the office.",
+            feedbackZh: "need to 后接动词原形，go to the office 更自然。",
+            keyProblems: ["缺少 to"],
+            betterExpressions: [],
+            source: "model",
+            provider: "test",
+            generatedAt: "2026-05-31T00:00:00.000Z"
+          }
+        })
+      })
+    });
+    const inbox = loadAiResultInbox();
+
+    expect(summary.completed).toBe(1);
+    expect(loadAiRequestQueue()).toEqual([]);
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]?.title).toBe("Work email");
+    expect(inbox[0]?.summary).toBe("I want to go to the office.");
+  });
+
+  it("skips queued requests that cannot be written back automatically", async () => {
+    const fetcher = vi.fn();
+
+    enqueueAiRequest({
+      kind: "explain-segment",
+      endpoint: "/api/ai/explain-segment",
+      payload: {
+        sentence: "I want to go to the bank."
       },
       error: "offline"
     });

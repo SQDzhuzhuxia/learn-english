@@ -7,16 +7,24 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Headphones,
+  Inbox,
   Mic,
   MicOff,
   PenLine,
   Play,
   Plus,
   Square,
+  Trash2,
   Volume2
 } from "lucide-react";
 import { practiceModes, retellingPractice, roleplayScenario, todayPractice, writingPrompts } from "@/lib/mock-data";
 import { requestAiJsonWithQueue } from "@/lib/ai/request-queue";
+import {
+  clearAiResultInbox,
+  deleteAiResultInboxItem,
+  loadAiResultInbox,
+  type AiResultInboxRecord
+} from "@/lib/ai/result-inbox";
 import { recordStudyActivity } from "@/lib/analytics/progress-store";
 import {
   addPracticeAttempt,
@@ -33,7 +41,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import type { AiSegmentExpression, AiWritingCorrection, RoleplayTranscriptTurn } from "@/lib/ai/types";
+import type { AiRoleplayTurn, AiSegmentExpression, AiWritingCorrection, RoleplayTranscriptTurn } from "@/lib/ai/types";
 
 type CloudTranscription = {
   text: string;
@@ -137,6 +145,20 @@ function getPracticeAttemptTypeLabel(type: PracticeAttemptRecord["type"]) {
   return labels[type];
 }
 
+function getAiResultInboxTypeLabel(kind: AiResultInboxRecord["kind"]) {
+  return kind === "roleplay-next" ? "角色追问" : "写作/复述反馈";
+}
+
+function getAiResultCorrection(record: AiResultInboxRecord) {
+  const payload = record.resultPayload as { correction?: AiWritingCorrection };
+  return payload.correction;
+}
+
+function getAiResultTurn(record: AiResultInboxRecord) {
+  const payload = record.resultPayload as { turn?: AiRoleplayTurn };
+  return payload.turn;
+}
+
 function createExpectedKeywordsFromReplies(replies: string[]) {
   const seen = new Set<string>();
   const words = replies.join(" ").match(/[A-Za-z][A-Za-z'-]*/g) ?? [];
@@ -218,6 +240,7 @@ export function PracticeClient() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [feedback, setFeedback] = useState<ShadowingFeedback | null>(null);
   const [attempts, setAttempts] = useState<PracticeAttemptRecord[]>([]);
+  const [aiResults, setAiResults] = useState<AiResultInboxRecord[]>([]);
   const [retellingText, setRetellingText] = useState("");
   const [retellingFeedback, setRetellingFeedback] = useState<RetellingFeedback | null>(null);
   const [retellingMessage, setRetellingMessage] = useState("");
@@ -260,16 +283,40 @@ export function PracticeClient() {
   useEffect(() => {
     let cancelled = false;
 
+    function handleAiResultInboxUpdated() {
+      if (!cancelled) {
+        setAiResults(loadAiResultInbox());
+      }
+    }
+
     queueMicrotask(() => {
       if (!cancelled) {
         setAttempts(loadPracticeAttempts());
+        setAiResults(loadAiResultInbox());
       }
     });
 
+    window.addEventListener("learn-english:ai-result-inbox-updated", handleAiResultInboxUpdated);
+
     return () => {
       cancelled = true;
+      window.removeEventListener("learn-english:ai-result-inbox-updated", handleAiResultInboxUpdated);
     };
   }, []);
+
+  function refreshAiResults() {
+    setAiResults(loadAiResultInbox());
+  }
+
+  function handleDeleteAiResult(id: string) {
+    deleteAiResultInboxItem(id);
+    refreshAiResults();
+  }
+
+  function handleClearAiResults() {
+    clearAiResultInbox();
+    refreshAiResults();
+  }
 
   useEffect(() => {
     if (!isRecording) {
@@ -2174,6 +2221,83 @@ export function PracticeClient() {
           </CardContent>
         </Card>
       </section>
+
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-lg">AI 结果收件箱</CardTitle>
+              <CardDescription>后台重试成功的写作、复述和角色练习结果会沉淀在这里。</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="soft">{aiResults.length} 条</Badge>
+              {aiResults.length > 0 ? (
+                <Button variant="outline" size="sm" onClick={handleClearAiResults}>
+                  <Trash2 className="h-4 w-4" />
+                  清空
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {aiResults.length > 0 ? (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {aiResults.slice(0, 4).map((result) => {
+                const correction = getAiResultCorrection(result);
+                const turn = getAiResultTurn(result);
+
+                return (
+                  <div key={result.id} className="rounded-lg border border-border bg-white p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Badge variant="outline">{getAiResultInboxTypeLabel(result.kind)}</Badge>
+                        <p className="mt-2 text-sm font-semibold text-foreground">{result.title}</p>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteAiResult(result.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-foreground">{result.summary}</p>
+                    {correction ? (
+                      <div className="mt-3 rounded-lg border border-border bg-panel-strong p-3">
+                        <p className="text-xs font-semibold text-muted">反馈</p>
+                        <p className="mt-1 text-sm leading-6 text-foreground">{correction.feedbackZh}</p>
+                        {correction.betterExpressions.length > 0 ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {correction.betterExpressions.slice(0, 3).map((expression) => (
+                              <Badge key={expression.text} variant="soft">
+                                {expression.text}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {turn ? (
+                      <div className="mt-3 rounded-lg border border-border bg-panel-strong p-3">
+                        <p className="text-xs font-semibold text-muted">建议回答</p>
+                        <div className="mt-2 space-y-1">
+                          {turn.suggestedReplies.slice(0, 2).map((reply) => (
+                            <p key={reply} className="text-sm leading-6 text-foreground">
+                              {reply}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-white p-4 text-sm text-muted">
+              <Inbox className="h-5 w-5 text-foreground" />
+              暂无后台 AI 结果。
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card id="practice-writing" className="scroll-mt-24">
         <CardHeader className="pb-4">

@@ -282,6 +282,7 @@ export function PracticeClient() {
   const [savedWritingKeys, setSavedWritingKeys] = useState<Record<string, boolean>>({});
   const [isCorrectingWriting, setIsCorrectingWriting] = useState(false);
   const [aiResultInboxMessage, setAiResultInboxMessage] = useState("");
+  const [confirmClearAiResults, setConfirmClearAiResults] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -319,11 +320,20 @@ export function PracticeClient() {
 
   function handleDeleteAiResult(id: string) {
     deleteAiResultInboxItem(id);
+    setConfirmClearAiResults(false);
     refreshAiResults();
   }
 
   function handleClearAiResults() {
+    if (!confirmClearAiResults) {
+      setConfirmClearAiResults(true);
+      setAiResultInboxMessage("再次点击确认清空 AI 结果收件箱。");
+      return;
+    }
+
     clearAiResultInbox();
+    setConfirmClearAiResults(false);
+    setAiResultInboxMessage("已清空 AI 结果收件箱。");
     refreshAiResults();
   }
 
@@ -2371,7 +2381,7 @@ export function PracticeClient() {
               {aiResults.length > 0 ? (
                 <Button variant="outline" size="sm" onClick={handleClearAiResults}>
                   <Trash2 className="h-4 w-4" />
-                  清空
+                  {confirmClearAiResults ? "确认清空" : "清空"}
                 </Button>
               ) : null}
             </div>

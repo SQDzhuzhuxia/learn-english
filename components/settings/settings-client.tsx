@@ -42,6 +42,7 @@ export function SettingsClient() {
   const [message, setMessage] = useState("");
   const [aiQueueCount, setAiQueueCount] = useState(0);
   const [aiResultCount, setAiResultCount] = useState(0);
+  const [confirmClearAiResults, setConfirmClearAiResults] = useState(false);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -100,6 +101,7 @@ export function SettingsClient() {
     const summary = await retryQueuedAiRequests({ limit: 10 });
     setAiQueueCount(summary.remaining);
     setAiResultCount(loadAiResultInbox().length);
+    setConfirmClearAiResults(false);
     setMessage(
       summary.attempted > 0
         ? `已重试 ${summary.attempted} 条 AI 请求，成功 ${summary.completed} 条，失败 ${summary.failed} 条，剩余 ${summary.remaining} 条。`
@@ -108,8 +110,15 @@ export function SettingsClient() {
   }
 
   function handleClearAiResultInbox() {
+    if (!confirmClearAiResults) {
+      setConfirmClearAiResults(true);
+      setMessage("再次点击“确认清理”才会清空 AI 结果收件箱。");
+      return;
+    }
+
     const clearedCount = clearAiResultInbox();
     setAiResultCount(0);
+    setConfirmClearAiResults(false);
     setMessage(
       clearedCount > 0
         ? `已清理 ${clearedCount} 条本机 AI 结果收件箱记录。`
@@ -227,7 +236,7 @@ export function SettingsClient() {
             </Button>
             <Button onClick={handleClearAiResultInbox} variant="outline">
               <Trash2 className="h-4 w-4" />
-              清理结果
+              {confirmClearAiResults ? "确认清理" : "清理结果"}
             </Button>
             <input
               ref={fileInputRef}

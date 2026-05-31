@@ -16,6 +16,7 @@ import {
   Volume2
 } from "lucide-react";
 import { practiceModes, retellingPractice, roleplayScenario, todayPractice, writingPrompts } from "@/lib/mock-data";
+import { requestAiJsonWithQueue } from "@/lib/ai/request-queue";
 import { recordStudyActivity } from "@/lib/analytics/progress-store";
 import {
   addPracticeAttempt,
@@ -442,24 +443,32 @@ export function PracticeClient() {
     setRetellingMessage("正在生成 AI 复述反馈...");
 
     try {
-      const response = await fetch("/api/ai/correct-writing", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          promptTitle: `复述：${retellingPractice.title}`,
-          prompt: `${retellingPractice.prompt}\n原材料大意：${retellingPractice.sourceSummary}`,
-          level: "A1-A2",
-          userText: retellingText
-        })
-      });
-      const payload = (await response.json()) as {
+      const requestPayload = {
+        promptTitle: `复述：${retellingPractice.title}`,
+        prompt: `${retellingPractice.prompt}\n原材料大意：${retellingPractice.sourceSummary}`,
+        level: "A1-A2",
+        userText: retellingText
+      };
+      const result = await requestAiJsonWithQueue<{
         correction?: AiWritingCorrection;
         error?: string;
-      };
+      }>({
+        kind: "correct-writing",
+        endpoint: "/api/ai/correct-writing",
+        payload: requestPayload,
+        errorMessage: "AI 复述反馈生成失败。"
+      });
 
-      if (!response.ok || !payload.correction) {
+      if (result.queued) {
+        setRetellingMessage(
+          `AI 复述反馈暂不可用，已加入本地队列。稍后恢复网络后可重新点击。队列记录：${result.queueItem.id.slice(-8)}`
+        );
+        return;
+      }
+
+      const payload = result.payload;
+
+      if (!payload.correction) {
         throw new Error(payload.error ?? "AI 复述反馈生成失败。");
       }
 
@@ -694,22 +703,16 @@ export function PracticeClient() {
     setRoleplayMessage("正在生成下一轮角色扮演问题...");
 
     try {
-      const response = await fetch("/api/ai/roleplay-next", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          scenarioTitle: roleplayScenario.title,
-          setting: roleplayScenario.setting,
-          goal: roleplayScenario.goal,
-          level: roleplayScenario.level,
-          partnerRole: roleplayScenario.partnerRole,
-          learnerRole: roleplayScenario.learnerRole,
-          transcript: buildRoleplayTranscriptForAi()
-        })
-      });
-      const payload = (await response.json()) as {
+      const requestPayload = {
+        scenarioTitle: roleplayScenario.title,
+        setting: roleplayScenario.setting,
+        goal: roleplayScenario.goal,
+        level: roleplayScenario.level,
+        partnerRole: roleplayScenario.partnerRole,
+        learnerRole: roleplayScenario.learnerRole,
+        transcript: buildRoleplayTranscriptForAi()
+      };
+      const result = await requestAiJsonWithQueue<{
         turn?: {
           partnerLine: string;
           translationZh: string;
@@ -719,9 +722,23 @@ export function PracticeClient() {
           provider: string;
         };
         error?: string;
-      };
+      }>({
+        kind: "roleplay-next",
+        endpoint: "/api/ai/roleplay-next",
+        payload: requestPayload,
+        errorMessage: "AI 继续追问生成失败。"
+      });
 
-      if (!response.ok || !payload.turn) {
+      if (result.queued) {
+        setRoleplayMessage(
+          `AI 继续追问暂不可用，已加入本地队列。稍后恢复网络后可重新点击。队列记录：${result.queueItem.id.slice(-8)}`
+        );
+        return;
+      }
+
+      const payload = result.payload;
+
+      if (!payload.turn) {
         throw new Error(payload.error ?? "AI 继续追问生成失败。");
       }
 
@@ -828,24 +845,32 @@ export function PracticeClient() {
     setRoleplayMessage("正在生成 AI 角色回答反馈...");
 
     try {
-      const response = await fetch("/api/ai/correct-writing", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          promptTitle: `角色扮演：${roleplayScenario.title}`,
-          prompt: `${roleplayScenario.setting}\n前台：${lastEntry.partnerText}\n你的目标：${roleplayScenario.goal}`,
-          level: roleplayScenario.level,
-          userText: lastEntry.learnerText
-        })
-      });
-      const payload = (await response.json()) as {
+      const requestPayload = {
+        promptTitle: `角色扮演：${roleplayScenario.title}`,
+        prompt: `${roleplayScenario.setting}\n前台：${lastEntry.partnerText}\n你的目标：${roleplayScenario.goal}`,
+        level: roleplayScenario.level,
+        userText: lastEntry.learnerText
+      };
+      const result = await requestAiJsonWithQueue<{
         correction?: AiWritingCorrection;
         error?: string;
-      };
+      }>({
+        kind: "correct-writing",
+        endpoint: "/api/ai/correct-writing",
+        payload: requestPayload,
+        errorMessage: "AI 角色回答反馈生成失败。"
+      });
 
-      if (!response.ok || !payload.correction) {
+      if (result.queued) {
+        setRoleplayMessage(
+          `AI 角色回答反馈暂不可用，已加入本地队列。稍后恢复网络后可重新点击。队列记录：${result.queueItem.id.slice(-8)}`
+        );
+        return;
+      }
+
+      const payload = result.payload;
+
+      if (!payload.correction) {
         throw new Error(payload.error ?? "AI 角色回答反馈生成失败。");
       }
 
@@ -959,24 +984,32 @@ export function PracticeClient() {
     setWritingMessage("正在批改写作...");
 
     try {
-      const response = await fetch("/api/ai/correct-writing", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          promptTitle: prompt.title,
-          prompt: prompt.prompt,
-          level: prompt.level,
-          userText: writingText
-        })
-      });
-      const payload = (await response.json()) as {
+      const requestPayload = {
+        promptTitle: prompt.title,
+        prompt: prompt.prompt,
+        level: prompt.level,
+        userText: writingText
+      };
+      const result = await requestAiJsonWithQueue<{
         correction?: AiWritingCorrection;
         error?: string;
-      };
+      }>({
+        kind: "correct-writing",
+        endpoint: "/api/ai/correct-writing",
+        payload: requestPayload,
+        errorMessage: "写作批改失败。"
+      });
 
-      if (!response.ok || !payload.correction) {
+      if (result.queued) {
+        setWritingMessage(
+          `写作批改暂不可用，已加入本地 AI 请求队列。稍后恢复网络后可重新点击。队列记录：${result.queueItem.id.slice(-8)}`
+        );
+        return;
+      }
+
+      const payload = result.payload;
+
+      if (!payload.correction) {
         throw new Error(payload.error ?? "写作批改失败。");
       }
 

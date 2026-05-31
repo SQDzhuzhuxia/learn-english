@@ -36,6 +36,7 @@ import { createRetellingFeedback, type RetellingFeedback } from "@/lib/speech/re
 import { createRoleplayFeedback, type RoleplayFeedback } from "@/lib/speech/roleplay-feedback";
 import { summarizeRoleplayMemory } from "@/lib/speech/roleplay-memory";
 import { summarizeRoleplaySession } from "@/lib/speech/roleplay-session-summary";
+import { createRoleplayTransferPlan } from "@/lib/speech/roleplay-transfer";
 import { speakEnglishText } from "@/lib/speech/speech-synthesis";
 import { saveWritingItemAsReviewCard } from "@/lib/review/review-store";
 import { Badge } from "@/components/ui/badge";
@@ -1617,6 +1618,7 @@ export function PracticeClient() {
     entries: roleplayTranscript
   });
   const roleplayMemory = summarizeRoleplayMemory(attempts, roleplayScenario.title);
+  const roleplayTransferPlan = createRoleplayTransferPlan(roleplayMemory);
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
@@ -1894,6 +1896,48 @@ export function PracticeClient() {
                       ))}
                     </ul>
                   </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-white p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-semibold text-foreground">跨场景迁移</p>
+                  <Badge variant={roleplayTransferPlan.shouldTransfer ? "default" : "outline"}>
+                    {roleplayTransferPlan.readinessLabel}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-muted">{roleplayTransferPlan.principle}</p>
+                <div className="mt-3 grid gap-2">
+                  {roleplayTransferPlan.targets.map((target) => (
+                    <div key={target.id} className="rounded-lg border border-border bg-panel-strong p-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{target.title}</p>
+                          <p className="mt-1 text-xs leading-5 text-muted">{target.setting}</p>
+                        </div>
+                        {target.lockedReason ? <Badge variant="outline">待解锁</Badge> : <Badge variant="soft">可迁移</Badge>}
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-foreground">{target.transferTask}</p>
+                      <p className="mt-2 rounded-lg border border-border bg-white p-2 text-xs leading-5 text-foreground">
+                        {target.suggestedOpening}
+                      </p>
+                      {target.lockedReason ? (
+                        <p className="mt-2 text-xs leading-5 text-muted">{target.lockedReason}</p>
+                      ) : (
+                        <p className="mt-2 text-xs leading-5 text-muted">
+                          成功标准：{target.successCriteria.join(" / ")}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 rounded-lg border border-border bg-panel-strong p-3">
+                  <p className="text-xs font-semibold text-foreground">迁移时保留</p>
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
+                    {roleplayTransferPlan.carryOverSkills.slice(0, 3).map((skill) => (
+                      <li key={skill}>{skill}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
 

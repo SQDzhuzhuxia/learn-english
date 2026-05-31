@@ -162,6 +162,7 @@ function getAiResultTurn(record: AiResultInboxRecord) {
 function getAiResultRequest(record: AiResultInboxRecord) {
   return record.requestPayload as {
     promptTitle?: string;
+    prompt?: string;
     userText?: string;
   };
 }
@@ -280,6 +281,7 @@ export function PracticeClient() {
   const [writingSaveMessage, setWritingSaveMessage] = useState("");
   const [savedWritingKeys, setSavedWritingKeys] = useState<Record<string, boolean>>({});
   const [isCorrectingWriting, setIsCorrectingWriting] = useState(false);
+  const [aiResultInboxMessage, setAiResultInboxMessage] = useState("");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -438,6 +440,69 @@ export function PracticeClient() {
       );
       scrollToPracticeMode("roleplay");
       setRoleplayMessage("已把 AI 追问加入角色扮演。");
+    }
+  }
+
+  function handleSaveAiResultAsReviewCards(result: AiResultInboxRecord) {
+    const correction = getAiResultCorrection(result);
+    const turn = getAiResultTurn(result);
+    const request = getAiResultRequest(result);
+
+    if (correction) {
+      const promptTitle = request.promptTitle ?? result.title;
+      const isRetelling = promptTitle.startsWith("复述：");
+      const isRoleplay = promptTitle.startsWith("角色扮演：");
+      const saved = saveAiCorrectionSuggestions({
+        correction,
+        promptTitle,
+        prompt:
+          request.prompt ??
+          (isRetelling
+            ? retellingPractice.prompt
+            : isRoleplay
+              ? roleplayScenario.goal
+              : writingPrompts[selectedWritingIndex].prompt),
+        correctedMeaningZh: isRetelling
+          ? "AI 优化后的复述句"
+          : isRoleplay
+            ? "AI 优化后的角色回答"
+            : "AI 优化后的写作句子",
+        correctedExample: correction.correctedText,
+        createKey: (kind, text) => `inbox:${result.id}:${kind}:${text.trim().toLowerCase()}`
+      });
+
+      setAiResultInboxMessage(
+        saved.created > 0
+          ? `已从 AI 结果生成 ${saved.created}/${saved.total} 个复习项目。`
+          : "这条 AI 结果中的建议已经在复习系统里。"
+      );
+      return;
+    }
+
+    if (turn) {
+      let created = 0;
+      const replies = turn.suggestedReplies.filter((reply) => reply.trim().length > 0);
+
+      replies.forEach((reply) => {
+        const saved = saveWritingItemAsReviewCard({
+          kind: "corrected-sentence",
+          promptTitle: `角色扮演：${result.title}`,
+          prompt: turn.userGoalZh,
+          originalText: turn.partnerLine,
+          correctedText: reply,
+          text: reply,
+          meaningZh: "AI 推荐角色回答",
+          example: `Partner: ${turn.partnerLine} / Me: ${reply}`
+        });
+
+        created += saved.created ? 1 : 0;
+      });
+
+      setAiResultInboxMessage(
+        created > 0
+          ? `已从 AI 追问生成 ${created}/${replies.length} 个复习项目。`
+          : "这条 AI 追问中的建议已经在复习系统里。"
+      );
     }
   }
 
@@ -2313,6 +2378,11 @@ export function PracticeClient() {
           </div>
         </CardHeader>
         <CardContent>
+          {aiResultInboxMessage ? (
+            <p className="mb-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
+              {aiResultInboxMessage}
+            </p>
+          ) : null}
           {aiResults.length > 0 ? (
             <div className="grid gap-3 lg:grid-cols-2">
               {aiResults.slice(0, 4).map((result) => {
@@ -2329,6 +2399,9 @@ export function PracticeClient() {
                       <div className="flex shrink-0 items-center gap-1">
                         <Button variant="outline" size="sm" onClick={() => handleApplyAiResult(result)}>
                           载入
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleSaveAiResultAsReviewCards(result)}>
+                          保存卡
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDeleteAiResult(result.id)}>
                           <Trash2 className="h-4 w-4" />

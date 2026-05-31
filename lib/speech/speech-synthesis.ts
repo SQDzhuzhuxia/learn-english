@@ -1,3 +1,5 @@
+import { readCachedTtsAudio, writeCachedTtsAudio } from "@/lib/speech/tts-audio-cache";
+
 type SpeakEnglishOptions = {
   format?: string;
   instructions?: string;
@@ -121,6 +123,34 @@ async function speakWithServerTts(text: string, options: SpeakEnglishOptions): P
     };
   }
 
+  const cacheInput = {
+    text,
+    voice: options.voice,
+    format: options.format,
+    instructions: options.instructions ?? "Speak clearly and slowly for a beginner English learner."
+  };
+  const cachedAudio = await readCachedTtsAudio(cacheInput);
+
+  if (cachedAudio) {
+    stopEnglishSpeech();
+    activeAudioUrl = URL.createObjectURL(cachedAudio.blob);
+    activeAudio = new Audio(activeAudioUrl);
+    activeAudio.addEventListener(
+      "ended",
+      () => {
+        stopServerAudio();
+      },
+      { once: true }
+    );
+    await activeAudio.play();
+
+    return {
+      ok: true,
+      message: `正在使用缓存的 ${cachedAudio.provider ?? "高质量 TTS"} 朗读。`,
+      voiceName: cachedAudio.voice
+    };
+  }
+
   try {
     const response = await fetch("/api/speech/synthesize", {
       method: "POST",
@@ -131,7 +161,7 @@ async function speakWithServerTts(text: string, options: SpeakEnglishOptions): P
         text,
         voice: options.voice,
         format: options.format,
-        instructions: options.instructions ?? "Speak clearly and slowly for a beginner English learner."
+        instructions: cacheInput.instructions
       })
     });
 
@@ -159,6 +189,14 @@ async function speakWithServerTts(text: string, options: SpeakEnglishOptions): P
     }
 
     const blob = await response.blob();
+    const provider = response.headers.get("X-Speech-Provider") ?? undefined;
+    const voice = response.headers.get("X-Speech-Voice") ?? undefined;
+    await writeCachedTtsAudio(cacheInput, blob, {
+      contentType,
+      provider,
+      voice
+    });
+
     stopEnglishSpeech();
     activeAudioUrl = URL.createObjectURL(blob);
     activeAudio = new Audio(activeAudioUrl);
@@ -173,8 +211,8 @@ async function speakWithServerTts(text: string, options: SpeakEnglishOptions): P
 
     return {
       ok: true,
-      message: `正在使用 ${response.headers.get("X-Speech-Provider") ?? "高质量 TTS"} 朗读。`,
-      voiceName: response.headers.get("X-Speech-Voice") ?? undefined
+      message: `正在使用 ${provider ?? "高质量 TTS"} 朗读。`,
+      voiceName: voice
     };
   } catch {
     return {

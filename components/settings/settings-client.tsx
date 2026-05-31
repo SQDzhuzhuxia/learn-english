@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Cloud, Database, Download, KeyRound, Upload } from "lucide-react";
+import { Cloud, Database, Download, KeyRound, Trash2, Upload } from "lucide-react";
 import { CloudSyncPanel } from "@/components/settings/cloud-sync-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   restoreLocalBackup
 } from "@/lib/sync/local-backup";
 import { summarizeSyncSnapshot } from "@/lib/sync/sync-snapshot";
+import { clearCachedTtsAudio } from "@/lib/speech/tts-audio-cache";
 
 function createBackupFileName() {
   return `learn-english-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -67,6 +68,11 @@ export function SettingsClient() {
         fileInputRef.current.value = "";
       }
     }
+  }
+
+  async function handleClearTtsAudioCache() {
+    const cleared = await clearCachedTtsAudio();
+    setMessage(cleared ? "已清理本机离线朗读音频缓存。" : "当前浏览器没有可清理的离线朗读音频缓存。");
   }
 
   return (
@@ -134,7 +140,7 @@ export function SettingsClient() {
           </CardHeader>
           <CardContent>
           <div className="grid gap-2 sm:grid-cols-2">
-            {["材料", "词句", "复习记录", "练习反馈"].map((item) => (
+            {["材料", "词句", "复习记录", "练习反馈", "离线朗读音频缓存"].map((item) => (
               <div
                 key={item}
                 className="rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-muted"
@@ -144,7 +150,7 @@ export function SettingsClient() {
             ))}
           </div>
           <Separator className="my-5" />
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <Button onClick={handleExport}>
               <Download className="h-4 w-4" />
               导出数据
@@ -156,6 +162,10 @@ export function SettingsClient() {
             <Button onClick={() => fileInputRef.current?.click()} variant="outline">
               <Upload className="h-4 w-4" />
               导入数据
+            </Button>
+            <Button onClick={() => void handleClearTtsAudioCache()} variant="outline">
+              <Trash2 className="h-4 w-4" />
+              清理音频
             </Button>
             <input
               ref={fileInputRef}

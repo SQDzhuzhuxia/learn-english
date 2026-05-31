@@ -73,6 +73,7 @@ UI Refresh 第三轮    已完成
 部署指南             已完成
 GitHub Actions CI    已完成
 同步冲突细粒度合并   已完成
+离线朗读音频缓存     已完成
 ```
 
 ## 里程碑进度
@@ -139,6 +140,7 @@ GitHub Actions CI    已完成
 | Open Source C | 已完成 | 新增 GitHub Actions CI，自动执行 lint、typecheck、test 和 build |
 | Sprint 4 | 进行中 | 跟读、复述、写作练习真实闭环 |
 | Sprint 5A | 已完成 | 拉取云端数据时对材料、词句、复习卡、日志、练习记录和 AI 解释缓存做细粒度合并 |
+| Sprint 5B | 已完成 | 服务端 TTS 成功后写入浏览器音频缓存，重复朗读优先复用本机缓存 |
 | Sprint 5 | 进行中 | 同步冲突高级合并、离线音频缓存、AI 请求队列和跨端体验打磨 |
 
 ## 当前可用能力
@@ -261,6 +263,8 @@ GitHub Actions CI    已完成
 - 新增 GitHub Actions CI，公开仓库后可自动展示质量检查结果
 - 云同步拉取已升级为细粒度合并：本地新增保留，云端新增补入，双方同一条记录按更新时间选择更新版本
 - 设置页拉取云端确认区会展示整组恢复、细粒度合并、保留本地冲突和合并条目摘要
+- 高质量 TTS 成功播放后会写入浏览器 Cache API，重复短句朗读会优先使用本机离线音频缓存
+- 设置页支持清理本机离线朗读音频缓存
 - 新增 `components/ui/` 基础 UI 组件
 - 新增 `components.json` shadcn/ui 配置
 - 新增 `lib/utils.ts` 统一 className 合并工具
@@ -305,7 +309,7 @@ GitHub Actions CI    已完成
 - 真正音素级/发音级跟读评分
 - 内置离线 TTS 模型打包
 - 更完整的开放式 AI 角色扮演会话记忆和目标跟踪
-- 离线音频缓存和 AI 请求队列
+- AI 请求队列
 
 ## 文档说明
 

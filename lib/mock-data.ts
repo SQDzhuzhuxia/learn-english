@@ -100,7 +100,19 @@ export const studyQueue = [
   }
 ];
 
-export const materialFilters = ["全部", "合适", "美国生活", "职场", "自动化", "入籍", "用户导入"];
+export const materialFilters = [
+  "全部",
+  "合适",
+  "美国生活",
+  "日常",
+  "租房",
+  "银行",
+  "交通",
+  "职场",
+  "自动化",
+  "入籍",
+  "用户导入"
+];
 
 export const materials = [
   {
@@ -186,6 +198,174 @@ export const materials = [
     priority: "专业储备",
     summary: "设备报警、传感器、输入输出、排查步骤。",
     keyExpressions: ["fault alarm", "sensor signal", "input and output"]
+  },
+  {
+    id: "pharmacy-refill",
+    title: "Refilling Medicine at a Pharmacy",
+    type: "美国生活",
+    level: "A1+",
+    minutes: 10,
+    status: "未开始",
+    progress: 0,
+    knownRate: 62,
+    inputType: "对话 + 指令",
+    priority: "医疗延伸",
+    summary: "药房续药、核对生日、询问用药说明。",
+    keyExpressions: ["refill my medicine", "date of birth", "take it with food"]
+  },
+  {
+    id: "bank-account",
+    title: "Opening a Bank Account",
+    type: "银行",
+    level: "A1+",
+    minutes: 12,
+    status: "未开始",
+    progress: 0,
+    knownRate: 58,
+    inputType: "柜台对话",
+    priority: "生活必备",
+    summary: "开户、身份证明、地址证明、银行卡和 direct deposit。",
+    keyExpressions: ["checking account", "proof of address", "direct deposit"]
+  },
+  {
+    id: "bus-directions",
+    title: "Taking the Bus to a Clinic",
+    type: "交通",
+    level: "A1",
+    minutes: 9,
+    status: "未开始",
+    progress: 0,
+    knownRate: 76,
+    inputType: "短故事 + 对话",
+    priority: "轻松输入",
+    summary: "问公交方向、确认站点、下车提醒。",
+    keyExpressions: ["Does this bus go to", "get off after five stops", "press the stop button"]
+  },
+  {
+    id: "maintenance-request",
+    title: "Calling for Apartment Maintenance",
+    type: "租房",
+    level: "A1+",
+    minutes: 11,
+    status: "未开始",
+    progress: 0,
+    knownRate: 61,
+    inputType: "电话对话",
+    priority: "本周建议",
+    summary: "描述漏水、判断是否紧急、创建维修单。",
+    keyExpressions: ["the sink is leaking", "maintenance request", "slow but constant"]
+  },
+  {
+    id: "neighbor-small-talk",
+    title: "Small Talk with a Neighbor",
+    type: "日常",
+    level: "A1",
+    minutes: 8,
+    status: "未开始",
+    progress: 0,
+    knownRate: 84,
+    inputType: "短对话",
+    priority: "轻松输入",
+    summary: "楼道寒暄、周末问候、自我介绍。",
+    keyExpressions: ["How was your weekend?", "I moved in last month", "Good morning"]
+  },
+  {
+    id: "utility-bill",
+    title: "Understanding a Utility Bill",
+    type: "租房",
+    level: "A2",
+    minutes: 13,
+    status: "未开始",
+    progress: 0,
+    knownRate: 52,
+    inputType: "生活短文",
+    priority: "生活必备",
+    summary: "账单号码、到期日、线上支付和 late fee。",
+    keyExpressions: ["account number", "due date", "late fee"]
+  },
+  {
+    id: "safety-meeting",
+    title: "A Short Safety Meeting",
+    type: "职场",
+    level: "A2",
+    minutes: 14,
+    status: "未开始",
+    progress: 0,
+    knownRate: 49,
+    inputType: "会议输入",
+    priority: "专业储备",
+    summary: "班前安全会议、防护用品、lock out 和现场风险。",
+    keyExpressions: ["safety glasses", "lock out the machine", "moving parts"]
+  },
+  {
+    id: "shift-handover",
+    title: "Shift Handover Notes",
+    type: "自动化",
+    level: "A2",
+    minutes: 13,
+    status: "未开始",
+    progress: 0,
+    knownRate: 44,
+    inputType: "交接班短文",
+    priority: "专业储备",
+    summary: "交接班说明、异常记录、logbook 和下一步检查。",
+    keyExpressions: ["handover", "the alarm returns", "logbook"]
+  },
+  {
+    id: "interview-automation",
+    title: "Automation Job Interview Basics",
+    type: "职场",
+    level: "A2",
+    minutes: 15,
+    status: "未开始",
+    progress: 0,
+    knownRate: 42,
+    inputType: "面试问答",
+    priority: "长期目标",
+    summary: "自动化岗位面试中介绍经验、排查问题和安全意识。",
+    keyExpressions: ["describe your experience", "troubleshooting", "follow procedures"]
+  },
+  {
+    id: "address-change",
+    title: "Updating an Address Online",
+    type: "入籍",
+    level: "A2",
+    minutes: 12,
+    status: "未开始",
+    progress: 0,
+    knownRate: 54,
+    inputType: "流程短文",
+    priority: "长期目标",
+    summary: "搬家后更新地址、填写表格、保存确认号。",
+    keyExpressions: ["old address", "new address", "confirmation number"]
+  },
+  {
+    id: "civics-rights",
+    title: "Rights and Responsibilities",
+    type: "入籍",
+    level: "A2",
+    minutes: 14,
+    status: "未开始",
+    progress: 0,
+    knownRate: 47,
+    inputType: "公民常识短文",
+    priority: "长期目标",
+    summary: "权利、责任、遵守法律和 jury duty 等基础表达。",
+    keyExpressions: ["rights and responsibilities", "obey the law", "serve on a jury"]
+  },
+  {
+    id: "oath-ceremony",
+    title: "At the Oath Ceremony",
+    type: "入籍",
+    level: "A2",
+    minutes: 11,
+    status: "未开始",
+    progress: 0,
+    knownRate: 50,
+    inputType: "场景短文",
+    priority: "长期目标",
+    summary: "入籍宣誓仪式、听指令、领取证书。",
+    keyExpressions: ["oath ceremony", "repeat the oath", "receive the certificate"]
   }
 ];
 

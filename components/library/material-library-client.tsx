@@ -16,6 +16,7 @@ import {
   Upload
 } from "lucide-react";
 import { materialFilters } from "@/lib/mock-data";
+import { courseTracks } from "@/lib/content/course-catalog";
 import {
   deleteUserMaterial,
   getSeedMaterials,
@@ -158,6 +159,31 @@ export function MaterialLibraryClient() {
   }, [activeFilter, materials, query]);
 
   const recommended = materials[0];
+  const trackSummaries = useMemo(
+    () =>
+      courseTracks.map((track) => {
+        const trackMaterials = track.materialIds
+          .map((id) => materials.find((material) => material.id === id))
+          .filter((material): material is StudyMaterialRecord => Boolean(material));
+        const completed = trackMaterials.filter((material) => material.status === "已完成").length;
+        const started = trackMaterials.filter((material) => material.progress > 0).length;
+        const totalMinutes = trackMaterials.reduce((sum, material) => sum + material.minutes, 0);
+        const progress = Math.round((completed / Math.max(1, trackMaterials.length)) * 100);
+        const nextMaterial =
+          trackMaterials.find((material) => material.status !== "已完成") ?? trackMaterials[0];
+
+        return {
+          ...track,
+          completed,
+          started,
+          total: trackMaterials.length,
+          totalMinutes,
+          progress,
+          nextMaterial
+        };
+      }),
+    [materials]
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
@@ -252,6 +278,70 @@ export function MaterialLibraryClient() {
           )}
           </CardContent>
         </Card>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <Badge variant="soft">课程路径</Badge>
+          <h2 className="mt-3 text-xl font-semibold text-foreground">按真实目标组织输入材料</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
+            先按生活、租房、工作和移民方向积累可理解输入，再把每篇材料接到跟读、复述、写作和复习。
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {trackSummaries.map((track) => (
+            <Card key={track.id} className="min-w-0">
+              <CardContent className="pt-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Badge variant="outline">{track.levelRange}</Badge>
+                    <h3 className="mt-3 text-base font-semibold leading-6 text-foreground">{track.title}</h3>
+                  </div>
+                  <span className="shrink-0 rounded-lg border border-border bg-panel-strong px-2 py-1 text-xs font-semibold text-foreground">
+                    {track.total} 篇
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-muted">{track.subtitle}</p>
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-muted">
+                    <span>路径进度</span>
+                    <span>{track.progress}%</span>
+                  </div>
+                  <Progress value={track.progress} />
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs text-muted">已开始</p>
+                    <p className="mt-1 font-semibold text-foreground">{track.started}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs text-muted">总时长</p>
+                    <p className="mt-1 font-semibold text-foreground">{track.totalMinutes}m</p>
+                  </div>
+                </div>
+                <p className="mt-4 text-xs leading-5 text-muted">{track.focus}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {track.outcomes.slice(0, 2).map((outcome) => (
+                    <Badge key={outcome} variant="soft">
+                      {outcome}
+                    </Badge>
+                  ))}
+                </div>
+                {track.nextMaterial ? (
+                  <Button asChild variant="outline" className="mt-4 w-full">
+                    <Link
+                      href={`/study/${track.nextMaterial.id}`}
+                      onClick={() => setCurrentMaterialId(track.nextMaterial.id)}
+                    >
+                      进入下一篇
+                      <ArrowRight className="h-4 w-4 text-foreground" />
+                    </Link>
+                  </Button>
+                ) : null}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

@@ -2,6 +2,7 @@
 
 import { materials as seedCards, studySegments } from "@/lib/mock-data";
 import { recordStudyActivity } from "@/lib/analytics/progress-store";
+import { seedMaterialContentById } from "@/lib/content/course-catalog";
 import { estimateReadingMinutes, splitTextIntoSegments } from "@/lib/content/split-text";
 import type { NewTextMaterialInput, StudyMaterialRecord } from "@/lib/content/types";
 import { archiveLearningItemsByMaterialId } from "@/lib/review/review-store";
@@ -18,7 +19,10 @@ function nowIso() {
 
 export function getSeedMaterials(): StudyMaterialRecord[] {
   return seedCards.map((material, index) => {
-    const contentText = index === 0 ? seedContent : `${material.summary} ${material.keyExpressions.join(". ")}.`;
+    const contentText =
+      index === 0
+        ? seedContent
+        : seedMaterialContentById[material.id] ?? `${material.summary} ${material.keyExpressions.join(". ")}.`;
     const segments =
       index === 0
         ? studySegments.map((segment) => ({
@@ -48,6 +52,30 @@ function canUseStorage() {
   return typeof window !== "undefined" && Boolean(window.localStorage);
 }
 
+function mergeSeedMaterial(seed: StudyMaterialRecord, existing?: StudyMaterialRecord): StudyMaterialRecord {
+  if (!existing) {
+    return seed;
+  }
+
+  const wasStarted = existing.status !== "未开始" || existing.progress > 0;
+  const currentSegmentOrder = wasStarted
+    ? Math.min(Math.max(1, existing.currentSegmentOrder), Math.max(1, seed.segments.length))
+    : seed.currentSegmentOrder;
+  const progress = wasStarted
+    ? existing.status === "已完成"
+      ? 100
+      : Math.min(100, Math.round((currentSegmentOrder / Math.max(1, seed.segments.length)) * 100))
+    : 0;
+
+  return {
+    ...seed,
+    currentSegmentOrder,
+    progress,
+    status: progress >= 100 ? "已完成" : progress > 0 ? "学习中" : "未开始",
+    createdAt: existing.createdAt || seed.createdAt
+  };
+}
+
 export function loadMaterials(): StudyMaterialRecord[] {
   const seedMaterials = getSeedMaterials();
 
@@ -64,14 +92,17 @@ export function loadMaterials(): StudyMaterialRecord[] {
 
   try {
     const parsed = JSON.parse(raw) as StudyMaterialRecord[];
-    const seedIds = new Set(seedMaterials.map((material) => material.id));
-    const missingSeeds = seedMaterials.filter(
-      (material) => !parsed.some((item) => item.id === material.id)
+    const existingSeeds = new Map(
+      parsed
+        .filter((material) => material.source === "seed")
+        .map((material) => [material.id, material])
     );
     const normalized = [
-      ...parsed.filter((material) => material.source === "user" || seedIds.has(material.id)),
-      ...missingSeeds
+      ...parsed.filter((material) => material.source === "user"),
+      ...seedMaterials.map((material) => mergeSeedMaterial(material, existingSeeds.get(material.id)))
     ];
+
+    window.localStorage.setItem(MATERIALS_KEY, JSON.stringify(normalized));
 
     return normalized;
   } catch {

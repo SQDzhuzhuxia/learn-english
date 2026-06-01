@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   BookOpenText,
@@ -14,10 +17,83 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { dailyPlan, progressStats, reviewCards, studyQueue } from "@/lib/mock-data";
+import { dailyPlan, progressStats, reviewCards } from "@/lib/mock-data";
+import {
+  getSeedMaterials,
+  loadMaterials,
+  setCurrentMaterialId
+} from "@/lib/content/material-store";
+import { createTodayCoursePlan } from "@/lib/content/today-plan";
 
 export default function TodayPage() {
+  const [materials, setMaterials] = useState(() => getSeedMaterials());
   const dueCards = reviewCards.filter((card) => card.dueToday);
+  const { activeTrack, currentMaterial, trackProgress } = useMemo(
+    () => createTodayCoursePlan(materials),
+    [materials]
+  );
+  const currentMaterialHref = currentMaterial ? `/study/${currentMaterial.id}` : "/study";
+  const todaySteps = dailyPlan.steps.map((step) => {
+    if (step.id === "input") {
+      return {
+        ...step,
+        description: `听读 ${currentMaterial?.title ?? "今日材料"}，目标是先抓住大意。`
+      };
+    }
+
+    if (step.id === "intensive") {
+      return {
+        ...step,
+        description: `逐句学习 ${currentMaterial?.segments.length ?? 5} 个句子，保存真正能用的表达。`
+      };
+    }
+
+    if (step.id === "output") {
+      return {
+        ...step,
+        description: "跟读、复述或写一两句，把今天输入过的句子说出来。"
+      };
+    }
+
+    return step;
+  });
+  const todayQueue = [
+    {
+      id: "course-input",
+      label: activeTrack?.levelRange ?? "A1-A2",
+      title: currentMaterial?.title ?? dailyPlan.currentMaterial.title,
+      action: "进入材料",
+      href: currentMaterialHref
+    },
+    {
+      id: "review-due",
+      label: "到期",
+      title: `${dueCards.length} 张词句卡`,
+      action: "开始复习",
+      href: "/review"
+    },
+    {
+      id: "output",
+      label: "输出",
+      title: "跟读、复述或短写作",
+      action: "去练习",
+      href: "/practice"
+    }
+  ];
+
+  useEffect(() => {
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setMaterials(loadMaterials());
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
@@ -28,9 +104,11 @@ export default function TodayPage() {
             <div>
               <Badge variant="soft">{dailyPlan.dateLabel} · 今日计划</Badge>
               <h1 className="mt-3 text-2xl font-semibold text-foreground sm:text-3xl">
-                {dailyPlan.title}
+                30 分钟英语输入闭环
               </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">{dailyPlan.focus}</p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+                当前路径：{activeTrack?.title ?? "英语基础路径"}。今天从 {currentMaterial?.title ?? "推荐材料"} 开始，先听读和逐句理解，再做少量输出。
+              </p>
             </div>
             <div className="flex w-full shrink-0 flex-col gap-2 rounded-lg border border-border bg-panel-strong p-3 lg:w-44">
               <div className="flex items-center justify-between text-sm font-medium text-foreground">
@@ -46,7 +124,7 @@ export default function TodayPage() {
           </div>
 
           <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {dailyPlan.steps.map((step, index) => (
+            {todaySteps.map((step, index) => (
               <article
                 key={step.id}
                 className={`rounded-lg border p-4 ${
@@ -70,7 +148,7 @@ export default function TodayPage() {
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
-              <Link href="/study">
+              <Link href={currentMaterialHref} onClick={() => currentMaterial && setCurrentMaterialId(currentMaterial.id)}>
                 <Play className="h-4 w-4" />
                 继续今日学习
               </Link>
@@ -91,7 +169,7 @@ export default function TodayPage() {
             <div className="min-w-0">
               <p className="text-sm font-medium text-muted">当前材料</p>
               <h2 className="mt-2 break-words text-xl font-semibold text-foreground">
-                {dailyPlan.currentMaterial.title}
+                {currentMaterial?.title ?? dailyPlan.currentMaterial.title}
               </h2>
             </div>
             <BookOpenText className="h-5 w-5 text-foreground" />
@@ -100,23 +178,23 @@ export default function TodayPage() {
           <div className="mt-4 space-y-4">
             <div>
               <div className="flex items-center justify-between text-sm text-muted">
-                <span>{dailyPlan.currentMaterial.type} · {dailyPlan.currentMaterial.level}</span>
-                <span>{dailyPlan.currentMaterial.progress}%</span>
+                <span>{currentMaterial?.type ?? dailyPlan.currentMaterial.type} · {currentMaterial?.level ?? dailyPlan.currentMaterial.level}</span>
+                <span>{currentMaterial?.progress ?? dailyPlan.currentMaterial.progress}%</span>
               </div>
-              <Progress value={dailyPlan.currentMaterial.progress} className="mt-2" />
+              <Progress value={currentMaterial?.progress ?? dailyPlan.currentMaterial.progress} className="mt-2" />
             </div>
 
             <div className="rounded-lg border border-border bg-panel-strong p-4">
               <p className="text-sm font-semibold text-foreground">
-                {dailyPlan.currentMaterial.nextAction}
+                {activeTrack?.weeklyGoal ?? "每天 30-60 分钟输入和少量输出"}
               </p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                先把当前句听懂、读顺，再保存 appointment 相关表达。
+                路径进度 {trackProgress}%。{currentMaterial?.summary ?? "先从当前材料开始，把句子听懂、读顺、保存下来。"}
               </p>
             </div>
 
             <Button asChild variant="outline" className="w-full">
-              <Link href="/study">
+              <Link href={currentMaterialHref} onClick={() => currentMaterial && setCurrentMaterialId(currentMaterial.id)}>
                 进入学习器
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -139,10 +217,11 @@ export default function TodayPage() {
           </CardHeader>
           <CardContent>
           <div className="divide-y divide-border rounded-lg border border-border bg-white">
-            {studyQueue.map((item) => (
+            {todayQueue.map((item) => (
               <Link
                 href={item.href}
                 key={item.id}
+                onClick={() => item.id === "course-input" && currentMaterial && setCurrentMaterialId(currentMaterial.id)}
                 className="flex flex-col gap-3 p-4 transition hover:bg-panel-strong sm:flex-row sm:items-center sm:justify-between sm:gap-4"
               >
                 <div className="min-w-0">

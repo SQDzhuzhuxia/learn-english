@@ -1678,8 +1678,8 @@ export function PracticeClient() {
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-      <section id="practice-shadowing" className="scroll-mt-24 grid gap-5 lg:grid-cols-[1fr_360px]">
-        <Card>
+      <section id="practice-shadowing" className="grid min-w-0 scroll-mt-24 gap-5 lg:grid-cols-[1fr_360px]">
+        <Card className="min-w-0">
           <CardHeader className="pb-4">
             <Badge variant="soft" className="w-fit">
               练习
@@ -1689,28 +1689,28 @@ export function PracticeClient() {
             输出不追求多，而是紧跟今天已经听懂读懂的材料：先跟读，再复述，最后写一两句。
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-w-0">
 
-          <div className="rounded-lg border border-foreground/15 bg-panel-strong p-5">
+          <div className="min-w-0 rounded-lg border border-foreground/15 bg-panel-strong p-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
+              <div className="min-w-0">
                 <Badge variant="default">今日推荐</Badge>
                 <h2 className="mt-2 text-xl font-semibold text-foreground">{todayPractice.title}</h2>
                 <p className="mt-2 text-sm leading-6 text-muted">{todayPractice.target}</p>
               </div>
               <Button
                 onClick={() => void playPrompt()}
-                className="shrink-0"
+                className="w-full shrink-0 md:w-auto"
               >
                 <Volume2 className="h-4 w-4" />
                 播放原句
               </Button>
             </div>
-            <p className="mt-4 rounded-lg border border-border bg-white p-3 text-base font-semibold leading-7 text-foreground">
+            <p className="mt-4 break-words rounded-lg border border-border bg-white p-3 text-base font-semibold leading-7 text-foreground">
               {todayPractice.prompt}
             </p>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
               <div className="rounded-lg border border-border bg-white p-3">
                 <p className="text-sm font-medium text-muted">录音计时</p>
                 <p className="mt-1 text-2xl font-semibold text-foreground">
@@ -1722,6 +1722,7 @@ export function PracticeClient() {
                   variant="destructive"
                   size="lg"
                   onClick={stopRecording}
+                  className="w-full sm:w-auto"
                 >
                   <Square className="h-4 w-4" />
                   停止录音
@@ -1731,6 +1732,7 @@ export function PracticeClient() {
                   size="lg"
                   onClick={() => startRecording("shadowing")}
                   disabled={isRecording}
+                  className="w-full sm:w-auto"
                 >
                   <Mic className="h-4 w-4" />
                   开始录音

@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   BookOpenText,
+  BookmarkCheck,
   CalendarCheck,
   CheckCircle2,
   Clock3,
   Headphones,
+  Mic,
   Play,
   RefreshCcw
 } from "lucide-react";
@@ -23,40 +25,39 @@ import {
   loadMaterials,
   setCurrentMaterialId
 } from "@/lib/content/material-store";
-import { createTodayCoursePlan } from "@/lib/content/today-plan";
+import {
+  createDailyStudySessionPlan,
+  createTodayCoursePlan,
+  type DailyStudyDuration
+} from "@/lib/content/today-plan";
+
+const stepIcons = {
+  warmup: BookmarkCheck,
+  input: Headphones,
+  intensive: BookOpenText,
+  output: Mic
+};
+
+const durationOptions: DailyStudyDuration[] = [30, 45, 60];
 
 export default function TodayPage() {
   const [materials, setMaterials] = useState(() => getSeedMaterials());
+  const [studyDuration, setStudyDuration] = useState<DailyStudyDuration>(30);
   const dueCards = reviewCards.filter((card) => card.dueToday);
   const { activeTrack, currentMaterial, trackProgress } = useMemo(
     () => createTodayCoursePlan(materials),
     [materials]
   );
+  const sessionPlan = useMemo(
+    () =>
+      createDailyStudySessionPlan({
+        duration: studyDuration,
+        currentMaterial,
+        dueReviewCount: dueCards.length
+      }),
+    [currentMaterial, dueCards.length, studyDuration]
+  );
   const currentMaterialHref = currentMaterial ? `/study/${currentMaterial.id}` : "/study";
-  const todaySteps = dailyPlan.steps.map((step) => {
-    if (step.id === "input") {
-      return {
-        ...step,
-        description: `听读 ${currentMaterial?.title ?? "今日材料"}，目标是先抓住大意。`
-      };
-    }
-
-    if (step.id === "intensive") {
-      return {
-        ...step,
-        description: `逐句学习 ${currentMaterial?.segments.length ?? 5} 个句子，保存真正能用的表达。`
-      };
-    }
-
-    if (step.id === "output") {
-      return {
-        ...step,
-        description: "跟读、复述或写一两句，把今天输入过的句子说出来。"
-      };
-    }
-
-    return step;
-  });
   const todayQueue = [
     {
       id: "course-input",
@@ -98,33 +99,50 @@ export default function TodayPage() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
       <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-        <Card className="overflow-hidden">
+        <Card className="min-w-0 overflow-hidden">
           <CardContent className="pt-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
+          <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
               <Badge variant="soft">{dailyPlan.dateLabel} · 今日计划</Badge>
               <h1 className="mt-3 text-2xl font-semibold text-foreground sm:text-3xl">
-                30 分钟英语输入闭环
+                {sessionPlan.duration} 分钟英语输入闭环
               </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+              <p className="mt-3 max-w-3xl break-words text-sm leading-6 text-muted">
                 当前路径：{activeTrack?.title ?? "英语基础路径"}。今天从 {currentMaterial?.title ?? "推荐材料"} 开始，先听读和逐句理解，再做少量输出。
               </p>
             </div>
-            <div className="flex w-full shrink-0 flex-col gap-2 rounded-lg border border-border bg-panel-strong p-3 lg:w-44">
+            <div className="flex w-full min-w-0 shrink-0 flex-col gap-3 rounded-lg border border-border bg-panel-strong p-3 lg:w-56">
               <div className="flex items-center justify-between text-sm font-medium text-foreground">
-                <span>今日进度</span>
-                <span>{dailyPlan.completion}%</span>
+                <span>今日节奏</span>
+                <span>{sessionPlan.inputRatio}% 输入</span>
               </div>
-              <Progress value={dailyPlan.completion} />
-              <div className="flex items-center gap-2 text-xs text-muted">
+              <Progress value={sessionPlan.inputRatio} />
+              <div className="grid min-w-0 grid-cols-[repeat(3,minmax(0,1fr))] gap-1">
+                {durationOptions.map((duration) => (
+                  <Button
+                    key={duration}
+                    type="button"
+                    variant={studyDuration === duration ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStudyDuration(duration)}
+                    className="w-full min-w-0 px-1"
+                  >
+                    {duration}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex min-w-0 items-start gap-2 text-xs leading-5 text-muted">
                 <Clock3 className="h-3.5 w-3.5" />
-                {dailyPlan.durationMinutes} 分钟模式
+                <span className="min-w-0 break-words">{sessionPlan.summary}</span>
               </div>
             </div>
           </div>
 
           <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {todaySteps.map((step, index) => (
+            {sessionPlan.steps.map((step, index) => {
+              const StepIcon = stepIcons[step.id];
+
+              return (
               <article
                 key={step.id}
                 className={`rounded-lg border p-4 ${
@@ -135,7 +153,7 @@ export default function TodayPage() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white text-foreground">
-                    <step.icon className="h-4 w-4" />
+                    <StepIcon className="h-4 w-4" />
                   </div>
                   <span className="text-xs font-medium text-muted">{step.minutes} 分钟</span>
                 </div>
@@ -143,7 +161,8 @@ export default function TodayPage() {
                 <h2 className="mt-1 text-base font-semibold text-foreground">{step.title}</h2>
                 <p className="mt-2 text-sm leading-6 text-muted">{step.description}</p>
               </article>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">

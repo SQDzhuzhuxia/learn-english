@@ -30,6 +30,7 @@ It aims to become a serious, long-term, community-maintained tool for English in
 
 - Material library and daily study dashboard
 - Today page recommends the next material from the active course track and connects input, review, and output
+- Today page supports 30/45/60-minute study modes with automatic review, input, intensive study, and output allocation
 - 18 built-in A1-A2 starter materials for U.S. life, housing, banking/transit, automation work, and immigration
 - Four course tracks: life survival, housing/community, automation work, and immigration/civics
 - Text import, automatic sentence splitting, and local material storage

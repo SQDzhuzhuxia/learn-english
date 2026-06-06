@@ -12,7 +12,8 @@ import {
   Headphones,
   Mic,
   Play,
-  RefreshCcw
+  RefreshCcw,
+  Sparkles
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,9 +28,13 @@ import {
 } from "@/lib/content/material-store";
 import {
   createDailyStudySessionPlan,
+  createTodaySmartRecommendation,
   createTodayCoursePlan,
   type DailyStudyDuration
 } from "@/lib/content/today-plan";
+import { loadStudyActivities, summarizeStudyActivities } from "@/lib/analytics/progress-store";
+import { summarizeOutputErrors } from "@/lib/analytics/output-error-stats";
+import { loadPracticeAttempts } from "@/lib/speech/practice-store";
 
 const stepIcons = {
   warmup: BookmarkCheck,
@@ -43,11 +48,14 @@ const durationOptions: DailyStudyDuration[] = [30, 45, 60];
 export default function TodayPage() {
   const [materials, setMaterials] = useState(() => getSeedMaterials());
   const [studyDuration, setStudyDuration] = useState<DailyStudyDuration>(30);
+  const [activitySummary, setActivitySummary] = useState(() => summarizeStudyActivities([]));
+  const [outputErrorSummary, setOutputErrorSummary] = useState(() => summarizeOutputErrors([]));
   const dueCards = reviewCards.filter((card) => card.dueToday);
-  const { activeTrack, currentMaterial, trackProgress } = useMemo(
+  const coursePlan = useMemo(
     () => createTodayCoursePlan(materials),
     [materials]
   );
+  const { activeTrack, currentMaterial, trackProgress } = coursePlan;
   const sessionPlan = useMemo(
     () =>
       createDailyStudySessionPlan({
@@ -56,6 +64,17 @@ export default function TodayPage() {
         dueReviewCount: dueCards.length
       }),
     [currentMaterial, dueCards.length, studyDuration]
+  );
+  const smartRecommendation = useMemo(
+    () =>
+      createTodaySmartRecommendation({
+        coursePlan,
+        sessionPlan,
+        activitySummary,
+        outputErrorSummary,
+        dueReviewCount: dueCards.length
+      }),
+    [activitySummary, coursePlan, dueCards.length, outputErrorSummary, sessionPlan]
   );
   const currentMaterialHref = currentMaterial ? `/study/${currentMaterial.id}` : "/study";
   const todayQueue = [
@@ -88,6 +107,8 @@ export default function TodayPage() {
     queueMicrotask(() => {
       if (!cancelled) {
         setMaterials(loadMaterials());
+        setActivitySummary(summarizeStudyActivities(loadStudyActivities()));
+        setOutputErrorSummary(summarizeOutputErrors(loadPracticeAttempts()));
       }
     });
 
@@ -163,6 +184,31 @@ export default function TodayPage() {
               </article>
               );
             })}
+          </div>
+
+          <div className="mt-6 rounded-lg border border-border bg-panel-strong p-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0">
+                <Badge variant="soft">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {smartRecommendation.label}
+                </Badge>
+                <h2 className="mt-3 break-words text-lg font-semibold text-foreground">
+                  {smartRecommendation.title}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-muted">{smartRecommendation.detail}</p>
+                <p className="mt-2 text-xs leading-5 text-muted">{smartRecommendation.reason}</p>
+              </div>
+              <Button asChild className="w-full shrink-0 md:w-auto">
+                <Link
+                  href={smartRecommendation.href}
+                  onClick={() => smartRecommendation.href.startsWith("/study/") && currentMaterial && setCurrentMaterialId(currentMaterial.id)}
+                >
+                  {smartRecommendation.actionLabel}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">

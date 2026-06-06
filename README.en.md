@@ -34,6 +34,7 @@ It aims to become a serious, long-term, community-maintained tool for English in
 - Today page combines study history, output weaknesses, and review pressure into a smart next-step recommendation
 - 18 built-in A1-A2 starter materials for U.S. life, housing, banking/transit, automation work, and immigration
 - Four course tracks: life survival, housing/community, automation work, and immigration/civics
+- Course tracks include staged goals, completion criteria, current-stage progress, and output tasks
 - Text import, automatic sentence splitting, and local material storage
 - Dynamic study pages with sentence-level progress
 - AI explanation for the current sentence and whole-material batch explanation

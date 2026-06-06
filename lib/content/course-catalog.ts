@@ -1,3 +1,14 @@
+import type { StudyMaterialRecord } from "@/lib/content/types";
+
+export type CourseStage = {
+  id: string;
+  title: string;
+  goal: string;
+  materialIds: string[];
+  completionCriteria: string[];
+  outputTask: string;
+};
+
 export type CourseTrack = {
   id: string;
   title: string;
@@ -7,6 +18,16 @@ export type CourseTrack = {
   focus: string;
   materialIds: string[];
   outcomes: string[];
+  stages: CourseStage[];
+};
+
+export type CourseStageSummary = CourseStage & {
+  total: number;
+  completed: number;
+  started: number;
+  progress: number;
+  isCurrent: boolean;
+  nextMaterial?: StudyMaterialRecord;
 };
 
 export const courseTracks: CourseTrack[] = [
@@ -18,7 +39,25 @@ export const courseTracks: CourseTrack[] = [
     weeklyGoal: "每周 4 篇短材料 + 3 次跟读",
     focus: "生活高频句、礼貌请求、听懂前台和柜台问题",
     materialIds: ["doctor-visit", "grocery-store", "pharmacy-refill", "bank-account", "bus-directions"],
-    outcomes: ["能预约和确认时间", "能询问商品和价格", "能处理简单柜台问题"]
+    outcomes: ["能预约和确认时间", "能询问商品和价格", "能处理简单柜台问题"],
+    stages: [
+      {
+        id: "survival-medical-shopping",
+        title: "阶段 1：医生和购物",
+        goal: "先听懂最常见的预约、药房和超市问题。",
+        materialIds: ["doctor-visit", "grocery-store", "pharmacy-refill"],
+        completionCriteria: ["完成 3 篇材料听读", "保存 8 个生活高频表达", "完成 2 次跟读输出"],
+        outputTask: "用 3 句话说明症状、想买什么或药房问题。"
+      },
+      {
+        id: "survival-services-transit",
+        title: "阶段 2：柜台和出行",
+        goal: "能处理银行开户和公交问路这类基础服务场景。",
+        materialIds: ["bank-account", "bus-directions"],
+        completionCriteria: ["完成 2 篇服务场景材料", "能说出 ID、地址、路线和付款方式", "完成 1 次角色演练"],
+        outputTask: "模拟一次银行或公交问答，把关键信息说完整。"
+      }
+    ]
   },
   {
     id: "housing-and-neighborhood",
@@ -28,7 +67,25 @@ export const courseTracks: CourseTrack[] = [
     weeklyGoal: "每周 3 篇材料 + 2 次复述",
     focus: "租房关键词、维修描述、邻里寒暄和生活问题说明",
     materialIds: ["apartment-tour", "maintenance-request", "utility-bill", "neighbor-small-talk"],
-    outcomes: ["能问租金押金", "能描述家里问题", "能和邻居进行简单寒暄"]
+    outcomes: ["能问租金押金", "能描述家里问题", "能和邻居进行简单寒暄"],
+    stages: [
+      {
+        id: "housing-rent-maintenance",
+        title: "阶段 1：看房和维修",
+        goal: "先掌握租金、押金、included、maintenance 这些高频表达。",
+        materialIds: ["apartment-tour", "maintenance-request"],
+        completionCriteria: ["完成看房和维修材料", "保存 6 个租房表达", "能描述一个家里问题"],
+        outputTask: "复述一次看房问题，或打电话说明水槽漏水。"
+      },
+      {
+        id: "housing-bills-community",
+        title: "阶段 2：账单和邻里",
+        goal: "能处理生活账单，并进行简单社区寒暄。",
+        materialIds: ["utility-bill", "neighbor-small-talk"],
+        completionCriteria: ["完成账单和寒暄材料", "能说明 due date、late fee、account number", "完成 1 次邻里寒暄角色演练"],
+        outputTask: "写 2 句账单提醒，再说 2 句邻里 small talk。"
+      }
+    ]
   },
   {
     id: "work-automation",
@@ -38,7 +95,33 @@ export const courseTracks: CourseTrack[] = [
     weeklyGoal: "每周 3 篇材料 + 1 次角色演练",
     focus: "设备故障、交接班、安全会议、面试表达",
     materialIds: ["work-intro", "plc-basic", "safety-meeting", "shift-handover", "interview-automation"],
-    outcomes: ["能介绍工作背景", "能描述故障和排查步骤", "能回答基础岗位面试问题"]
+    outcomes: ["能介绍工作背景", "能描述故障和排查步骤", "能回答基础岗位面试问题"],
+    stages: [
+      {
+        id: "automation-self-intro-troubleshooting",
+        title: "阶段 1：背景介绍和故障描述",
+        goal: "把你的自动化背景和基础排查步骤说清楚。",
+        materialIds: ["work-intro", "plc-basic"],
+        completionCriteria: ["完成 2 篇职场材料", "能说出 sensors、PLC、fault alarm", "完成 1 次复述"],
+        outputTask: "用 4 句话介绍你的自动化背景和一次简单排查。"
+      },
+      {
+        id: "automation-shift-safety",
+        title: "阶段 2：安全会议和交接班",
+        goal: "听懂班前安全提醒，能交代设备状态和下一步检查。",
+        materialIds: ["safety-meeting", "shift-handover"],
+        completionCriteria: ["完成安全和交接班材料", "保存 8 个职场固定表达", "完成 1 次角色演练"],
+        outputTask: "模拟一次 shift handover，说明 alarm、sensor 和 next check。"
+      },
+      {
+        id: "automation-interview",
+        title: "阶段 3：岗位面试表达",
+        goal: "准备基础自动化岗位面试里的经历、安全和排查回答。",
+        materialIds: ["interview-automation"],
+        completionCriteria: ["完成面试材料", "写出 1 段英文自我介绍", "完成 1 次面试角色演练"],
+        outputTask: "回答 Tell me about your experience 和 How do you handle safety?"
+      }
+    ]
   },
   {
     id: "immigration-civics",
@@ -48,9 +131,68 @@ export const courseTracks: CourseTrack[] = [
     weeklyGoal: "每周 2 篇材料 + 1 次问答练习",
     focus: "身份信息问答、入籍面试 warm-up、公民常识高频句",
     materialIds: ["n400-small-talk", "address-change", "civics-rights", "oath-ceremony"],
-    outcomes: ["能回答个人信息问题", "能理解常见移民表述", "能为后续入籍材料学习打底"]
+    outcomes: ["能回答个人信息问题", "能理解常见移民表述", "能为后续入籍材料学习打底"],
+    stages: [
+      {
+        id: "immigration-identity-address",
+        title: "阶段 1：个人信息和地址",
+        goal: "熟悉入籍面试 warm-up、地址和表格相关基础问题。",
+        materialIds: ["n400-small-talk", "address-change"],
+        completionCriteria: ["完成 2 篇个人信息材料", "能回答姓名、地址、生日和工作问题", "完成 1 次问答练习"],
+        outputTask: "慢速回答 5 个个人信息问题，听不懂时会请求重复。"
+      },
+      {
+        id: "immigration-civics-oath",
+        title: "阶段 2：公民常识和宣誓",
+        goal: "提前理解 rights、responsibilities、oath ceremony 的基础意思。",
+        materialIds: ["civics-rights", "oath-ceremony"],
+        completionCriteria: ["完成 2 篇公民常识材料", "能解释 rights 和 responsibilities", "保存 6 个入籍相关表达"],
+        outputTask: "用简单英文解释一个权利、一个责任和宣誓流程。"
+      }
+    ]
   }
 ];
+
+export function createCourseStageSummaries(
+  track: CourseTrack,
+  materials: StudyMaterialRecord[]
+): CourseStageSummary[] {
+  const materialById = new Map(materials.map((material) => [material.id, material]));
+  const summaries = track.stages.map((stage) => {
+    const stageMaterials = stage.materialIds
+      .map((id) => materialById.get(id))
+      .filter((material): material is StudyMaterialRecord => Boolean(material));
+    const completed = stageMaterials.filter((material) => material.status === "已完成").length;
+    const started = stageMaterials.filter((material) => material.status !== "未开始" || material.progress > 0).length;
+    const total = stageMaterials.length;
+    const progress = Math.round((completed / Math.max(1, total)) * 100);
+    const nextMaterial = stageMaterials.find((material) => material.status !== "已完成") ?? stageMaterials[0];
+
+    return {
+      ...stage,
+      total,
+      completed,
+      started,
+      progress,
+      isCurrent: false,
+      nextMaterial
+    };
+  });
+  const currentIndex = summaries.findIndex((stage) => stage.progress < 100);
+  const fallbackIndex = summaries.length > 0 ? summaries.length - 1 : -1;
+
+  return summaries.map((stage, index) => ({
+    ...stage,
+    isCurrent: index === (currentIndex >= 0 ? currentIndex : fallbackIndex)
+  }));
+}
+
+export function getCurrentCourseStage(
+  track: CourseTrack,
+  materials: StudyMaterialRecord[]
+) {
+  return createCourseStageSummaries(track, materials).find((stage) => stage.isCurrent);
+}
 
 export const seedMaterialContentById: Record<string, string> = {
   "apartment-tour":

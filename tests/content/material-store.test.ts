@@ -10,7 +10,7 @@ import {
   loadReviewCards,
   saveSegmentAsReviewCard
 } from "@/lib/review/review-store";
-import { courseTracks } from "@/lib/content/course-catalog";
+import { courseTracks, createCourseStageSummaries } from "@/lib/content/course-catalog";
 
 function setupLocalStorage() {
   const store = new Map<string, string>();
@@ -96,10 +96,55 @@ describe("material-store", () => {
 
     courseTracks.forEach((track) => {
       expect(track.materialIds.length).toBeGreaterThan(0);
+      expect(track.stages.length).toBeGreaterThan(0);
       track.materialIds.forEach((materialId) => {
         expect(seedIds.has(materialId)).toBe(true);
       });
+      track.stages.forEach((stage) => {
+        expect(stage.materialIds.length).toBeGreaterThan(0);
+        expect(stage.completionCriteria.length).toBeGreaterThanOrEqual(2);
+        stage.materialIds.forEach((materialId) => {
+          expect(track.materialIds).toContain(materialId);
+          expect(seedIds.has(materialId)).toBe(true);
+        });
+      });
     });
+  });
+
+  it("summarizes current course stage progress", () => {
+    const materials = loadMaterials();
+    const track = courseTracks.find((item) => item.id === "survival-foundation");
+
+    expect(track).toBeDefined();
+
+    const summaries = createCourseStageSummaries(track!, materials);
+    const currentStage = summaries.find((stage) => stage.isCurrent);
+
+    expect(summaries).toHaveLength(track!.stages.length);
+    expect(currentStage?.id).toBe("survival-medical-shopping");
+    expect(currentStage?.progress).toBe(0);
+    expect(currentStage?.nextMaterial?.id).toBe("doctor-visit");
+  });
+
+  it("moves current course stage after all stage materials are completed", () => {
+    const track = courseTracks.find((item) => item.id === "survival-foundation");
+    const firstStageIds = new Set(track?.stages[0]?.materialIds ?? []);
+    const materials = loadMaterials().map((material) =>
+      firstStageIds.has(material.id)
+        ? {
+            ...material,
+            status: "已完成" as const,
+            progress: 100
+          }
+        : material
+    );
+
+    const summaries = createCourseStageSummaries(track!, materials);
+    const currentStage = summaries.find((stage) => stage.isCurrent);
+
+    expect(currentStage?.id).toBe("survival-services-transit");
+    expect(summaries[0]?.progress).toBe(100);
+    expect(currentStage?.nextMaterial?.id).toBe("bank-account");
   });
 
   it("refreshes existing seed material content while preserving user materials", () => {

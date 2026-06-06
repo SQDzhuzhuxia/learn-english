@@ -14,6 +14,7 @@ describe("createTodayCoursePlan", () => {
 
     expect(plan.activeTrack?.id).toBe("survival-foundation");
     expect(plan.currentMaterial?.id).toBe("doctor-visit");
+    expect(plan.currentStage?.id).toBe("survival-medical-shopping");
     expect(plan.trackProgress).toBe(0);
   });
 
@@ -30,6 +31,7 @@ describe("createTodayCoursePlan", () => {
     const plan = createTodayCoursePlan(materials);
 
     expect(plan.currentMaterial?.id).toBe("grocery-store");
+    expect(plan.currentStage?.id).toBe("survival-medical-shopping");
     expect(plan.trackProgress).toBeGreaterThan(0);
   });
 });

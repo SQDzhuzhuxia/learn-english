@@ -1,4 +1,9 @@
-import { courseTracks, type CourseTrack } from "@/lib/content/course-catalog";
+import {
+  courseTracks,
+  createCourseStageSummaries,
+  type CourseStageSummary,
+  type CourseTrack
+} from "@/lib/content/course-catalog";
 import type { StudyMaterialRecord } from "@/lib/content/types";
 import type { OutputErrorCategory, OutputErrorSummary } from "@/lib/analytics/output-error-stats";
 
@@ -6,6 +11,7 @@ export type TodayCoursePlan = {
   activeTrack?: CourseTrack;
   trackMaterials: StudyMaterialRecord[];
   currentMaterial?: StudyMaterialRecord;
+  currentStage?: CourseStageSummary;
   completedInTrack: number;
   trackProgress: number;
 };
@@ -126,6 +132,7 @@ export function createTodayCoursePlan(
     : [];
   const currentMaterial =
     trackMaterials.find((material) => material.status !== "已完成") ?? trackMaterials[0] ?? materials[0];
+  const currentStage = activeTrack ? createCourseStageSummaries(activeTrack, materials).find((stage) => stage.isCurrent) : undefined;
   const completedInTrack = trackMaterials.filter((material) => material.status === "已完成").length;
   const trackProgress = Math.round((completedInTrack / Math.max(1, trackMaterials.length)) * 100);
 
@@ -133,6 +140,7 @@ export function createTodayCoursePlan(
     activeTrack,
     trackMaterials,
     currentMaterial,
+    currentStage,
     completedInTrack,
     trackProgress
   };

@@ -16,7 +16,7 @@ import {
   Upload
 } from "lucide-react";
 import { materialFilters } from "@/lib/mock-data";
-import { courseTracks } from "@/lib/content/course-catalog";
+import { courseTracks, createCourseStageSummaries } from "@/lib/content/course-catalog";
 import {
   deleteUserMaterial,
   getSeedMaterials,
@@ -171,6 +171,8 @@ export function MaterialLibraryClient() {
         const progress = Math.round((completed / Math.max(1, trackMaterials.length)) * 100);
         const nextMaterial =
           trackMaterials.find((material) => material.status !== "已完成") ?? trackMaterials[0];
+        const stageSummaries = createCourseStageSummaries(track, materials);
+        const currentStage = stageSummaries.find((stage) => stage.isCurrent);
 
         return {
           ...track,
@@ -179,7 +181,9 @@ export function MaterialLibraryClient() {
           total: trackMaterials.length,
           totalMinutes,
           progress,
-          nextMaterial
+          nextMaterial,
+          stageSummaries,
+          currentStage
         };
       }),
     [materials]
@@ -320,11 +324,54 @@ export function MaterialLibraryClient() {
                   </div>
                 </div>
                 <p className="mt-4 text-xs leading-5 text-muted">{track.focus}</p>
+                {track.currentStage ? (
+                  <div className="mt-4 rounded-lg border border-border bg-white p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-muted">当前阶段</p>
+                        <p className="mt-1 break-words text-sm font-semibold text-foreground">
+                          {track.currentStage.title}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs font-semibold text-muted">
+                        {track.currentStage.completed}/{track.currentStage.total}
+                      </span>
+                    </div>
+                    <Progress value={track.currentStage.progress} className="mt-3 bg-panel-strong" />
+                    <p className="mt-3 text-xs leading-5 text-muted">{track.currentStage.goal}</p>
+                    <div className="mt-3 space-y-2">
+                      {track.currentStage.completionCriteria.slice(0, 2).map((criterion) => (
+                        <p key={criterion} className="flex gap-2 text-xs leading-5 text-muted">
+                          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground" />
+                          <span>{criterion}</span>
+                        </p>
+                      ))}
+                    </div>
+                    <p className="mt-3 rounded-lg bg-panel-strong px-3 py-2 text-xs leading-5 text-muted">
+                      输出任务：{track.currentStage.outputTask}
+                    </p>
+                  </div>
+                ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {track.outcomes.slice(0, 2).map((outcome) => (
                     <Badge key={outcome} variant="soft">
                       {outcome}
                     </Badge>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {track.stageSummaries.map((stage) => (
+                    <span
+                      key={stage.id}
+                      className={`h-1.5 flex-1 rounded-full ${
+                        stage.progress >= 100
+                          ? "bg-foreground"
+                          : stage.isCurrent
+                            ? "bg-muted"
+                            : "bg-border"
+                      }`}
+                      title={`${stage.title} ${stage.progress}%`}
+                    />
                   ))}
                 </div>
                 {track.nextMaterial ? (

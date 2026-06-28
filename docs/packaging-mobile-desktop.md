@@ -20,6 +20,7 @@ npm run package:check -- --json
 npm run package:native:check
 npm run package:native:check -- --json
 npm run package:native:dev-secrets -- --target windows
+npm run package:native:prepare -- --target all --profile android --web-url=https://your-deployed-app.example
 npm run package:native:materialize -- --dry-run --target capacitor --profile android
 ```
 
@@ -34,6 +35,7 @@ The check verifies:
 - deployment guide presence.
 - Capacitor, Tauri, and Electron starter templates.
 - `package:scaffold` availability.
+- deployed Web/PWA wrapper generation through `package:native:prepare`.
 - native signing and release environment contract coverage.
 
 `package:native:check` runs in non-strict contract mode by default. This is the
@@ -66,6 +68,35 @@ The scaffold contains:
 - `tauri.conf.example.json`
 - `electron-main.example.cjs`
 - `electron-preload.example.cjs`
+
+The scaffold is a starter reference only. This app uses Next.js server API routes
+for AI, STT, TTS, and pronunciation endpoints, so a native release should wrap a
+deployed Web/PWA URL instead of assuming a static `out/` export.
+
+## Prepare Native Wrapper Inputs
+
+After deploying the Web/PWA app, generate release inputs for the selected native
+shell:
+
+```bash
+npm run package:native:prepare -- --clean --target capacitor --profile android --web-url=https://your-deployed-app.example
+npm run package:native:prepare -- --clean --target tauri --profile windows --web-url=https://your-deployed-app.example
+npm run package:native:prepare -- --clean --target electron --profile macos --web-url=https://your-deployed-app.example
+```
+
+Use `--target all` to generate all wrapper inputs at once. The command writes to
+ignored `.native-release/wrapper/` paths:
+
+- `capacitor/capacitor.config.json`
+- `capacitor/dist/index.html`
+- `tauri/src-tauri/tauri.conf.json`
+- `tauri/dist/index.html`
+- `electron/main.cjs`
+- `electron/preload.cjs`
+- `RELEASE_PLAN.md`
+
+The generated HTML files are small redirect fallbacks; the native shell itself
+loads the deployed Web/PWA URL so server-backed routes keep working.
 
 ## Signed Release Checks
 
@@ -112,10 +143,11 @@ must come from an Apple Developer account.
 ## GitHub Native Release Workflow
 
 `.github/workflows/native-release.yml` provides a manual `workflow_dispatch`
-release contract for native targets. It accepts `target` and `profile`, injects
-signing secrets from GitHub Actions Secrets, runs the matching strict
-`package:native:check` profile, builds the Web/PWA bundle, generates the native
-scaffold, and uploads it as an artifact.
+release contract for native targets. It accepts `target`, `profile`, and the
+deployed `web_url`, injects signing secrets from GitHub Actions Secrets, runs the
+matching strict `package:native:check` profile, builds the Web/PWA bundle,
+generates the native scaffold, prepares deployed Web/PWA wrapper inputs, and
+uploads both as artifacts.
 
 The workflow intentionally fails before build artifacts are created when required
 certificates or store keys are missing. Add only the secrets for the release

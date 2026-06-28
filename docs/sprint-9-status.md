@@ -49,7 +49,11 @@ and add a stronger regression gate for core user interactions.
 - A manual native release workflow is available at
   `.github/workflows/native-release.yml`; it injects signing secrets, enforces
   strict profile checks, materializes temporary signing files, builds the
-  Web/PWA bundle, and uploads the generated native scaffold artifact.
+  Web/PWA bundle, prepares deployed Web/PWA native wrapper inputs, and uploads
+  the generated release-input artifacts.
+- `package:native:prepare` generates Capacitor, Tauri, and Electron wrapper
+  inputs under `.native-release/wrapper/` for a deployed Web/PWA URL. This keeps
+  native shells compatible with the app's server-backed Next.js API routes.
 - `package:native:dev-secrets -- --target windows` can generate a self-signed
   development-only Windows PFX for local packaging smoke tests.
 - `package:native:dev-secrets -- --target android` can generate a
@@ -74,9 +78,10 @@ API, doctor command, and settings visibility.
 
 The same boundary applies to mobile and desktop packaging. The repo now provides
 PWA readiness checks, native shell scaffolds for Capacitor, Tauri, and Electron,
-and a strict signing-environment checker. Store signing, installer notarization,
-and CI release pipelines remain release-environment work because they require
-platform accounts, certificates, and distribution choices.
+deployed Web/PWA wrapper generation, and a strict signing-environment checker.
+Store signing, installer notarization, and CI release pipelines remain
+release-environment work because they require platform accounts, certificates,
+and distribution choices.
 
 ## Verification
 
@@ -90,6 +95,7 @@ npm run test
 npm run build
 npm run package:check
 npm run package:native:check -- --json
+npm run package:native:prepare -- --clean --target all --profile android --web-url=http://127.0.0.1:3000 --json
 npm run qa:interactions:check
 npm run qa:mobile:check
 npm run qa:mobile:screenshots -- --base-url=http://127.0.0.1:3000
@@ -106,10 +112,11 @@ release:check: passed
 release:check --with-screenshots: passed
 lint: passed
 typecheck: passed
-test: 45 files / 190 tests passed
+test: 46 files / 191 tests passed
 build: passed, 21 app routes generated
 package:check: passed
 package:native:check: passed in contract mode; signed release secrets not present
+package:native:prepare: passed, generated Capacitor/Tauri/Electron wrapper inputs
 qa:interactions:check: passed
 qa:mobile:check: passed
 qa:mobile:screenshots: passed with system Chrome, 5 routes, no horizontal overflow

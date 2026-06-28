@@ -41,10 +41,10 @@ function copyTemplate(sourceName, targetName, force) {
   };
 }
 
-function createReadme() {
+function createReadme(force) {
   const readmePath = path.join(OUT_DIR, "README.md");
 
-  if (fs.existsSync(readmePath)) {
+  if (fs.existsSync(readmePath) && !force) {
     return {
       path: path.relative(ROOT, readmePath),
       created: false,
@@ -65,7 +65,9 @@ function createReadme() {
       "- Tauri for lightweight desktop packaging.",
       "- Electron when Node-backed desktop integrations are required.",
       "",
-      "Keep the Next.js app as the source of truth. Native shells should wrap the built Web/PWA output instead of forking UI code.",
+      "Keep the Next.js app as the source of truth. Because this app uses Next.js API routes, native shells should wrap a deployed Web/PWA URL instead of assuming a static `out/` export.",
+      "",
+      "For release inputs, run `npm run package:native:prepare -- --web-url=https://your-deployed-app.example`.",
       ""
     ].join("\n"),
     "utf8"
@@ -84,7 +86,7 @@ function createReport(force) {
   return {
     ok: true,
     outDir: path.relative(ROOT, OUT_DIR),
-    files: [...FILES.map(([source, target]) => copyTemplate(source, target, force)), createReadme()]
+    files: [...FILES.map(([source, target]) => copyTemplate(source, target, force)), createReadme(force)]
   };
 }
 

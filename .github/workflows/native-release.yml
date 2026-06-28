@@ -21,6 +21,10 @@ on:
           - macos
           - windows
           - tauri-update
+      web_url:
+        description: Deployed Web/PWA URL that native shells should wrap
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -74,11 +78,16 @@ jobs:
       - name: Generate native shell scaffold
         run: npm run package:scaffold -- --force
 
+      - name: Prepare deployed Web/PWA wrapper
+        run: npm run package:native:prepare -- --clean --target "${{ inputs.target }}" --profile "${{ inputs.profile }}" --web-url "${{ inputs.web_url }}"
+
       - name: Upload native scaffold artifact
         uses: actions/upload-artifact@v4
         with:
-          name: native-${{ inputs.target }}-${{ inputs.profile }}-scaffold
-          path: .package-scaffold/
+          name: native-${{ inputs.target }}-${{ inputs.profile }}-release-inputs
+          path: |
+            .package-scaffold/
+            .native-release/wrapper/
 
       - name: Remove materialized signing files
         if: always()

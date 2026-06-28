@@ -99,6 +99,13 @@ function createReport() {
       "package:scaffold should generate native shell starter files outside source control."
     ),
     check(
+      "native-wrapper-prepare",
+      "Native deployed Web wrapper",
+      packageJson.scripts?.["package:native:prepare"] === "node scripts/package/prepare-native-wrapper.mjs" &&
+        hasFile("scripts/package/prepare-native-wrapper.mjs"),
+      "package:native:prepare should generate native wrapper inputs for a deployed Web/PWA URL."
+    ),
+    check(
       "native-release-env-check",
       "Native release env check",
       packageJson.scripts?.["package:native:check"] === "node scripts/package/verify-native-release-env.mjs" &&
@@ -145,8 +152,10 @@ function createReport() {
       "Native release workflow",
       hasFile(".github/workflows/native-release.yml") &&
         nativeReleaseWorkflow.includes("workflow_dispatch") &&
+        nativeReleaseWorkflow.includes("web_url") &&
         nativeReleaseWorkflow.includes("package:native:check -- --strict") &&
         nativeReleaseWorkflow.includes("package:native:materialize") &&
+        nativeReleaseWorkflow.includes("package:native:prepare") &&
         nativeReleaseWorkflow.includes("ANDROID_KEYSTORE_BASE64") &&
         nativeReleaseWorkflow.includes("APPLE_CERTIFICATE_BASE64") &&
         nativeReleaseWorkflow.includes("WINDOWS_CERTIFICATE_BASE64"),

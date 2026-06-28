@@ -1,9 +1,11 @@
 {
   "appId": "com.learnenglish.app",
   "appName": "Learn English",
-  "webDir": "out",
+  "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "url": "https://example.com",
+    "androidScheme": "https",
+    "cleartext": false
   },
   "plugins": {
     "SplashScreen": {

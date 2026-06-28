@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Cloud, Database, Download, KeyRound, Mic, RotateCw, Trash2, Upload, Volume2 } from "lucide-react";
+import { Activity, Cloud, Database, Download, KeyRound, Mic, RotateCw, Trash2, Upload, Volume2 } from "lucide-react";
 import { CloudSyncPanel } from "@/components/settings/cloud-sync-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { useToastMessage } from "@/components/ui/toast";
 import type { LocalSpeechReadiness, SpeechReadinessStatus } from "@/lib/speech/server/local-speech-readiness";
 import { settingsGroups } from "@/lib/mock-data";
 import {
@@ -17,6 +20,7 @@ import {
 } from "@/lib/sync/local-backup";
 import { summarizeSyncSnapshot } from "@/lib/sync/sync-snapshot";
 import { clearCachedTtsAudio } from "@/lib/speech/tts-audio-cache";
+import { speakEnglishText } from "@/lib/speech/speech-synthesis";
 import { clearAiRequestQueue, loadAiRequestQueue, retryQueuedAiRequests } from "@/lib/ai/request-queue";
 import { clearAiResultInbox, loadAiResultInbox } from "@/lib/ai/result-inbox";
 
@@ -50,6 +54,15 @@ function getSpeechStatusLabel(status: SpeechReadinessStatus) {
   return "未配置";
 }
 
+const localTtsEnvTemplate = [
+  "TTS_PROVIDER=local",
+  "TTS_BASE_URL=http://127.0.0.1:8880/v1",
+  "TTS_MODEL=local-tts",
+  "TTS_ENDPOINT_PATH=/audio/speech",
+  "TTS_VOICE=alloy",
+  "TTS_FORMAT=mp3"
+].join("\n");
+
 export function SettingsClient() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [message, setMessage] = useState("");
@@ -57,6 +70,13 @@ export function SettingsClient() {
   const [aiResultCount, setAiResultCount] = useState(0);
   const [confirmClearAiResults, setConfirmClearAiResults] = useState(false);
   const [speechReadiness, setSpeechReadiness] = useState<LocalSpeechReadiness | null>(null);
+  const [ttsPreviewText, setTtsPreviewText] = useState("I would like to make an appointment for Friday morning.");
+  const [ttsPreviewVoice, setTtsPreviewVoice] = useState("alloy");
+  const [ttsPreviewInstructions, setTtsPreviewInstructions] = useState("Speak clearly and slowly for a beginner English learner.");
+  const [ttsPreviewMessage, setTtsPreviewMessage] = useState("");
+  const [isTestingTts, setIsTestingTts] = useState(false);
+  useToastMessage(message, { title: "设置" });
+  useToastMessage(ttsPreviewMessage, { title: "TTS 试听" });
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -110,6 +130,25 @@ export function SettingsClient() {
   async function handleClearTtsAudioCache() {
     const cleared = await clearCachedTtsAudio();
     setMessage(cleared ? "已清理本机离线朗读音频缓存。" : "当前浏览器没有可清理的离线朗读音频缓存。");
+  }
+
+  async function handleTestTtsPreview() {
+    setIsTestingTts(true);
+    setTtsPreviewMessage("正在请求 TTS 试听...");
+
+    try {
+      const result = await speakEnglishText(ttsPreviewText, {
+        voice: ttsPreviewVoice,
+        instructions: ttsPreviewInstructions,
+        preferServer: true
+      });
+
+      setTtsPreviewMessage(result.message);
+    } catch (error) {
+      setTtsPreviewMessage(error instanceof Error ? error.message : "TTS 试听失败。");
+    } finally {
+      setIsTestingTts(false);
+    }
   }
 
   function handleClearAiRequestQueue() {
@@ -278,19 +317,93 @@ export function SettingsClient() {
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-panel-strong text-foreground">
+                <Volume2 className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle>TTS 配置和试听</CardTitle>
+                <CardDescription>可视化当前 TTS 状态，复制本地 endpoint 模板，并直接试听朗读效果。</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+              <div className="space-y-3">
+                <div className="rounded-lg border border-border bg-white p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-foreground">当前 TTS</p>
+                    <Badge variant={speechReadiness?.tts.status === "local" ? "default" : "outline"}>
+                      {speechReadiness ? getSpeechStatusLabel(speechReadiness.tts.status) : "检查中"}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    {speechReadiness?.tts.detail ?? "正在读取服务端 TTS 配置。"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border bg-panel-strong p-4">
+                  <p className="text-sm font-semibold text-foreground">`.env.local` 本地 TTS 模板</p>
+                  <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-white p-3 text-xs leading-5 text-foreground">
+                    {localTtsEnvTemplate}
+                  </pre>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold text-foreground">
+                  试听文本
+                  <Textarea
+                    className="mt-2 min-h-24"
+                    value={ttsPreviewText}
+                    onChange={(event) => setTtsPreviewText(event.target.value)}
+                  />
+                </label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm font-semibold text-foreground">
+                    Voice
+                    <Input
+                      className="mt-2"
+                      value={ttsPreviewVoice}
+                      onChange={(event) => setTtsPreviewVoice(event.target.value)}
+                    />
+                  </label>
+                  <label className="block text-sm font-semibold text-foreground">
+                    Instructions
+                    <Input
+                      className="mt-2"
+                      value={ttsPreviewInstructions}
+                      onChange={(event) => setTtsPreviewInstructions(event.target.value)}
+                    />
+                  </label>
+                </div>
+                <Button onClick={() => void handleTestTtsPreview()} disabled={isTestingTts} className="w-full sm:w-auto">
+                  <Volume2 className="h-4 w-4" />
+                  {isTestingTts ? "试听中" : "试听 TTS"}
+                </Button>
+                {ttsPreviewMessage ? (
+                  <p className="rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm leading-6 text-foreground">
+                    {ttsPreviewMessage}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-panel-strong text-foreground">
                 <Mic className="h-5 w-5" />
               </div>
               <div>
                 <CardTitle>离线语音准备</CardTitle>
-                <CardDescription>检查本地 Whisper/STT 和本地 TTS endpoint 是否具备。</CardDescription>
+                <CardDescription>检查本地 Whisper/STT、本地 TTS 和本地发音评分 endpoint 是否具备。</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             {speechReadiness ? (
               <div className="space-y-3">
-                {[speechReadiness.stt, speechReadiness.tts].map((item) => {
-                  const Icon = item.id === "stt" ? Mic : Volume2;
+                {[speechReadiness.stt, speechReadiness.tts, speechReadiness.pronunciation].map((item) => {
+                  const Icon = item.id === "stt" ? Mic : item.id === "tts" ? Volume2 : Activity;
 
                   return (
                     <div key={item.id} className="rounded-lg border border-border bg-white p-4">
@@ -317,7 +430,11 @@ export function SettingsClient() {
                 })}
                 <div className="rounded-lg border border-border bg-panel-strong p-3">
                   <p className="text-sm font-semibold text-foreground">
-                    {speechReadiness.offlineReady ? "本机离线语音链路已准备好" : "下一步"}
+                    {speechReadiness.practiceReady
+                      ? "本机完整语音练习链路已准备好"
+                      : speechReadiness.offlineReady
+                        ? "本机 STT/TTS 已准备好，发音评分可继续配置"
+                        : "下一步"}
                   </p>
                   <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
                     {speechReadiness.nextSteps.map((step) => (

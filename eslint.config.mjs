@@ -8,6 +8,9 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "dist/**",
+      ".local-speech/**",
+      ".package-scaffold/**",
+      "local-models/**",
       "node_modules/**",
       "coverage/**",
       "next-env.d.ts"

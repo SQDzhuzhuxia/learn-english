@@ -250,6 +250,69 @@ describe("AI request queue", () => {
     expect(inbox[0]?.summary).toBe("I want to go to the office.");
   });
 
+  it("retries practice generation requests and stores generated sets in the AI inbox", async () => {
+    enqueueAiRequest({
+      kind: "generate-practice",
+      endpoint: "/api/ai/generate-practice",
+      payload: {
+        materialTitle: "Opening a bank account",
+        materialType: "dialogue",
+        level: "A2",
+        summary: "Ask questions at a bank.",
+        keyExpressions: ["open an account"],
+        segments: [
+          {
+            id: "segment-1",
+            order: 1,
+            text: "I would like to open a checking account."
+          }
+        ]
+      },
+      error: "offline"
+    });
+
+    const summary = await retryQueuedAiRequests({
+      fetcher: vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          practiceSet: {
+            materialTitle: "Opening a bank account",
+            level: "A2",
+            focus: "bank account questions",
+            source: "model",
+            provider: "test",
+            generatedAt: "2026-06-27T00:00:00.000Z",
+            drills: [
+              {
+                type: "qa",
+                title: "Bank question",
+                instruction: "Answer the question.",
+                prompt: "What do you want to open?",
+                answer: "I would like to open a checking account.",
+                hints: ["Use I would like to..."],
+                explanationZh: "练习银行开户表达。",
+                estimatedMinutes: 2
+              }
+            ]
+          }
+        })
+      })
+    });
+    const inbox = loadAiResultInbox();
+
+    expect(summary.completed).toBe(1);
+    expect(loadAiRequestQueue()).toEqual([]);
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]?.kind).toBe("generate-practice");
+    expect(inbox[0]?.title).toBe("Opening a bank account");
+    expect(inbox[0]?.summary).toContain("1");
+    expect(inbox[0]?.resultPayload).toMatchObject({
+      practiceSet: {
+        focus: "bank account questions"
+      }
+    });
+  });
+
   it("skips queued requests that cannot be written back automatically", async () => {
     const fetcher = vi.fn();
 

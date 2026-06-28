@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -14,10 +14,24 @@ import {
   Play,
   Plus,
   Square,
+  Target,
   Trash2,
   Volume2
 } from "lucide-react";
-import { practiceModes, retellingPractice, roleplayScenario, todayPractice, writingPrompts } from "@/lib/mock-data";
+import {
+  practiceModes,
+  retellingPractice as fallbackRetellingPractice,
+  roleplayScenario as fallbackRoleplayScenario,
+  todayPractice as fallbackTodayPractice,
+  writingPrompts as fallbackWritingPrompts
+} from "@/lib/mock-data";
+import { createMaterialPracticeBundle } from "@/lib/content/material-practice";
+import {
+  findMaterialById,
+  getCurrentMaterialId,
+  loadMaterials
+} from "@/lib/content/material-store";
+import type { StudyMaterialRecord } from "@/lib/content/types";
 import { requestAiJsonWithQueue } from "@/lib/ai/request-queue";
 import {
   clearAiResultInbox,
@@ -31,12 +45,20 @@ import {
   loadPracticeAttempts,
   type PracticeAttemptRecord
 } from "@/lib/speech/practice-store";
+import {
+  getDuePracticeQuestions,
+  loadPracticeQuestions,
+  reviewPracticeQuestion,
+  upsertPracticeQuestionsFromSet,
+  type PracticeQuestionRecord
+} from "@/lib/practice/question-bank";
 import { createShadowingFeedback, type ShadowingFeedback } from "@/lib/speech/shadowing-feedback";
 import { createRetellingFeedback, type RetellingFeedback } from "@/lib/speech/retelling-feedback";
 import { createRoleplayFeedback, type RoleplayFeedback } from "@/lib/speech/roleplay-feedback";
 import { summarizeRoleplayMemory } from "@/lib/speech/roleplay-memory";
 import { summarizeRoleplaySession } from "@/lib/speech/roleplay-session-summary";
 import { createRoleplayTransferPlan } from "@/lib/speech/roleplay-transfer";
+import { trackRoleplayGoal } from "@/lib/speech/roleplay-goal-tracker";
 import { speakEnglishText } from "@/lib/speech/speech-synthesis";
 import { saveWritingItemAsReviewCard } from "@/lib/review/review-store";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +66,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import type { AiRoleplayTurn, AiSegmentExpression, AiWritingCorrection, RoleplayTranscriptTurn } from "@/lib/ai/types";
+import { useToastMessage } from "@/components/ui/toast";
+import type {
+  AiGeneratedPracticeSet,
+  AiRoleplayTurn,
+  AiSegmentExpression,
+  AiWritingCorrection,
+  RoleplayTranscriptTurn
+} from "@/lib/ai/types";
 import type { PronunciationScoringResult } from "@/lib/speech/server/pronunciation-score";
 
 type CloudTranscription = {
@@ -167,7 +196,15 @@ function getPracticeAttemptTypeLabel(type: PracticeAttemptRecord["type"]) {
 }
 
 function getAiResultInboxTypeLabel(kind: AiResultInboxRecord["kind"]) {
-  return kind === "roleplay-next" ? "角色追问" : "写作/复述反馈";
+  if (kind === "roleplay-next") {
+    return "角色追问";
+  }
+
+  if (kind === "generate-practice") {
+    return "AI 练习集";
+  }
+
+  return "写作/复述反馈";
 }
 
 function getAiResultCorrection(record: AiResultInboxRecord) {
@@ -178,6 +215,11 @@ function getAiResultCorrection(record: AiResultInboxRecord) {
 function getAiResultTurn(record: AiResultInboxRecord) {
   const payload = record.resultPayload as { turn?: AiRoleplayTurn };
   return payload.turn;
+}
+
+function getAiResultPracticeSet(record: AiResultInboxRecord) {
+  const payload = record.resultPayload as { practiceSet?: AiGeneratedPracticeSet };
+  return payload.practiceSet;
 }
 
 function getAiResultRequest(record: AiResultInboxRecord) {
@@ -272,6 +314,7 @@ export function PracticeClient() {
   const [isScoringPronunciation, setIsScoringPronunciation] = useState(false);
   const [attempts, setAttempts] = useState<PracticeAttemptRecord[]>([]);
   const [aiResults, setAiResults] = useState<AiResultInboxRecord[]>([]);
+  const [currentMaterial, setCurrentMaterial] = useState<StudyMaterialRecord | undefined>(undefined);
   const [retellingText, setRetellingText] = useState("");
   const [retellingFeedback, setRetellingFeedback] = useState<RetellingFeedback | null>(null);
   const [retellingMessage, setRetellingMessage] = useState("");
@@ -297,6 +340,11 @@ export function PracticeClient() {
   const [savedRoleplayAiKeys, setSavedRoleplayAiKeys] = useState<Record<string, boolean>>({});
   const [dynamicRoleplayTurns, setDynamicRoleplayTurns] = useState<PracticeRoleplayTurn[]>([]);
   const [isGeneratingRoleplayTurn, setIsGeneratingRoleplayTurn] = useState(false);
+  const [generatedPracticeSet, setGeneratedPracticeSet] = useState<AiGeneratedPracticeSet | null>(null);
+  const [isGeneratingPracticeSet, setIsGeneratingPracticeSet] = useState(false);
+  const [practiceGenerationMessage, setPracticeGenerationMessage] = useState("");
+  const [duePracticeQuestions, setDuePracticeQuestions] = useState<PracticeQuestionRecord[]>([]);
+  const [practiceQuestionCount, setPracticeQuestionCount] = useState(0);
   const [selectedWritingIndex, setSelectedWritingIndex] = useState(0);
   const [writingText, setWritingText] = useState("");
   const [writingCorrection, setWritingCorrection] = useState<AiWritingCorrection | null>(null);
@@ -312,6 +360,22 @@ export function PracticeClient() {
   const chunksRef = useRef<BlobPart[]>([]);
   const transcriptRef = useRef("");
   const startedAtRef = useRef<number>(0);
+  useToastMessage(message, { title: "跟读" });
+  useToastMessage(retellingMessage, { title: "复述" });
+  useToastMessage(roleplayMessage, { title: "角色扮演" });
+  useToastMessage(practiceGenerationMessage, { title: "AI 练习" });
+  useToastMessage(writingMessage, { title: "写作" });
+  useToastMessage(aiResultInboxMessage, { title: "AI 结果" });
+
+  const practiceBundle = useMemo(
+    () => (currentMaterial ? createMaterialPracticeBundle(currentMaterial) : null),
+    [currentMaterial]
+  );
+  const todayPractice = practiceBundle?.shadowing ?? fallbackTodayPractice;
+  const retellingPractice = practiceBundle?.retelling ?? fallbackRetellingPractice;
+  const roleplayScenario = practiceBundle?.roleplay ?? fallbackRoleplayScenario;
+  const writingPrompts = practiceBundle?.writingPrompts ?? fallbackWritingPrompts;
+  const materialDrills = practiceBundle?.drills ?? [];
 
   useEffect(() => {
     let cancelled = false;
@@ -326,6 +390,12 @@ export function PracticeClient() {
       if (!cancelled) {
         setAttempts(loadPracticeAttempts());
         setAiResults(loadAiResultInbox());
+        refreshPracticeQuestionQueue();
+        const materials = loadMaterials();
+        const currentId = getCurrentMaterialId();
+        setCurrentMaterial(
+          (currentId ? findMaterialById(currentId) : undefined) ?? materials[0]
+        );
       }
     });
 
@@ -336,6 +406,11 @@ export function PracticeClient() {
       window.removeEventListener("learn-english:ai-result-inbox-updated", handleAiResultInboxUpdated);
     };
   }, []);
+
+  function refreshPracticeQuestionQueue() {
+    setDuePracticeQuestions(getDuePracticeQuestions(new Date(), 6));
+    setPracticeQuestionCount(loadPracticeQuestions().length);
+  }
 
   function refreshAiResults() {
     setAiResults(loadAiResultInbox());
@@ -421,7 +496,14 @@ export function PracticeClient() {
   function handleApplyAiResult(result: AiResultInboxRecord) {
     const correction = getAiResultCorrection(result);
     const turn = getAiResultTurn(result);
+    const practiceSet = getAiResultPracticeSet(result);
     const request = getAiResultRequest(result);
+
+    if (practiceSet) {
+      setGeneratedPracticeSet(practiceSet);
+      setPracticeGenerationMessage(`已载入 AI 练习集：${practiceSet.drills.length} 道题。`);
+      return;
+    }
 
     if (correction) {
       const sourceText = request.userText ?? correction.originalText;
@@ -479,7 +561,23 @@ export function PracticeClient() {
   function handleSaveAiResultAsReviewCards(result: AiResultInboxRecord) {
     const correction = getAiResultCorrection(result);
     const turn = getAiResultTurn(result);
+    const practiceSet = getAiResultPracticeSet(result);
     const request = getAiResultRequest(result);
+
+    if (practiceSet) {
+      const saved = upsertPracticeQuestionsFromSet({
+        materialId: currentMaterial?.id,
+        practiceSet
+      });
+
+      refreshPracticeQuestionQueue();
+      setAiResultInboxMessage(
+        saved.created > 0
+          ? `已从 AI 练习集新增 ${saved.created} 道题，更新 ${saved.updated} 道题。`
+          : `这组 AI 练习题已经在题库里，已更新 ${saved.updated} 道题。`
+      );
+      return;
+    }
 
     if (correction) {
       const promptTitle = request.promptTitle ?? result.title;
@@ -991,6 +1089,118 @@ export function PracticeClient() {
     } finally {
       setIsGeneratingRoleplayTurn(false);
     }
+  }
+
+  async function handleGeneratePracticeSet() {
+    if (!currentMaterial) {
+      setPracticeGenerationMessage("请先在今日页或材料库选择一篇当前材料。");
+      return;
+    }
+
+    setIsGeneratingPracticeSet(true);
+    setPracticeGenerationMessage("正在基于当前材料生成更多练习...");
+
+    try {
+      const requestPayload = {
+        materialId: currentMaterial.id,
+        materialTitle: currentMaterial.title,
+        materialType: currentMaterial.type,
+        level: currentMaterial.level,
+        summary: currentMaterial.summary,
+        keyExpressions: currentMaterial.keyExpressions,
+        targetCount: 8,
+        focus: "跟读、复述、填空、问答、写作和角色扮演",
+        segments: currentMaterial.segments.map((segment) => ({
+          id: segment.id,
+          order: segment.order,
+          text: segment.text
+        }))
+      };
+      const result = await requestAiJsonWithQueue<{
+        practiceSet?: AiGeneratedPracticeSet;
+        error?: string;
+      }>({
+        kind: "generate-practice",
+        endpoint: "/api/ai/generate-practice",
+        payload: requestPayload,
+        metadata: {
+          materialId: currentMaterial.id,
+          materialTitle: currentMaterial.title
+        },
+        errorMessage: "AI 练习生成失败。"
+      });
+
+      if (result.queued) {
+        setPracticeGenerationMessage(
+          `AI 练习生成暂不可用，已加入本地队列。稍后恢复后可在 AI 结果收件箱载入。队列记录：${result.queueItem.id.slice(-8)}`
+        );
+        return;
+      }
+
+      const payload = result.payload;
+
+      if (!payload.practiceSet) {
+        throw new Error(payload.error ?? "AI 练习生成失败。");
+      }
+
+      setGeneratedPracticeSet(payload.practiceSet);
+      setPracticeGenerationMessage(
+        payload.practiceSet.source === "model"
+          ? `已由 ${payload.practiceSet.provider} 生成 ${payload.practiceSet.drills.length} 道练习。`
+          : `当前使用本地降级生成 ${payload.practiceSet.drills.length} 道练习，配置 AI 后会调用模型。`
+      );
+    } catch (error) {
+      setPracticeGenerationMessage(error instanceof Error ? error.message : "AI 练习生成失败。");
+    } finally {
+      setIsGeneratingPracticeSet(false);
+    }
+  }
+
+  function handleSaveGeneratedPracticeSet() {
+    if (!generatedPracticeSet) {
+      setPracticeGenerationMessage("请先生成一组练习。");
+      return;
+    }
+
+    const saved = upsertPracticeQuestionsFromSet({
+      materialId: currentMaterial?.id,
+      practiceSet: generatedPracticeSet
+    });
+
+    refreshPracticeQuestionQueue();
+    recordStudyActivity({
+      type: "asset",
+      label: `保存练习题：${generatedPracticeSet.materialTitle}`,
+      materialId: currentMaterial?.id,
+      materialTitle: generatedPracticeSet.materialTitle
+    });
+    setPracticeGenerationMessage(
+      saved.created > 0
+        ? `已新增 ${saved.created} 道题到练习题库，更新 ${saved.updated} 道题。`
+        : `这组练习题已经在题库里，已更新 ${saved.updated} 道题。`
+    );
+  }
+
+  function handleReviewPracticeQuestion(question: PracticeQuestionRecord, rating: "again" | "hard" | "good" | "easy") {
+    const result = reviewPracticeQuestion({
+      questionId: question.id,
+      rating,
+      correct: rating === "good" || rating === "easy"
+    });
+
+    if (!result) {
+      setPracticeGenerationMessage("没有找到这道练习题。");
+      return;
+    }
+
+    refreshPracticeQuestionQueue();
+    recordStudyActivity({
+      type: "review",
+      label: `练习题复习：${question.title}`,
+      minutes: 1,
+      materialTitle: question.materialTitle
+    });
+    setPracticeGenerationMessage(`已记录「${question.title}」的练习结果，下次复习已重新安排。`);
   }
 
   function handleSaveRoleplayNaturalReply() {
@@ -1674,10 +1884,11 @@ export function PracticeClient() {
     entries: roleplayTranscript
   });
   const roleplayMemory = summarizeRoleplayMemory(attempts, roleplayScenario.title);
+  const roleplayGoalTracker = trackRoleplayGoal(attempts, roleplayScenario.title);
   const roleplayTransferPlan = createRoleplayTransferPlan(roleplayMemory);
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 overflow-x-hidden px-4 py-5 sm:px-6 lg:px-8">
       <section id="practice-shadowing" className="grid min-w-0 scroll-mt-24 gap-5 lg:grid-cols-[1fr_360px]">
         <Card className="min-w-0">
           <CardHeader className="pb-4">
@@ -1941,7 +2152,184 @@ export function PracticeClient() {
         })}
       </section>
 
-      <Card id="practice-roleplay" className="scroll-mt-24">
+      {materialDrills.length > 0 ? (
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Badge variant="soft">材料裂变练习</Badge>
+                <CardTitle className="mt-3 text-lg">{currentMaterial?.title ?? "当前材料"}</CardTitle>
+              </div>
+              <ClipboardCheck className="h-5 w-5 text-foreground" />
+            </div>
+            <CardDescription>
+              当前材料已自动拆成 {materialDrills.length} 个微练习，先做短题，再进入对应训练模块。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {materialDrills.map((drill) => (
+                <Link
+                  key={drill.id}
+                  href={drill.href}
+                  className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-white p-4 transition hover:bg-panel-strong"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <Badge variant="outline">{drill.estimatedMinutes} 分钟</Badge>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{drill.title}</p>
+                    <p className="mt-2 text-xs leading-5 text-muted">{drill.instruction}</p>
+                  </div>
+                  <p className="min-w-0 break-words rounded-lg bg-panel-strong px-3 py-2 text-xs leading-5 text-foreground">
+                    {drill.prompt}
+                  </p>
+                  {drill.answerHints.length > 0 ? (
+                    <p className="text-xs leading-5 text-muted">
+                      提示：{drill.answerHints.slice(0, 3).join(" / ")}
+                    </p>
+                  ) : null}
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <section className="grid min-w-0 gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Badge variant="soft">AI 练习生成</Badge>
+                <CardTitle className="mt-3 text-lg">从当前材料继续生成题目</CardTitle>
+              </div>
+              <Button onClick={() => void handleGeneratePracticeSet()} disabled={isGeneratingPracticeSet}>
+                <Plus className="h-4 w-4" />
+                {isGeneratingPracticeSet ? "生成中..." : "生成更多练习"}
+              </Button>
+            </div>
+            <CardDescription>
+              基于当前材料生成填空、问答、写作、角色准备等题目；保存后会进入练习题库和 SRS 队列。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {practiceGenerationMessage ? (
+              <p className="rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
+                {practiceGenerationMessage}
+              </p>
+            ) : null}
+            {generatedPracticeSet ? (
+              <div className="space-y-3">
+                <div className="flex flex-col gap-2 rounded-lg border border-border bg-panel-strong p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {generatedPracticeSet.materialTitle} · {generatedPracticeSet.drills.length} 道题
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted">{generatedPracticeSet.focus}</p>
+                  </div>
+                  <Button variant="outline" onClick={handleSaveGeneratedPracticeSet}>
+                    <Plus className="h-4 w-4" />
+                    加入题库
+                  </Button>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {generatedPracticeSet.drills.map((drill, index) => (
+                    <article key={`${drill.type}-${drill.prompt}-${index}`} className="rounded-lg border border-border bg-white p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <Badge variant="outline">{drill.type}</Badge>
+                          <h3 className="mt-2 text-sm font-semibold text-foreground">{drill.title}</h3>
+                        </div>
+                        <span className="text-xs text-muted">{drill.estimatedMinutes} 分钟</span>
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-muted">{drill.instruction}</p>
+                      <p className="mt-3 break-words rounded-lg bg-panel-strong p-3 text-sm leading-6 text-foreground">
+                        {drill.prompt}
+                      </p>
+                      {drill.hints.length > 0 ? (
+                        <p className="mt-2 text-xs leading-5 text-muted">提示：{drill.hints.join(" / ")}</p>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="rounded-lg border border-border bg-white p-4 text-sm leading-6 text-muted">
+                当前还没有生成的 AI 练习。点击“生成更多练习”后，可以把题目保存到题库。
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Badge variant="soft">练习题库</Badge>
+                <CardTitle className="mt-3 text-lg">到期练习队列</CardTitle>
+              </div>
+              <Badge variant="outline">{practiceQuestionCount} 题</Badge>
+            </div>
+            <CardDescription>
+              保存的生成题会按 SRS 调度。做完一题后按难度评分，系统会安排下次出现时间。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {duePracticeQuestions.length > 0 ? (
+              duePracticeQuestions.map((question) => (
+                <article key={question.id} className="rounded-lg border border-border bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Badge variant="outline">{question.type}</Badge>
+                      <h3 className="mt-2 text-sm font-semibold text-foreground">{question.title}</h3>
+                    </div>
+                    <span className="text-xs text-muted">{question.level}</span>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-muted">{question.instruction}</p>
+                  <p className="mt-3 break-words rounded-lg bg-panel-strong p-3 text-sm leading-6 text-foreground">
+                    {question.prompt}
+                  </p>
+                  <details className="mt-3 rounded-lg border border-border bg-panel-strong p-3">
+                    <summary className="cursor-pointer text-xs font-semibold text-foreground">查看答案和解释</summary>
+                    <p className="mt-2 text-sm leading-6 text-foreground">{question.answer}</p>
+                    <p className="mt-2 text-xs leading-5 text-muted">{question.explanationZh}</p>
+                  </details>
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      ["again", "重来"],
+                      ["hard", "困难"],
+                      ["good", "顺利"],
+                      ["easy", "简单"]
+                    ].map(([rating, label]) => (
+                      <Button
+                        key={rating}
+                        variant={rating === "good" || rating === "easy" ? "soft" : "outline"}
+                        size="sm"
+                        onClick={() =>
+                          handleReviewPracticeQuestion(
+                            question,
+                            rating as "again" | "hard" | "good" | "easy"
+                          )
+                        }
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="rounded-lg border border-border bg-white p-4 text-sm leading-6 text-muted">
+                暂无到期练习题。先生成并加入题库，或稍后按 SRS 到期后再回来练。
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <Card id="practice-roleplay" className="min-w-0 scroll-mt-24 overflow-hidden">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -1954,47 +2342,86 @@ export function PracticeClient() {
             {roleplayScenario.setting} · {roleplayScenario.goal}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="space-y-3">
-              <div className="rounded-lg border border-border bg-white p-4">
+        <CardContent className="min-w-0">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <div className="min-w-0 space-y-3">
+              <div className="min-w-0 rounded-lg border border-border bg-white p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm font-semibold text-foreground">角色设定</p>
                   <Badge variant="outline">{roleplayScenario.level}</Badge>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-muted">{roleplayScenario.learnerRole}</p>
-                <p className="mt-2 text-sm leading-6 text-muted">{roleplayScenario.partnerRole}</p>
+                <p className="mt-2 break-words text-sm leading-6 text-muted">{roleplayScenario.learnerRole}</p>
+                <p className="mt-2 break-words text-sm leading-6 text-muted">{roleplayScenario.partnerRole}</p>
               </div>
 
-              <div className="rounded-lg border border-border bg-white p-4">
+              <div className="min-w-0 rounded-lg border border-border bg-white p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-foreground" />
+                    <p className="text-sm font-semibold text-foreground">目标跟踪</p>
+                  </div>
+                  <Badge variant={roleplayGoalTracker.achieved ? "default" : "outline"}>
+                    目标 {roleplayGoalTracker.targetScore}%
+                  </Badge>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-panel-strong">
+                  <div
+                    className="h-full rounded-full bg-foreground"
+                    style={{ width: `${roleplayGoalTracker.progressPercent}%` }}
+                  />
+                </div>
+                <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-3">
+                  <div className="min-w-0 rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs text-muted">最佳完成度</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {roleplayGoalTracker.attempts > 0 ? `${roleplayGoalTracker.currentBest}%` : "-"}
+                    </p>
+                  </div>
+                  <div className="min-w-0 rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs text-muted">最近一次</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {roleplayGoalTracker.attempts > 0 ? `${roleplayGoalTracker.latestScore}%` : "-"}
+                    </p>
+                  </div>
+                  <div className="min-w-0 rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs text-muted">连续达标</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{roleplayGoalTracker.streak}</p>
+                  </div>
+                </div>
+                <p className="mt-3 break-words rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm leading-6 text-foreground">
+                  {roleplayGoalTracker.nextGoalLabel}
+                </p>
+              </div>
+
+              <div className="min-w-0 rounded-lg border border-border bg-white p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm font-semibold text-foreground">长期记忆</p>
                   <Badge variant={roleplayMemory.sessionCount > 0 ? "outline" : "soft"}>
                     {roleplayMemory.trendLabel}
                   </Badge>
                 </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-3">
+                  <div className="min-w-0 rounded-lg border border-border bg-panel-strong p-3">
                     <p className="text-xs text-muted">历史次数</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">{roleplayMemory.sessionCount}</p>
                   </div>
-                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                  <div className="min-w-0 rounded-lg border border-border bg-panel-strong p-3">
                     <p className="text-xs text-muted">历史均分</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {roleplayMemory.sessionCount > 0 ? `${roleplayMemory.averageScore}%` : "-"}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                  <div className="min-w-0 rounded-lg border border-border bg-panel-strong p-3">
                     <p className="text-xs text-muted">上次练习</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {formatShortDate(roleplayMemory.lastPracticedAt)}
                     </p>
                   </div>
                 </div>
-                <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm leading-6 text-foreground">
+                <p className="mt-3 break-words rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm leading-6 text-foreground">
                   {roleplayMemory.nextGoal}
                 </p>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <div className="mt-3 grid min-w-0 gap-3 md:grid-cols-2">
                   <div>
                     <p className="text-xs font-semibold text-foreground">已经沉淀</p>
                     <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
@@ -2014,26 +2441,26 @@ export function PracticeClient() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border bg-white p-4">
+              <div className="min-w-0 rounded-lg border border-border bg-white p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm font-semibold text-foreground">跨场景迁移</p>
                   <Badge variant={roleplayTransferPlan.shouldTransfer ? "default" : "outline"}>
                     {roleplayTransferPlan.readinessLabel}
                   </Badge>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-muted">{roleplayTransferPlan.principle}</p>
-                <div className="mt-3 grid gap-2">
+                <p className="mt-2 break-words text-sm leading-6 text-muted">{roleplayTransferPlan.principle}</p>
+                <div className="mt-3 grid min-w-0 gap-2">
                   {roleplayTransferPlan.targets.map((target) => (
-                    <div key={target.id} className="rounded-lg border border-border bg-panel-strong p-3">
+                    <div key={target.id} className="min-w-0 rounded-lg border border-border bg-panel-strong p-3">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
+                        <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground">{target.title}</p>
-                          <p className="mt-1 text-xs leading-5 text-muted">{target.setting}</p>
+                          <p className="mt-1 break-words text-xs leading-5 text-muted">{target.setting}</p>
                         </div>
                         {target.lockedReason ? <Badge variant="outline">待解锁</Badge> : <Badge variant="soft">可迁移</Badge>}
                       </div>
-                      <p className="mt-2 text-xs leading-5 text-foreground">{target.transferTask}</p>
-                      <p className="mt-2 rounded-lg border border-border bg-white p-2 text-xs leading-5 text-foreground">
+                      <p className="mt-2 break-words text-xs leading-5 text-foreground">{target.transferTask}</p>
+                      <p className="mt-2 break-words rounded-lg border border-border bg-white p-2 text-xs leading-5 text-foreground">
                         {target.suggestedOpening}
                       </p>
                       {target.lockedReason ? (
@@ -2046,7 +2473,7 @@ export function PracticeClient() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 rounded-lg border border-border bg-panel-strong p-3">
+                <div className="mt-3 min-w-0 rounded-lg border border-border bg-panel-strong p-3">
                   <p className="text-xs font-semibold text-foreground">迁移时保留</p>
                   <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
                     {roleplayTransferPlan.carryOverSkills.slice(0, 3).map((skill) => (
@@ -2056,7 +2483,7 @@ export function PracticeClient() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border bg-panel-strong p-4">
+              <div className="min-w-0 rounded-lg border border-border bg-panel-strong p-4">
                 <p className="text-sm font-semibold text-foreground">可保存高频表达</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {roleplayScenario.usefulExpressions.map((expression) => {
@@ -2069,7 +2496,7 @@ export function PracticeClient() {
                         size="sm"
                         onClick={() => handleSaveRoleplayExpression(expression)}
                         disabled={savedRoleplayKeys[key]}
-                        className="h-8 text-xs"
+                        className="h-auto min-h-8 max-w-full whitespace-normal break-words text-left text-xs"
                       >
                         <Plus className="h-3.5 w-3.5 text-foreground" />
                         {savedRoleplayKeys[key] ? "已保存" : expression}
@@ -2080,43 +2507,43 @@ export function PracticeClient() {
               </div>
 
               {roleplayTranscript.length > 0 ? (
-                <div className="rounded-lg border border-border bg-white p-4">
+                <div className="min-w-0 rounded-lg border border-border bg-white p-4">
                   <p className="text-sm font-semibold text-foreground">本轮对话记录</p>
                   <div className="mt-3 space-y-3">
                     {roleplayTranscript.map((entry, index) => (
-                      <div key={`${entry.turnId}-${index}`} className="rounded-lg border border-border bg-panel-strong p-3">
+                      <div key={`${entry.turnId}-${index}`} className="min-w-0 rounded-lg border border-border bg-panel-strong p-3">
                         <p className="text-xs text-muted">Front desk</p>
-                        <p className="mt-1 text-sm leading-6 text-foreground">{entry.partnerText}</p>
+                        <p className="mt-1 break-words text-sm leading-6 text-foreground">{entry.partnerText}</p>
                         <p className="mt-2 text-xs text-muted">Me · {entry.score}%</p>
-                        <p className="mt-1 text-sm leading-6 text-foreground">{entry.learnerText}</p>
+                        <p className="mt-1 break-words text-sm leading-6 text-foreground">{entry.learnerText}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               ) : null}
 
-              <div className="rounded-lg border border-border bg-white p-4">
+              <div className="min-w-0 rounded-lg border border-border bg-white p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm font-semibold text-foreground">会话目标和总结</p>
                   <Badge variant={roleplayCompleted ? "default" : "outline"}>
                     {roleplayCompleted ? roleplaySessionSummary.levelLabel : "进行中"}
                   </Badge>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-muted">{roleplaySessionSummary.summaryZh}</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                <p className="mt-2 break-words text-sm leading-6 text-muted">{roleplaySessionSummary.summaryZh}</p>
+                <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-3">
+                  <div className="min-w-0 rounded-lg border border-border bg-panel-strong p-3">
                     <p className="text-xs text-muted">完成轮次</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {roleplaySessionSummary.completedTurns}/{roleplaySessionSummary.totalTurns}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                  <div className="min-w-0 rounded-lg border border-border bg-panel-strong p-3">
                     <p className="text-xs text-muted">平均完成度</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {roleplaySessionSummary.completedTurns > 0 ? `${roleplaySessionSummary.averageScore}%` : "-"}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-border bg-panel-strong p-3">
+                  <div className="min-w-0 rounded-lg border border-border bg-panel-strong p-3">
                     <p className="text-xs text-muted">场景完成率</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {roleplaySessionSummary.completionRate}%
@@ -2124,7 +2551,7 @@ export function PracticeClient() {
                   </div>
                 </div>
                 {roleplayTranscript.length > 0 ? (
-                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  <div className="mt-3 grid min-w-0 gap-3 md:grid-cols-3">
                     <div>
                       <p className="text-xs font-semibold text-foreground">已经做到</p>
                       <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
@@ -2154,18 +2581,18 @@ export function PracticeClient() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border bg-white p-4">
+            <div className="min-w-0 rounded-lg border border-border bg-white p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
+                <div className="min-w-0">
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">第 {roleplayProgressLabel} 轮</Badge>
                     {currentRoleplayTurn.isAiGenerated ? <Badge variant="soft">AI 追问</Badge> : null}
                   </div>
                   <p className="mt-3 text-sm font-semibold text-foreground">Front desk</p>
-                  <p className="mt-2 rounded-lg border border-border bg-panel-strong p-3 text-base font-semibold leading-7 text-foreground">
+                  <p className="mt-2 break-words rounded-lg border border-border bg-panel-strong p-3 text-base font-semibold leading-7 text-foreground">
                     {currentRoleplayTurn.partnerLine}
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-muted">{currentRoleplayTurn.translation}</p>
+                  <p className="mt-2 break-words text-sm leading-6 text-muted">{currentRoleplayTurn.translation}</p>
                 </div>
                 <Button
                   variant="outline"
@@ -2708,6 +3135,7 @@ export function PracticeClient() {
               {aiResults.slice(0, 4).map((result) => {
                 const correction = getAiResultCorrection(result);
                 const turn = getAiResultTurn(result);
+                const practiceSet = getAiResultPracticeSet(result);
 
                 return (
                   <div key={result.id} className="rounded-lg border border-border bg-white p-4">
@@ -2721,7 +3149,7 @@ export function PracticeClient() {
                           载入
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => handleSaveAiResultAsReviewCards(result)}>
-                          保存卡
+                          {practiceSet ? "保存题" : "保存卡"}
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDeleteAiResult(result.id)}>
                           <Trash2 className="h-4 w-4" />
@@ -2754,6 +3182,14 @@ export function PracticeClient() {
                             </p>
                           ))}
                         </div>
+                      </div>
+                    ) : null}
+                    {practiceSet ? (
+                      <div className="mt-3 rounded-lg border border-border bg-panel-strong p-3">
+                        <p className="text-xs font-semibold text-muted">练习集</p>
+                        <p className="mt-1 text-sm leading-6 text-foreground">
+                          {practiceSet.drills.length} 道题 · {practiceSet.focus}
+                        </p>
                       </div>
                     ) : null}
                   </div>

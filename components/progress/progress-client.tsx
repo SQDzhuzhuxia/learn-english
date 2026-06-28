@@ -15,6 +15,10 @@ import {
   type WeeklyActivityDay
 } from "@/lib/analytics/progress-store";
 import { summarizeOutputErrors, type OutputErrorSummary } from "@/lib/analytics/output-error-stats";
+import {
+  createOutputWeaknessProfile,
+  type OutputWeaknessProfile
+} from "@/lib/analytics/output-weakness-profile";
 import { loadLearningItems } from "@/lib/review/review-store";
 import { loadPracticeAttempts } from "@/lib/speech/practice-store";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +42,7 @@ type ProgressViewState = {
   balance: BalanceItem[];
   timeline: WeeklyActivityDay[];
   outputErrorSummary: OutputErrorSummary;
+  outputWeaknessProfile: OutputWeaknessProfile;
 };
 
 function createBalance(summary: ActivitySummary): BalanceItem[] {
@@ -100,7 +105,8 @@ function createInitialState(): ProgressViewState {
     stats: progressStats,
     balance: learningBalance,
     timeline: weeklyTimeline,
-    outputErrorSummary: summarizeOutputErrors([])
+    outputErrorSummary: summarizeOutputErrors([]),
+    outputWeaknessProfile: createOutputWeaknessProfile([])
   };
 }
 
@@ -117,13 +123,16 @@ export function ProgressClient() {
 
       const summary = summarizeStudyActivities();
       const activeItemCount = loadLearningItems().filter((item) => item.status !== "archived").length;
-      const outputErrorSummary = summarizeOutputErrors(loadPracticeAttempts());
+      const practiceAttempts = loadPracticeAttempts();
+      const outputErrorSummary = summarizeOutputErrors(practiceAttempts);
+      const outputWeaknessProfile = createOutputWeaknessProfile(practiceAttempts);
 
       setViewState({
         stats: createStats(summary, activeItemCount),
         balance: createBalance(summary),
         timeline: summary.weeklyTimeline,
-        outputErrorSummary
+        outputErrorSummary,
+        outputWeaknessProfile
       });
     });
 
@@ -242,6 +251,59 @@ export function ProgressClient() {
           </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            <div className="rounded-lg border border-border bg-panel-strong p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="soft">长期画像</Badge>
+                    <Badge variant={viewState.outputWeaknessProfile.riskLevel === "high" ? "outline" : "default"}>
+                      {viewState.outputWeaknessProfile.levelLabel}
+                    </Badge>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-foreground">
+                    {viewState.outputWeaknessProfile.weeklyTarget}
+                  </p>
+                </div>
+                <div className="grid min-w-40 grid-cols-2 gap-2 text-right sm:text-left">
+                  <div>
+                    <p className="text-xs text-muted">平均</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {viewState.outputWeaknessProfile.averageScore
+                        ? `${viewState.outputWeaknessProfile.averageScore}%`
+                        : "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">记录</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {viewState.outputWeaknessProfile.attemptCount}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {viewState.outputWeaknessProfile.primaryFocus ? (
+                <p className="mt-3 text-sm leading-6 text-muted">
+                  主攻：{viewState.outputWeaknessProfile.primaryFocus.label}。
+                  {viewState.outputWeaknessProfile.primaryFocus.action}
+                </p>
+              ) : null}
+              <div className="mt-3 grid gap-2 md:grid-cols-3">
+                {viewState.outputWeaknessProfile.nextTrainingPlan.map((item) => (
+                  <a
+                    key={item.id}
+                    href={item.href}
+                    className="rounded-lg border border-border bg-white p-3 transition hover:bg-panel-strong"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                      <Badge variant="outline">{item.priority}</Badge>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-muted">{item.detail}</p>
+                  </a>
+                ))}
+              </div>
+            </div>
+
             {viewState.outputErrorSummary.categories.length > 0 ? (
               viewState.outputErrorSummary.categories.slice(0, 4).map((category) => (
                 <article key={category.id} className="rounded-lg border border-border bg-white p-4">

@@ -98,6 +98,8 @@ http://localhost:3000
 Quality checks:
 
 ```bash
+npm run release:check
+npm run package:native:check
 npm run lint
 npm run typecheck
 npm run test
@@ -213,7 +215,7 @@ Schema draft: [docs/supabase-sync-schema-v0.1.sql](docs/supabase-sync-schema-v0.
 - Offline audio cache and AI request queue
 - Research for bundled offline Whisper / TTS models
 - Pronunciation, stress, linking, and phoneme-level feedback
-- Mobile and desktop packaging
+- Mobile and desktop packaging, with `npm run package:native:check` for release environment contracts
 
 ## Contributing
 

@@ -169,19 +169,51 @@ function checkTts(env) {
   };
 }
 
+function checkPronunciation(env) {
+  const provider = readEnv(env, "PRONUNCIATION_PROVIDER") ?? "fallback";
+  const baseUrl = readEnv(env, "PRONUNCIATION_BASE_URL");
+  const endpointPath = readEnv(env, "PRONUNCIATION_ENDPOINT_PATH") ?? "/score-pronunciation";
+
+  if (provider === "local") {
+    return {
+      name: "Pronunciation scoring",
+      status: baseUrl ? "local" : "fallback",
+      provider,
+      detail: baseUrl
+        ? `Local multipart pronunciation endpoint: ${baseUrl}${endpointPath}`
+        : "Missing PRONUNCIATION_BASE_URL for local pronunciation scoring.",
+      missing: baseUrl ? [] : ["PRONUNCIATION_BASE_URL"]
+    };
+  }
+
+  return {
+    name: "Pronunciation scoring",
+    status: "fallback",
+    provider,
+    detail: "Pronunciation scoring is not configured. The app will keep text-level shadowing feedback.",
+    missing: ["PRONUNCIATION_PROVIDER", "PRONUNCIATION_BASE_URL"]
+  };
+}
+
 function createReport(env) {
   const stt = checkStt(env);
   const tts = checkTts(env);
+  const pronunciation = checkPronunciation(env);
 
   return {
     offlineReady: stt.status === "local" && tts.status === "local",
+    practiceReady: stt.status === "local" && tts.status === "local" && pronunciation.status === "local",
     stt,
     tts,
+    pronunciation,
     nextSteps: [
       ...(stt.status === "local"
         ? []
         : ["Configure SPEECH_PROVIDER=local-whisper or whisper-cpp and set SPEECH_BASE_URL."]),
-      ...(tts.status === "local" ? [] : ["Configure TTS_PROVIDER=local with TTS_BASE_URL and TTS_MODEL."])
+      ...(tts.status === "local" ? [] : ["Configure TTS_PROVIDER=local with TTS_BASE_URL and TTS_MODEL."]),
+      ...(pronunciation.status === "local"
+        ? []
+        : ["Configure PRONUNCIATION_PROVIDER=local with PRONUNCIATION_BASE_URL for audio-level scoring."])
     ]
   };
 }
@@ -190,7 +222,7 @@ function printReport(report) {
   console.log("Learn English local speech check");
   console.log("");
 
-  [report.stt, report.tts].forEach((item) => {
+  [report.stt, report.tts, report.pronunciation].forEach((item) => {
     console.log(`${item.name}: ${statusLabel(item.status)} (${item.provider})`);
     console.log(`  ${item.detail}`);
 
@@ -201,6 +233,7 @@ function printReport(report) {
 
   console.log("");
   console.log(`Offline ready: ${report.offlineReady ? "yes" : "no"}`);
+  console.log(`Full practice ready: ${report.practiceReady ? "yes" : "no"}`);
 
   if (report.nextSteps.length > 0) {
     console.log("Next steps:");
@@ -218,5 +251,9 @@ if (args.has("--json")) {
 }
 
 if (args.has("--strict") && !report.offlineReady) {
+  process.exitCode = 1;
+}
+
+if (args.has("--strict-practice") && !report.practiceReady) {
   process.exitCode = 1;
 }

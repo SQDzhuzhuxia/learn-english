@@ -1,4 +1,5 @@
 import { readCachedTtsAudio, writeCachedTtsAudio } from "@/lib/speech/tts-audio-cache";
+import { decodeSpeechHeaderValue } from "@/lib/speech/speech-header-codec";
 
 type SpeakEnglishOptions = {
   format?: string;
@@ -189,8 +190,8 @@ async function speakWithServerTts(text: string, options: SpeakEnglishOptions): P
     }
 
     const blob = await response.blob();
-    const provider = response.headers.get("X-Speech-Provider") ?? undefined;
-    const voice = response.headers.get("X-Speech-Voice") ?? undefined;
+    const provider = decodeSpeechHeaderValue(response.headers.get("X-Speech-Provider"));
+    const voice = decodeSpeechHeaderValue(response.headers.get("X-Speech-Voice"));
     await writeCachedTtsAudio(cacheInput, blob, {
       contentType,
       provider,

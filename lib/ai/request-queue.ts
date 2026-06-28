@@ -7,6 +7,7 @@ import {
 import { addAiResultInboxItem } from "@/lib/ai/result-inbox";
 import type {
   AiMaterialExplanation,
+  AiGeneratedPracticeSet,
   AiRoleplayTurn,
   AiSegmentExplanation,
   AiWritingCorrection
@@ -16,7 +17,8 @@ export type AiRequestQueueKind =
   | "explain-segment"
   | "explain-material"
   | "correct-writing"
-  | "roleplay-next";
+  | "roleplay-next"
+  | "generate-practice";
 
 export type AiRequestQueueStatus = "queued" | "completed" | "failed";
 
@@ -49,7 +51,8 @@ const AUTO_RETRYABLE_KINDS = new Set<AiRequestQueueKind>([
   "explain-segment",
   "explain-material",
   "correct-writing",
-  "roleplay-next"
+  "roleplay-next",
+  "generate-practice"
 ]);
 
 function canUseStorage() {
@@ -314,6 +317,26 @@ function applyAiRequestResult(record: AiRequestQueueRecord, payload: unknown) {
       resultPayload: payload
     });
     return "已保存 AI 角色追问到结果收件箱。";
+  }
+
+  if (record.kind === "generate-practice") {
+    const payloadRecord = getPayloadRecord(payload);
+    const practiceSet = payloadRecord.practiceSet as AiGeneratedPracticeSet | undefined;
+
+    if (!practiceSet?.drills?.length) {
+      throw new Error(getErrorMessage(payload, "AI 练习生成返回结果缺少 practiceSet。"));
+    }
+
+    addAiResultInboxItem({
+      requestId: record.id,
+      kind: record.kind,
+      title: getPayloadString(record, "materialTitle") ?? practiceSet.materialTitle,
+      summary: `已生成 ${practiceSet.drills.length} 道练习：${practiceSet.focus}`,
+      endpoint: record.endpoint,
+      requestPayload: record.payload,
+      resultPayload: payload
+    });
+    return "已保存 AI 练习集到结果收件箱。";
   }
 
   return undefined;

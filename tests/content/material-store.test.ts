@@ -53,6 +53,41 @@ describe("material-store", () => {
     expect(loadMaterials().find((record) => record.id === material.id)?.title).toBe("Updated title");
   });
 
+  it("stores material audio URL and sentence cues for imported materials", () => {
+    const material = addTextMaterial({
+      title: "Audio note",
+      type: "用户导入",
+      level: "A1+",
+      contentText: "I need to reschedule my appointment. Friday morning works better for me.",
+      audioUrl: "https://example.com/audio.mp3",
+      audioCueText: "1,0:00,0:03\n2,0:03,0:07"
+    });
+
+    expect(material.audio?.url).toBe("https://example.com/audio.mp3");
+    expect(material.audio?.cues).toHaveLength(2);
+    expect(material.audio?.cues[0]).toMatchObject({
+      order: 1,
+      startMs: 0,
+      endMs: 3000
+    });
+
+    const updated = updateTextMaterial(material.id, {
+      title: "Audio note updated",
+      type: "用户导入",
+      level: "A2",
+      contentText: "I need to reschedule my appointment. Friday morning works better for me.",
+      audioUrl: "https://example.com/new-audio.mp3",
+      audioCueText: "1,0,2500\n2,2500,6200"
+    });
+
+    expect(updated?.audio?.url).toBe("https://example.com/new-audio.mp3");
+    expect(updated?.audio?.cues[1]).toMatchObject({
+      order: 2,
+      startMs: 2500,
+      endMs: 6200
+    });
+  });
+
   it("deletes user material and archives related learning items", () => {
     const material = addTextMaterial({
       title: "Delete me",
@@ -86,9 +121,71 @@ describe("material-store", () => {
     const seedMaterials = loadMaterials().filter((material) => material.source === "seed");
     const bankMaterial = seedMaterials.find((material) => material.id === "bank-account");
 
-    expect(seedMaterials.length).toBeGreaterThanOrEqual(18);
+    expect(seedMaterials.length).toBeGreaterThanOrEqual(100);
     expect(bankMaterial?.segments.length).toBeGreaterThanOrEqual(5);
     expect(bankMaterial?.keyExpressions).toContain("checking account");
+  });
+
+  it("ships supplemental scenario packs as course-backed seed material", () => {
+    const materials = loadMaterials();
+    const materialById = new Map(materials.map((material) => [material.id, material]));
+    const sampleIds = [
+      "urgent-care-checkin",
+      "rideshare-pickup",
+      "move-in-inspection",
+      "internet-setup",
+      "sensor-replacement",
+      "lockout-tagout",
+      "phone-screen",
+      "biometrics-appointment",
+      "oath-notice"
+    ];
+
+    sampleIds.forEach((id) => {
+      const material = materialById.get(id);
+
+      expect(material, `missing supplemental seed material ${id}`).toBeDefined();
+      expect(material?.source).toBe("seed");
+      expect(material?.segments.length).toBeGreaterThanOrEqual(6);
+      expect(material?.keyExpressions.length).toBeGreaterThanOrEqual(3);
+
+      const wiredIntoStage = courseTracks.some(
+        (track) =>
+          track.materialIds.includes(id) &&
+          track.stages.some((stage) => stage.materialIds.includes(id))
+      );
+
+      expect(wiredIntoStage, `supplemental material ${id} is not wired into a course stage`).toBe(true);
+    });
+  });
+
+  it("expands the seed library with Sprint 7B scenario materials wired into course tracks", () => {
+    const materials = loadMaterials();
+    const materialById = new Map(materials.map((material) => [material.id, material]));
+    const newMaterialIds = [
+      "restaurant-order",
+      "post-office",
+      "phone-plan",
+      "lease-signing",
+      "equipment-checklist",
+      "civics-history"
+    ];
+
+    newMaterialIds.forEach((id) => {
+      const material = materialById.get(id);
+
+      expect(material, `missing seed material ${id}`).toBeDefined();
+      expect(material?.source).toBe("seed");
+      expect(material?.segments.length).toBeGreaterThanOrEqual(5);
+
+      const wiredIntoStage = courseTracks.some(
+        (track) =>
+          track.materialIds.includes(id) &&
+          track.stages.some((stage) => stage.materialIds.includes(id))
+      );
+
+      expect(wiredIntoStage, `material ${id} is not wired into a course stage`).toBe(true);
+    });
   });
 
   it("keeps course track material ids resolvable", () => {

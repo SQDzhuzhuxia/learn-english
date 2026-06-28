@@ -3,8 +3,10 @@ import {
   correctWritingWithOpenAiCompatible,
   explainMaterialWithOpenAiCompatible,
   explainSegmentWithOpenAiCompatible,
+  generatePracticeWithOpenAiCompatible,
   generateRoleplayTurnWithOpenAiCompatible,
   parseMaterialExplanationResponse,
+  parsePracticeGenerationResponse,
   parseRoleplayTurnResponse,
   parseSegmentExplanationResponse,
   parseWritingCorrectionResponse
@@ -13,6 +15,7 @@ import type {
   CorrectWritingInput,
   ExplainMaterialInput,
   ExplainSegmentInput,
+  GeneratePracticeInput,
   GenerateRoleplayTurnInput
 } from "@/lib/ai/types";
 
@@ -67,6 +70,17 @@ const roleplayInput: GenerateRoleplayTurnInput = {
       text: "I would like to make an appointment with a doctor."
     }
   ]
+};
+
+const practiceInput: GeneratePracticeInput = {
+  materialId: "apartment-tour",
+  materialTitle: "Apartment Tour",
+  materialType: "租房",
+  level: "A1",
+  summary: "Mia asks about rent and the deposit.",
+  keyExpressions: ["security deposit", "available next month"],
+  targetCount: 3,
+  segments: materialInput.segments
 };
 
 afterEach(() => {
@@ -184,6 +198,37 @@ describe("parseRoleplayTurnResponse", () => {
     expect(turn.source).toBe("model");
     expect(turn.partnerLine).toContain("problem");
     expect(turn.suggestedReplies).toContain("I have a sore throat.");
+  });
+});
+
+describe("parsePracticeGenerationResponse", () => {
+  it("normalizes generated practice JSON", () => {
+    const practiceSet = parsePracticeGenerationResponse(
+      JSON.stringify({
+        materialTitle: "Apartment Tour",
+        level: "A1",
+        focus: "租房看房",
+        drills: [
+          {
+            type: "cloze",
+            title: "押金填空",
+            instruction: "补全空格。",
+            prompt: "How much is the ____?",
+            answer: "deposit",
+            hints: ["security deposit"],
+            choices: ["deposit", "rent"],
+            explanationZh: "练习租房押金表达。",
+            estimatedMinutes: 2
+          }
+        ]
+      }),
+      practiceInput,
+      "Test Provider"
+    );
+
+    expect(practiceSet.source).toBe("model");
+    expect(practiceSet.drills[0]?.type).toBe("cloze");
+    expect(practiceSet.drills[0]?.answer).toBe("deposit");
   });
 });
 
@@ -381,5 +426,57 @@ describe("explainSegmentWithOpenAiCompatible", () => {
       })
     );
     expect(turn.partnerLine).toContain("problem");
+  });
+});
+
+describe("generatePracticeWithOpenAiCompatible", () => {
+  it("calls a chat-completions compatible endpoint for practice generation", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  materialTitle: "Apartment Tour",
+                  level: "A1",
+                  focus: "租房看房",
+                  drills: [
+                    {
+                      type: "qa",
+                      title: "理解问答",
+                      instruction: "回答问题。",
+                      prompt: "What does Mia ask about?",
+                      answer: "She asks about the rent and the deposit.",
+                      hints: ["rent", "deposit"],
+                      choices: [],
+                      explanationZh: "检查材料理解。",
+                      estimatedMinutes: 3
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const practiceSet = await generatePracticeWithOpenAiCompatible(practiceInput, {
+      baseUrl: "https://example.test/v1",
+      apiKey: "test-key",
+      model: "test-model",
+      providerLabel: "Test Provider",
+      timeoutMs: 1000
+    });
+
+    expect(fetchMock).toHaveBeenCalled();
+    expect(practiceSet.source).toBe("model");
+    expect(practiceSet.drills[0]?.title).toBe("理解问答");
   });
 });

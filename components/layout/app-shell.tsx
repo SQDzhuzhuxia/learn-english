@@ -17,6 +17,7 @@ import { PwaInstallStatus } from "@/components/pwa/pwa-install-status";
 import { SyncStatusPill } from "@/components/sync/sync-status-pill";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ToastProvider } from "@/components/ui/toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
@@ -78,7 +79,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background text-foreground">
+      <ToastProvider>
+        <div className="min-h-screen bg-background text-foreground">
         <aside className="fixed left-0 top-0 hidden h-screen w-72 border-r border-border bg-panel-strong px-4 py-5 lg:block">
           <Link href="/" className="flex items-center gap-3 rounded-lg px-2 py-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-foreground text-background">
@@ -193,7 +195,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-      </div>
+        </div>
+      </ToastProvider>
     </TooltipProvider>
   );
 }

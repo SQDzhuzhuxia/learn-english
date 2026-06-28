@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   BookmarkPlus,
@@ -34,6 +34,7 @@ import {
   setCurrentMaterialId,
   updateMaterialProgress
 } from "@/lib/content/material-store";
+import { formatMsAsTimestamp, getAudioCueForOrder } from "@/lib/content/material-audio";
 import { saveExpressionAsReviewCard, saveSegmentAsReviewCard } from "@/lib/review/review-store";
 import { speakEnglishText, stopEnglishSpeech } from "@/lib/speech/speech-synthesis";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { useToastMessage } from "@/components/ui/toast";
 import type { StudyMaterialRecord } from "@/lib/content/types";
 import type { AiMaterialExplanation, AiSegmentExplanation } from "@/lib/ai/types";
 
@@ -81,8 +83,16 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
   const [saveMessage, setSaveMessage] = useState("");
   const [playbackMessage, setPlaybackMessage] = useState("");
   const [isLooping, setIsLooping] = useState(false);
+  const [materialAudioMessage, setMaterialAudioMessage] = useState("");
+  const [isMaterialAudioPlaying, setIsMaterialAudioPlaying] = useState(false);
   const [aiState, setAiState] = useState<AiExplanationState>({ status: "idle" });
   const [aiBatchState, setAiBatchState] = useState<AiBatchState>({ status: "idle" });
+  const materialAudioRef = useRef<HTMLAudioElement | null>(null);
+  useToastMessage(saveMessage, { title: "学习" });
+  useToastMessage(playbackMessage, { title: "朗读" });
+  useToastMessage(materialAudioMessage, { title: "材料音频" });
+  useToastMessage(aiState.message ?? "", { title: "AI 解释" });
+  useToastMessage(aiBatchState.message ?? "", { title: "AI 批量解释" });
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +116,10 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
   const current = useMemo(() => {
     return material?.segments.find((segment) => segment.order === currentOrder) ?? material?.segments[0];
   }, [currentOrder, material]);
+  const currentAudioCue = useMemo(
+    () => getAudioCueForOrder(material?.audio, currentOrder),
+    [currentOrder, material?.audio]
+  );
 
   const aiCacheKey = material && current ? `${material.id}:${current.id}` : "";
 
@@ -136,6 +150,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
   useEffect(() => {
     setSaveMessage("");
     setPlaybackMessage("");
+    setMaterialAudioMessage("");
 
     if (!material || !current || material.source === "seed") {
       setAiState({ status: "idle" });
@@ -216,6 +231,44 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
     setPlaybackMessage("正在准备英文朗读...");
     const result = await speakEnglishText(current.text, { rate });
     setPlaybackMessage(result.ok ? `${result.message} 如果声音仍不自然，后续可以接入云端高质量 TTS。` : result.message);
+  }
+
+  async function handlePlayCurrentMaterialAudioCue() {
+    const audio = materialAudioRef.current;
+
+    if (!audio || !material?.audio || !currentAudioCue) {
+      setMaterialAudioMessage("当前材料没有可播放的句子音频时间轴。");
+      return;
+    }
+
+    setIsLooping(false);
+    stopEnglishSpeech();
+    audio.currentTime = currentAudioCue.startMs / 1000;
+
+    try {
+      await audio.play();
+      setIsMaterialAudioPlaying(true);
+      setMaterialAudioMessage(
+        `正在播放第 ${currentOrder} 句：${formatMsAsTimestamp(currentAudioCue.startMs)} - ${formatMsAsTimestamp(currentAudioCue.endMs)}`
+      );
+    } catch {
+      setIsMaterialAudioPlaying(false);
+      setMaterialAudioMessage("浏览器暂时无法播放这段材料音频，请检查音频 URL 或权限。");
+    }
+  }
+
+  function handleMaterialAudioTimeUpdate() {
+    const audio = materialAudioRef.current;
+
+    if (!audio || !currentAudioCue || !isMaterialAudioPlaying) {
+      return;
+    }
+
+    if (audio.currentTime * 1000 >= currentAudioCue.endMs - 80) {
+      audio.pause();
+      setIsMaterialAudioPlaying(false);
+      setMaterialAudioMessage("已播放完当前句音频。");
+    }
   }
 
   function handleToggleLoop() {
@@ -537,6 +590,57 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
           <Progress value={material.progress} className="mt-5" />
           </CardContent>
         </Card>
+
+        {material.audio ? (
+          <Card>
+            <CardHeader className="pb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Badge variant="soft">材料音频</Badge>
+                <CardTitle className="mt-3 text-lg">自带音频逐句播放</CardTitle>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => void handlePlayCurrentMaterialAudioCue()}
+                disabled={!currentAudioCue}
+              >
+                <Headphones className="h-4 w-4 text-foreground" />
+                播放当前句
+              </Button>
+            </div>
+            <CardDescription>
+              使用材料自带音频和时间轴，优先于 TTS；TTS 仍作为没有音频时的降级朗读。
+            </CardDescription>
+            </CardHeader>
+            <CardContent>
+            <audio
+              ref={materialAudioRef}
+              className="w-full"
+              controls
+              src={material.audio.url}
+              onTimeUpdate={handleMaterialAudioTimeUpdate}
+              onPause={() => setIsMaterialAudioPlaying(false)}
+              onEnded={() => setIsMaterialAudioPlaying(false)}
+            >
+              <track kind="captions" />
+            </audio>
+            {currentAudioCue ? (
+              <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
+                当前句 cue：{formatMsAsTimestamp(currentAudioCue.startMs)} - {formatMsAsTimestamp(currentAudioCue.endMs)}
+              </p>
+            ) : (
+              <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-muted">
+                当前句没有 cue；可以在材料库编辑页补充时间轴。
+              </p>
+            )}
+            {materialAudioMessage ? (
+              <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
+                {materialAudioMessage}
+              </p>
+            ) : null}
+            </CardContent>
+          </Card>
+        ) : null}
 
         <Card>
           <CardHeader className="pb-4">

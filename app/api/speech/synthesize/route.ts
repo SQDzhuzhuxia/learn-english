@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { synthesizeSpeech } from "@/lib/speech/server/synthesize-speech";
+import { encodeSpeechHeaderValue } from "@/lib/speech/speech-header-codec";
 
 export const runtime = "nodejs";
 
@@ -45,9 +46,9 @@ export async function POST(request: Request) {
       "Content-Type": result.contentType ?? "audio/mpeg",
       "Cache-Control": "no-store",
       "X-Speech-Source": result.source,
-      "X-Speech-Provider": result.provider,
-      ...(result.model ? { "X-Speech-Model": result.model } : {}),
-      ...(result.voice ? { "X-Speech-Voice": result.voice } : {})
+      ...(encodeSpeechHeaderValue(result.provider) ? { "X-Speech-Provider": encodeSpeechHeaderValue(result.provider) } : {}),
+      ...(encodeSpeechHeaderValue(result.model) ? { "X-Speech-Model": encodeSpeechHeaderValue(result.model) } : {}),
+      ...(encodeSpeechHeaderValue(result.voice) ? { "X-Speech-Voice": encodeSpeechHeaderValue(result.voice) } : {})
     }
   });
 }

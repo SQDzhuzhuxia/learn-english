@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "modelsDir": "local-models",
+  "services": [
+    {
+      "id": "stt",
+      "label": "Local Whisper / whisper.cpp STT",
+      "provider": "local-whisper",
+      "env": {
+        "SPEECH_PROVIDER": "local-whisper",
+        "SPEECH_BASE_URL": "http://127.0.0.1:8080",
+        "SPEECH_ENDPOINT_PATH": "/inference",
+        "SPEECH_FILE_FIELD": "file",
+        "SPEECH_RESPONSE_TEXT_PATH": "text"
+      },
+      "modelFiles": [
+        {
+          "name": "ggml-base.en.bin",
+          "relativePath": "whisper/ggml-base.en.bin",
+          "source": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin",
+          "required": false
+        }
+      ],
+      "runtime": {
+        "command": "whisper-server",
+        "args": [
+          "--model",
+          "local-models/whisper/ggml-base.en.bin",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8080"
+        ],
+        "notes": "Install whisper.cpp and ensure whisper-server is on PATH, or edit the generated .local-speech/start-local-speech.ps1 file."
+      },
+      "startCommand": "whisper.cpp server or compatible multipart STT service on http://127.0.0.1:8080"
+    },
+    {
+      "id": "tts",
+      "label": "Local OpenAI-compatible TTS",
+      "provider": "local",
+      "env": {
+        "TTS_PROVIDER": "local",
+        "TTS_BASE_URL": "http://127.0.0.1:8880/v1",
+        "TTS_MODEL": "local-tts",
+        "TTS_ENDPOINT_PATH": "/audio/speech",
+        "TTS_VOICE": "alloy",
+        "TTS_FORMAT": "mp3"
+      },
+      "modelFiles": [],
+      "runtime": {
+        "command": "",
+        "args": [],
+        "notes": "Use any OpenAI-compatible local TTS server and expose it on http://127.0.0.1:8880/v1."
+      },
+      "startCommand": "OpenAI-compatible TTS service on http://127.0.0.1:8880/v1"
+    },
+    {
+      "id": "pronunciation",
+      "label": "Local pronunciation / forced alignment",
+      "provider": "local",
+      "env": {
+        "PRONUNCIATION_PROVIDER": "local",
+        "PRONUNCIATION_BASE_URL": "http://127.0.0.1:8090",
+        "PRONUNCIATION_ENDPOINT_PATH": "/score-pronunciation",
+        "PRONUNCIATION_FILE_FIELD": "file",
+        "PRONUNCIATION_REFERENCE_TEXT_FIELD": "reference_text",
+        "PRONUNCIATION_TRANSCRIPT_FIELD": "transcript"
+      },
+      "modelFiles": [],
+      "runtime": {
+        "command": "",
+        "args": [],
+        "notes": "Use a local forced-alignment or pronunciation scoring service and expose it on http://127.0.0.1:8090."
+      },
+      "startCommand": "forced-alignment or pronunciation scoring service on http://127.0.0.1:8090"
+    }
+  ]
+}

@@ -1,11 +1,14 @@
 import type {
   AiMaterialExplanation,
+  AiGeneratedPracticeSet,
+  AiGeneratedPracticeDrill,
   AiRoleplayTurn,
   AiSegmentExplanation,
   AiWritingCorrection,
   CorrectWritingInput,
   ExplainMaterialInput,
   ExplainSegmentInput,
+  GeneratePracticeInput,
   GenerateRoleplayTurnInput
 } from "@/lib/ai/types";
 
@@ -206,5 +209,133 @@ export function createFallbackRoleplayTurn(
     source: "fallback",
     provider: reason,
     generatedAt: new Date().toISOString()
+  };
+}
+
+function pickSegments(input: GeneratePracticeInput) {
+  const segments = input.segments
+    .filter((segment) => segment.text.trim().length > 0)
+    .sort((left, right) => left.order - right.order);
+
+  return segments.length > 0
+    ? segments
+    : [
+        {
+          id: "summary",
+          order: 1,
+          text: input.summary || input.materialTitle
+        }
+      ];
+}
+
+function maskUsefulExpression(sentence: string, keyExpressions: string[]) {
+  const expression = keyExpressions.find((item) => sentence.toLowerCase().includes(item.toLowerCase()));
+
+  if (expression) {
+    return {
+      prompt: sentence.replace(new RegExp(expression.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), "____"),
+      answer: expression
+    };
+  }
+
+  const word = uniqueUsefulWords(sentence).find((item) => item.length >= 5);
+
+  if (!word) {
+    return {
+      prompt: sentence,
+      answer: sentence
+    };
+  }
+
+  return {
+    prompt: sentence.replace(new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"), "____"),
+    answer: word
+  };
+}
+
+function createGeneratedPracticeDrill(input: AiGeneratedPracticeDrill): AiGeneratedPracticeDrill {
+  return {
+    ...input,
+    hints: input.hints.filter(Boolean).slice(0, 5),
+    choices: input.choices?.filter(Boolean).slice(0, 4),
+    estimatedMinutes: Math.max(1, Math.min(8, Math.round(input.estimatedMinutes)))
+  };
+}
+
+export function createFallbackPracticeSet(
+  input: GeneratePracticeInput,
+  reason = "AI provider is not configured"
+): AiGeneratedPracticeSet {
+  const generatedAt = new Date().toISOString();
+  const segments = pickSegments(input);
+  const keyExpressions = input.keyExpressions.filter(Boolean);
+  const firstSentence = segments[0]?.text ?? input.summary;
+  const secondSentence = segments[1]?.text ?? firstSentence;
+  const masked = maskUsefulExpression(firstSentence, keyExpressions);
+  const focus = input.focus?.trim() || "材料理解、跟读、复述、写作和场景输出";
+  const drills: AiGeneratedPracticeDrill[] = [
+    createGeneratedPracticeDrill({
+      type: "shadowing",
+      title: "AI 跟读加练",
+      instruction: "先听或朗读这句话，再完整跟读一遍。",
+      prompt: firstSentence,
+      answer: firstSentence,
+      hints: uniqueUsefulWords(firstSentence).slice(0, 4),
+      explanationZh: "本题用于把材料里的真实句子转成可开口练习。",
+      estimatedMinutes: 2
+    }),
+    createGeneratedPracticeDrill({
+      type: "cloze",
+      title: "AI 场景填空",
+      instruction: "补出空格里的词或词块，再读完整句。",
+      prompt: masked.prompt,
+      answer: masked.answer,
+      hints: keyExpressions.slice(0, 3),
+      choices: [masked.answer, ...keyExpressions.filter((item) => item !== masked.answer)].slice(0, 4),
+      explanationZh: "本题训练材料里的高频表达，不做孤立背单词。",
+      estimatedMinutes: 2
+    }),
+    createGeneratedPracticeDrill({
+      type: "qa",
+      title: "AI 理解问答",
+      instruction: "用一句简单英文回答问题。",
+      prompt: `What is the main situation in "${input.materialTitle}"?`,
+      answer: input.summary || secondSentence,
+      hints: keyExpressions.slice(0, 4),
+      explanationZh: "本题检查你是否能用自己的话说出材料场景。",
+      estimatedMinutes: 3
+    }),
+    createGeneratedPracticeDrill({
+      type: "writing",
+      title: "AI 写作迁移",
+      instruction: "用材料里的表达写一句你真实可能会用到的话。",
+      prompt: keyExpressions[0]
+        ? `Write one sentence with "${keyExpressions[0]}".`
+        : `Write one useful sentence for ${input.materialTitle}.`,
+      answer: keyExpressions[0] ? `I would like to use "${keyExpressions[0]}" in a real situation.` : firstSentence,
+      hints: keyExpressions.slice(0, 4),
+      explanationZh: "本题把输入材料迁移到你自己的输出。",
+      estimatedMinutes: 4
+    }),
+    createGeneratedPracticeDrill({
+      type: "roleplay",
+      title: "AI 角色准备",
+      instruction: "准备一句开场白，然后进入角色扮演。",
+      prompt: `Start a short conversation about ${input.materialTitle}.`,
+      answer: `Hello. I would like to talk about ${input.materialTitle}.`,
+      hints: keyExpressions.slice(0, 4),
+      explanationZh: "本题把材料内容转成场景口语开场。",
+      estimatedMinutes: 3
+    })
+  ];
+
+  return {
+    materialTitle: input.materialTitle,
+    level: input.level || "A1",
+    focus,
+    drills: drills.slice(0, Math.max(1, Math.min(input.targetCount ?? 6, 10))),
+    source: "fallback",
+    provider: reason,
+    generatedAt
   };
 }

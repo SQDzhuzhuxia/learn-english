@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { useToastMessage } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { reviewRatings } from "@/lib/mock-data";
 import {
@@ -115,6 +116,7 @@ export function ReviewClient() {
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [isAnswerVisible, setIsAnswerVisible] = useState(false);
+  useToastMessage(message, { title: "复习" });
 
   useEffect(() => {
     let cancelled = false;

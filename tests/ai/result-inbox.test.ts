@@ -75,6 +75,31 @@ describe("AI result inbox", () => {
     expect(inbox[0]?.summary).toBe("second");
   });
 
+  it("stores generated practice sets as inbox records", () => {
+    addAiResultInboxItem({
+      requestId: "request-practice-1",
+      kind: "generate-practice",
+      title: "Opening a bank account",
+      summary: "已生成 3 道练习：bank account questions",
+      endpoint: "/api/ai/generate-practice",
+      requestPayload: {
+        materialTitle: "Opening a bank account"
+      },
+      resultPayload: {
+        practiceSet: {
+          materialTitle: "Opening a bank account",
+          drills: []
+        }
+      }
+    });
+
+    const inbox = loadAiResultInbox();
+
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]?.kind).toBe("generate-practice");
+    expect(inbox[0]?.endpoint).toBe("/api/ai/generate-practice");
+  });
+
   it("deletes and clears inbox records", () => {
     const record = addAiResultInboxItem({
       requestId: "request-1",

@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, FileText, Save, Sparkles } from "lucide-react";
 import { addTextMaterial } from "@/lib/content/material-store";
+import {
+  createEstimatedAudioCues,
+  formatMsAsTimestamp,
+  parseMaterialAudioCues
+} from "@/lib/content/material-audio";
 import { splitTextIntoSegments } from "@/lib/content/split-text";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,9 +27,16 @@ export function ImportMaterialForm() {
   const [type, setType] = useState("用户导入");
   const [level, setLevel] = useState("A1+");
   const [contentText, setContentText] = useState(defaultText);
+  const [audioUrl, setAudioUrl] = useState("");
+  const [audioCueText, setAudioCueText] = useState("");
   const [error, setError] = useState("");
 
   const segments = useMemo(() => splitTextIntoSegments(contentText), [contentText]);
+  const parsedAudioCues = useMemo(
+    () => parseMaterialAudioCues(audioCueText, segments),
+    [audioCueText, segments]
+  );
+  const estimatedAudioCues = useMemo(() => createEstimatedAudioCues(segments), [segments]);
   const wordCount = useMemo(
     () => contentText.trim().split(/\s+/).filter(Boolean).length,
     [contentText]
@@ -48,7 +60,9 @@ export function ImportMaterialForm() {
       title: trimmedTitle,
       type,
       level,
-      contentText: trimmedText
+      contentText: trimmedText,
+      audioUrl,
+      audioCueText
     });
 
     router.push(`/study/${material.id}`);
@@ -124,6 +138,27 @@ export function ImportMaterialForm() {
           />
         </Label>
 
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <Label className="block">
+            材料音频 URL（可选）
+            <Input
+              className="mt-2"
+              placeholder="https://example.com/audio.mp3"
+              value={audioUrl}
+              onChange={(event) => setAudioUrl(event.target.value)}
+            />
+          </Label>
+          <Label className="block">
+            句子时间轴（可选）
+            <Textarea
+              className="mt-2 min-h-28"
+              placeholder={"1,0:00,0:03\n2,0:03,0:07\n3,0:07,0:11"}
+              value={audioCueText}
+              onChange={(event) => setAudioCueText(event.target.value)}
+            />
+          </Label>
+        </div>
+
         {error ? (
           <p className="mt-3 rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm text-foreground">
             {error}
@@ -161,6 +196,35 @@ export function ImportMaterialForm() {
               <p className="mt-1 text-xs text-muted">约词数</p>
             </div>
           </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-4">
+          <CardTitle className="text-lg">音频时间轴</CardTitle>
+          <CardDescription>贴入音频 URL 后可逐句播放；没有时间轴时会按句子长度估算。</CardDescription>
+          </CardHeader>
+          <CardContent>
+          {audioUrl.trim() ? (
+            <div className="space-y-2 text-sm">
+              <p className="rounded-lg border border-border bg-panel-strong px-3 py-2 text-foreground">
+                {parsedAudioCues.length > 0
+                  ? `已识别 ${parsedAudioCues.length} 条精确 cue。`
+                  : `将使用 ${estimatedAudioCues.length} 条估算 cue。`}
+              </p>
+              {(parsedAudioCues.length > 0 ? parsedAudioCues : estimatedAudioCues)
+                .slice(0, 4)
+                .map((cue) => (
+                  <p key={`${cue.segmentId}-${cue.startMs}`} className="rounded-lg border border-border bg-white px-3 py-2 text-xs text-muted">
+                    Sentence {cue.order}: {formatMsAsTimestamp(cue.startMs)} - {formatMsAsTimestamp(cue.endMs)}
+                  </p>
+                ))}
+            </div>
+          ) : (
+            <p className="rounded-lg border border-border bg-panel-strong px-3 py-2 text-sm leading-6 text-muted">
+              暂未附加材料音频。学习页仍会提供 TTS 朗读。
+            </p>
+          )}
           </CardContent>
         </Card>
 

@@ -16,7 +16,12 @@ import {
   Upload
 } from "lucide-react";
 import { materialFilters } from "@/lib/mock-data";
-import { courseTracks, createCourseStageSummaries } from "@/lib/content/course-catalog";
+import {
+  courseTracks,
+  createCourseStageRetrospective,
+  createCourseStageSummaries
+} from "@/lib/content/course-catalog";
+import { createAudioCueText } from "@/lib/content/material-audio";
 import {
   deleteUserMaterial,
   getSeedMaterials,
@@ -31,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { useToastMessage } from "@/components/ui/toast";
 import type { NewTextMaterialInput, StudyMaterialRecord } from "@/lib/content/types";
 
 function createEditForm(material: StudyMaterialRecord): NewTextMaterialInput {
@@ -38,7 +44,9 @@ function createEditForm(material: StudyMaterialRecord): NewTextMaterialInput {
     title: material.title,
     type: material.type,
     level: material.level,
-    contentText: material.contentText
+    contentText: material.contentText,
+    audioUrl: material.audio?.url ?? "",
+    audioCueText: createAudioCueText(material.audio?.cues)
   };
 }
 
@@ -49,6 +57,7 @@ export function MaterialLibraryClient() {
   const [editingMaterialId, setEditingMaterialId] = useState("");
   const [editForm, setEditForm] = useState<NewTextMaterialInput | null>(null);
   const [message, setMessage] = useState("");
+  useToastMessage(message, { title: "材料库" });
 
   useEffect(() => {
     let cancelled = false;
@@ -173,6 +182,7 @@ export function MaterialLibraryClient() {
           trackMaterials.find((material) => material.status !== "已完成") ?? trackMaterials[0];
         const stageSummaries = createCourseStageSummaries(track, materials);
         const currentStage = stageSummaries.find((stage) => stage.isCurrent);
+        const retrospective = createCourseStageRetrospective(track, materials);
 
         return {
           ...track,
@@ -183,7 +193,8 @@ export function MaterialLibraryClient() {
           progress,
           nextMaterial,
           stageSummaries,
-          currentStage
+          currentStage,
+          retrospective
         };
       }),
     [materials]
@@ -352,6 +363,15 @@ export function MaterialLibraryClient() {
                     </p>
                   </div>
                 ) : null}
+                {track.retrospective.hasCompletedStage ? (
+                  <div className="mt-4 rounded-lg border border-border bg-panel-strong p-3">
+                    <p className="text-xs font-medium text-muted">阶段复盘</p>
+                    <p className="mt-1 break-words text-sm font-semibold text-foreground">
+                      {track.retrospective.headline}
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-muted">{track.retrospective.advice}</p>
+                  </div>
+                ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {track.outcomes.slice(0, 2).map((outcome) => (
                     <Badge key={outcome} variant="soft">
@@ -478,6 +498,26 @@ export function MaterialLibraryClient() {
                     onChange={(event) => setEditForm({ ...editForm, contentText: event.target.value })}
                   />
                 </Label>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <Label className="block">
+                    材料音频 URL
+                    <Input
+                      className="mt-2"
+                      placeholder="https://example.com/audio.mp3"
+                      value={editForm.audioUrl ?? ""}
+                      onChange={(event) => setEditForm({ ...editForm, audioUrl: event.target.value })}
+                    />
+                  </Label>
+                  <Label className="block">
+                    句子时间轴
+                    <Textarea
+                      className="mt-2 min-h-28"
+                      placeholder={"1,0:00,0:03\n2,0:03,0:07"}
+                      value={editForm.audioCueText ?? ""}
+                      onChange={(event) => setEditForm({ ...editForm, audioCueText: event.target.value })}
+                    />
+                  </Label>
+                </div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                   <Button
                     variant="outline"
@@ -511,6 +551,11 @@ export function MaterialLibraryClient() {
               <Badge variant="outline">
                 {material.source === "user" ? "可编辑" : "内置"}
               </Badge>
+              {material.audio ? (
+                <Badge variant="soft">
+                  材料音频
+                </Badge>
+              ) : null}
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2 text-sm">

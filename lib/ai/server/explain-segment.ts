@@ -1,5 +1,6 @@
 import {
   createFallbackMaterialExplanation,
+  createFallbackPracticeSet,
   createFallbackSegmentExplanation,
   createFallbackRoleplayTurn,
   createFallbackWritingCorrection
@@ -8,12 +9,14 @@ import {
   correctWritingWithOpenAiCompatible,
   explainMaterialWithOpenAiCompatible,
   explainSegmentWithOpenAiCompatible,
+  generatePracticeWithOpenAiCompatible,
   generateRoleplayTurnWithOpenAiCompatible
 } from "@/lib/ai/openai-compatible";
 import type {
   CorrectWritingInput,
   ExplainMaterialInput,
   ExplainSegmentInput,
+  GeneratePracticeInput,
   GenerateRoleplayTurnInput
 } from "@/lib/ai/types";
 
@@ -166,5 +169,20 @@ export async function generateRoleplayTurn(input: GenerateRoleplayTurnInput, env
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI provider failed";
     return createFallbackRoleplayTurn(input, `${config.providerLabel} 暂不可用：${message}`);
+  }
+}
+
+export async function generatePractice(input: GeneratePracticeInput, env: Environment = process.env) {
+  const config = resolveAiRuntimeConfig(env);
+
+  if (config.mode === "fallback") {
+    return createFallbackPracticeSet(input, config.reason);
+  }
+
+  try {
+    return await generatePracticeWithOpenAiCompatible(input, config);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "AI provider failed";
+    return createFallbackPracticeSet(input, `${config.providerLabel} 暂不可用：${message}`);
   }
 }

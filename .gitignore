@@ -40,3 +40,6 @@ storage/
 uploads/
 recordings/
 transcripts/
+local-models/
+.local-speech/
+.package-scaffold/

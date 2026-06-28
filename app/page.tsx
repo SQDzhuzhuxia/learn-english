@@ -8,9 +8,12 @@ import {
   BookmarkCheck,
   CalendarCheck,
   CheckCircle2,
+  ClipboardCheck,
   Clock3,
+  Flag,
   Headphones,
   Mic,
+  PenLine,
   Play,
   RefreshCcw,
   Sparkles
@@ -32,6 +35,8 @@ import {
   createTodayCoursePlan,
   type DailyStudyDuration
 } from "@/lib/content/today-plan";
+import { createTodayPracticePlan, type TodayPracticeTaskId } from "@/lib/content/practice-plan";
+import { createCourseStageRetrospective } from "@/lib/content/course-catalog";
 import { loadStudyActivities, summarizeStudyActivities } from "@/lib/analytics/progress-store";
 import { summarizeOutputErrors } from "@/lib/analytics/output-error-stats";
 import { loadPracticeAttempts } from "@/lib/speech/practice-store";
@@ -41,6 +46,12 @@ const stepIcons = {
   input: Headphones,
   intensive: BookOpenText,
   output: Mic
+};
+
+const practiceTaskIcons: Record<TodayPracticeTaskId, typeof Mic> = {
+  shadowing: Mic,
+  retelling: ClipboardCheck,
+  writing: PenLine
 };
 
 const durationOptions: DailyStudyDuration[] = [30, 45, 60];
@@ -75,6 +86,14 @@ export default function TodayPage() {
         dueReviewCount: dueCards.length
       }),
     [activitySummary, coursePlan, dueCards.length, outputErrorSummary, sessionPlan]
+  );
+  const practicePlan = useMemo(
+    () => createTodayPracticePlan(currentMaterial),
+    [currentMaterial]
+  );
+  const retrospective = useMemo(
+    () => (activeTrack ? createCourseStageRetrospective(activeTrack, materials) : undefined),
+    [activeTrack, materials]
   );
   const currentMaterialHref = currentMaterial ? `/study/${currentMaterial.id}` : "/study";
   const todayQueue = [
@@ -286,6 +305,24 @@ export default function TodayPage() {
               </div>
             ) : null}
 
+            {retrospective ? (
+              <div className="rounded-lg border border-border bg-panel-strong p-4">
+                <div className="flex items-center gap-2">
+                  <Flag className="h-4 w-4 text-foreground" />
+                  <p className="text-sm font-semibold text-foreground">阶段复盘</p>
+                </div>
+                <p className="mt-2 break-words text-sm font-semibold text-foreground">
+                  {retrospective.headline}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted">{retrospective.advice}</p>
+                {retrospective.completedStageTitles.length > 0 ? (
+                  <p className="mt-2 break-words text-xs leading-5 text-muted">
+                    已完成阶段：{retrospective.completedStageTitles.join("、")}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <Button asChild variant="outline" className="w-full">
               <Link href={currentMaterialHref} onClick={() => currentMaterial && setCurrentMaterialId(currentMaterial.id)}>
                 进入学习器
@@ -375,6 +412,48 @@ export default function TodayPage() {
           </Card>
         </div>
       </section>
+
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Badge variant="soft">今日练习</Badge>
+              <CardTitle className="mt-3">把今天的材料说出来、写出来</CardTitle>
+            </div>
+            <Mic className="h-5 w-5 text-foreground" />
+          </div>
+          <CardDescription>
+            下面的跟读、复述和短写作都来自 {practicePlan.materialTitle}，点击直接进入练习页对应模块。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-3">
+            {practicePlan.tasks.map((task) => {
+              const TaskIcon = practiceTaskIcons[task.id];
+
+              return (
+                <Link
+                  key={task.id}
+                  href={task.href}
+                  className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-white p-4 transition hover:bg-panel-strong"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-panel-strong text-foreground">
+                      <TaskIcon className="h-4 w-4" />
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted" />
+                  </div>
+                  <p className="text-sm font-semibold text-foreground">{task.title}</p>
+                  <p className="text-xs leading-5 text-muted">{task.focus}</p>
+                  <p className="min-w-0 break-words rounded-lg bg-panel-strong px-3 py-2 text-xs leading-5 text-foreground">
+                    {task.prompt}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="pt-5">

@@ -366,6 +366,90 @@ export const materials = [
     priority: "长期目标",
     summary: "入籍宣誓仪式、听指令、领取证书。",
     keyExpressions: ["oath ceremony", "repeat the oath", "receive the certificate"]
+  },
+  {
+    id: "restaurant-order",
+    title: "Ordering at a Diner",
+    type: "美国生活",
+    level: "A1",
+    minutes: 10,
+    status: "未开始",
+    progress: 0,
+    knownRate: 79,
+    inputType: "对话",
+    priority: "轻松输入",
+    summary: "看菜单、点餐、问配菜、分账。",
+    keyExpressions: ["a few more minutes", "comes with fries", "split the check"]
+  },
+  {
+    id: "post-office",
+    title: "Mailing a Box at the Post Office",
+    type: "美国生活",
+    level: "A1+",
+    minutes: 11,
+    status: "未开始",
+    progress: 0,
+    knownRate: 64,
+    inputType: "柜台对话",
+    priority: "生活必备",
+    summary: "寄包裹、说明内容、选邮寄方式、保存单号。",
+    keyExpressions: ["mail a box", "shipping options", "tracking number"]
+  },
+  {
+    id: "phone-plan",
+    title: "Setting Up a Phone Plan",
+    type: "美国生活",
+    level: "A2",
+    minutes: 13,
+    status: "未开始",
+    progress: 0,
+    knownRate: 55,
+    inputType: "门店对话",
+    priority: "生活必备",
+    summary: "办手机套餐、问流量、月费和合约、转号码。",
+    keyExpressions: ["set up a new plan", "monthly fee", "month to month"]
+  },
+  {
+    id: "lease-signing",
+    title: "Signing the Lease",
+    type: "租房",
+    level: "A2",
+    minutes: 14,
+    status: "未开始",
+    progress: 0,
+    knownRate: 53,
+    inputType: "流程对话",
+    priority: "本周建议",
+    summary: "读租约、确认租金押金、到期日、late fee 和签字。",
+    keyExpressions: ["sign the lease", "due on the first", "late fee section"]
+  },
+  {
+    id: "equipment-checklist",
+    title: "Start-of-Shift Equipment Checklist",
+    type: "自动化",
+    level: "A2",
+    minutes: 13,
+    status: "未开始",
+    progress: 0,
+    knownRate: 45,
+    inputType: "操作短文",
+    priority: "专业储备",
+    summary: "开机前点检：急停、气压、油位、清场和签字。",
+    keyExpressions: ["emergency stop button", "air pressure", "checklist"]
+  },
+  {
+    id: "civics-history",
+    title: "Basic U.S. Civics Facts",
+    type: "入籍",
+    level: "A2",
+    minutes: 14,
+    status: "未开始",
+    progress: 0,
+    knownRate: 48,
+    inputType: "公民常识短文",
+    priority: "长期目标",
+    summary: "州数、宪法、三权分立和入籍考试常见问题。",
+    keyExpressions: ["fifty states", "the Constitution", "three branches of government"]
   }
 ];
 
@@ -823,25 +907,25 @@ export const settingsGroups = [
         icon: ClipboardCheck,
         label: "界面语言",
         value: "中文为主",
-        detail: "关键表达中英混合，后续逐步增加英文比例。"
+        detail: "解释、反馈和操作提示以中文为主，英语表达保持原文输入。"
       }
     ]
   },
   {
     title: "AI 和语音",
-    description: "后续统一管理模型供应商、API Key 和语音识别。",
+    description: "统一管理 AI 供应商、TTS、STT 和本地发音评分链路。",
     items: [
       {
         icon: Bot,
         label: "AI 供应商",
-        value: "待配置",
-        detail: "预留 OpenAI、Claude、Gemini、DeepSeek、通义、豆包和本地模型。"
+        value: "可配置",
+        detail: "支持 fallback、OpenAI-compatible、OpenAI 和本地兼容 endpoint。"
       },
       {
         icon: Mic,
         label: "语音识别",
-        value: "云端优先",
-        detail: "先接云端 STT，后续支持 Whisper/whisper.cpp 离线。"
+        value: "云端/本地",
+        detail: "支持 OpenAI-compatible STT、本地 Whisper/whisper.cpp 和浏览器兜底。"
       },
       {
         icon: ShieldCheck,
@@ -858,14 +942,14 @@ export const settingsGroups = [
       {
         icon: Cloud,
         label: "云同步",
-        value: "v0.5 接入",
-        detail: "账号、材料、词句、复习记录后续同步到云数据库。"
+        value: "已接入",
+        detail: "支持 Supabase 登录、手动同步、差异检查、细粒度合并和自动上传。"
       },
       {
         icon: WifiOff,
         label: "离线学习",
-        value: "后续增强",
-        detail: "先缓存页面和材料，再逐步支持本地语音和模型。"
+        value: "已增强",
+        detail: "支持 PWA 离线、音频缓存、AI 队列和本地语音 endpoint 检查。"
       }
     ]
   }

@@ -38,6 +38,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { useToastMessage } from "@/components/ui/toast";
 import type { LearningItemRecord, ReviewCardRecord } from "@/lib/review/types";
 
 const filters = ["全部", "到期", "新卡", "句子", "短语", "归档"];
@@ -125,6 +126,7 @@ export function NotebookClient() {
   const [editForm, setEditForm] = useState<EditFormState | null>(null);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
+  useToastMessage(message, { title: "词句本" });
 
   useEffect(() => {
     let cancelled = false;

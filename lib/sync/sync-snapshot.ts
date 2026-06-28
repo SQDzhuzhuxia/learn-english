@@ -8,6 +8,8 @@ export const SYNCABLE_LOCAL_STORAGE_KEYS = [
   "learn-english.review-logs.v1",
   "learn-english.activity-log.v1",
   "learn-english.practice-attempts.v1",
+  "learn-english.practice-questions.v1",
+  "learn-english.practice-question-attempts.v1",
   "learn-english.ai-result-inbox.v1",
   "learn-english.ai-segment-explanations.v1"
 ] as const;

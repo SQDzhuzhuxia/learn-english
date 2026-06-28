@@ -1,3 +1,5 @@
+import { decodeSpeechHeaderValue, encodeSpeechHeaderValue } from "@/lib/speech/speech-header-codec";
+
 export type TtsAudioCacheInput = {
   text: string;
   voice?: string;
@@ -108,8 +110,8 @@ export async function readCachedTtsAudio(input: TtsAudioCacheInput): Promise<Cac
     return {
       blob: await response.blob(),
       contentType,
-      provider: response.headers.get("X-Speech-Provider") ?? undefined,
-      voice: response.headers.get("X-Speech-Voice") ?? undefined
+      provider: decodeSpeechHeaderValue(response.headers.get("X-Speech-Provider")),
+      voice: decodeSpeechHeaderValue(response.headers.get("X-Speech-Voice"))
     };
   } catch {
     return undefined;
@@ -142,8 +144,8 @@ export async function writeCachedTtsAudio(
       new Response(audio, {
         headers: {
           "Content-Type": metadata.contentType,
-          "X-Speech-Provider": metadata.provider ?? "cached TTS",
-          ...(metadata.voice ? { "X-Speech-Voice": metadata.voice } : {}),
+          "X-Speech-Provider": encodeSpeechHeaderValue(metadata.provider ?? "cached TTS") ?? "cached%20TTS",
+          ...(encodeSpeechHeaderValue(metadata.voice) ? { "X-Speech-Voice": encodeSpeechHeaderValue(metadata.voice) } : {}),
           "X-Cached-At": new Date().toISOString()
         }
       })

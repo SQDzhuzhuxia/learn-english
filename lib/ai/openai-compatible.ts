@@ -1,6 +1,8 @@
 import type {
   AiMaterialExplanation,
   AiMaterialSegmentExplanation,
+  AiGeneratedPracticeDrill,
+  AiGeneratedPracticeSet,
   AiRoleplayTurn,
   AiSegmentExplanation,
   AiSegmentExpression,
@@ -8,6 +10,7 @@ import type {
   CorrectWritingInput,
   ExplainMaterialInput,
   ExplainSegmentInput,
+  GeneratePracticeInput,
   GenerateRoleplayTurnInput
 } from "@/lib/ai/types";
 
@@ -115,6 +118,34 @@ function buildRoleplayTurnPrompt(input: GenerateRoleplayTurnInput) {
   ].join("\n");
 }
 
+function buildPracticeGenerationPrompt(input: GeneratePracticeInput) {
+  const segments = input.segments
+    .slice(0, 20)
+    .map((segment) => `${segment.order}. ${segment.text}`)
+    .join("\n");
+
+  return [
+    "请基于一篇英语学习材料，为中文母语成人初学者生成分级练习题。",
+    "目标是美国生活、工作、移民或自动化职场英语。",
+    "不要脱离材料，不要生成考试化难题。题目要短、可复用、适合 A1-A2 起步。",
+    "必须输出 JSON，不要输出 markdown。",
+    "JSON 字段：materialTitle, level, focus, drills。",
+    "drills 是数组，每项包含 type, title, instruction, prompt, answer, hints, choices, explanationZh, estimatedMinutes。",
+    "type 只能是 shadowing, retelling, cloze, qa, roleplay, writing, error-correction。",
+    "hints 是 1 到 5 个字符串；choices 可为空数组；estimatedMinutes 是 1 到 8 的数字。",
+    "",
+    `材料标题：${input.materialTitle}`,
+    `材料类型：${input.materialType}`,
+    `学习者水平：${input.level}`,
+    `生成数量：${Math.max(1, Math.min(input.targetCount ?? 8, 10))}`,
+    `重点方向：${input.focus || "跟读、复述、填空、问答、写作、角色扮演"}`,
+    `材料摘要：${input.summary}`,
+    `重点表达：${input.keyExpressions.join(", ") || "无"}`,
+    "分句：",
+    segments
+  ].join("\n");
+}
+
 function readString(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
@@ -128,6 +159,12 @@ function readStringArray(value: unknown, fallback: string[]) {
     (item): item is string => typeof item === "string" && item.trim().length > 0
   );
   return strings.length > 0 ? strings.slice(0, 5) : fallback;
+}
+
+function readNumber(value: unknown, fallback: number) {
+  const numberValue = typeof value === "number" ? value : Number.parseInt(readString(value, ""), 10);
+
+  return Number.isFinite(numberValue) ? numberValue : fallback;
 }
 
 function readExpressions(value: unknown, fallbackSentence: string): AiSegmentExpression[] {
@@ -333,6 +370,69 @@ export function parseRoleplayTurnResponse(
   };
 }
 
+function parseGeneratedPracticeDrill(raw: unknown, index: number): AiGeneratedPracticeDrill | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+
+  const record = raw as Record<string, unknown>;
+  const type = readString(record.type, "qa") as AiGeneratedPracticeDrill["type"];
+  const allowedTypes = new Set<AiGeneratedPracticeDrill["type"]>([
+    "shadowing",
+    "retelling",
+    "cloze",
+    "qa",
+    "roleplay",
+    "writing",
+    "error-correction"
+  ]);
+  const prompt = readString(record.prompt, "");
+  const answer = readString(record.answer, "");
+
+  if (!prompt || !answer) {
+    return undefined;
+  }
+
+  return {
+    type: allowedTypes.has(type) ? type : "qa",
+    title: readString(record.title, `练习 ${index + 1}`),
+    instruction: readString(record.instruction, "用简单英文完成这道练习。"),
+    prompt,
+    answer,
+    hints: readStringArray(record.hints, []),
+    choices: readStringArray(record.choices, []),
+    explanationZh: readString(record.explanationZh, "这道题来自当前材料，用于把输入转成输出。"),
+    estimatedMinutes: Math.max(1, Math.min(8, readNumber(record.estimatedMinutes, 3)))
+  };
+}
+
+export function parsePracticeGenerationResponse(
+  content: string,
+  input: GeneratePracticeInput,
+  providerLabel: string
+): AiGeneratedPracticeSet {
+  const parsed = JSON.parse(extractJsonObject(content)) as Record<string, unknown>;
+  const rawDrills = Array.isArray(parsed.drills) ? parsed.drills : [];
+  const drills = rawDrills
+    .map((item, index) => parseGeneratedPracticeDrill(item, index))
+    .filter((item): item is AiGeneratedPracticeDrill => Boolean(item))
+    .slice(0, Math.max(1, Math.min(input.targetCount ?? 8, 10)));
+
+  if (drills.length === 0) {
+    throw new Error("AI provider returned no usable practice drills");
+  }
+
+  return {
+    materialTitle: readString(parsed.materialTitle, input.materialTitle),
+    level: readString(parsed.level, input.level || "A1"),
+    focus: readString(parsed.focus, input.focus || "材料输出练习"),
+    drills,
+    source: "model",
+    provider: providerLabel,
+    generatedAt: new Date().toISOString()
+  };
+}
+
 async function requestChatCompletion(prompt: string, config: OpenAiCompatibleConfig) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
@@ -414,4 +514,12 @@ export async function generateRoleplayTurnWithOpenAiCompatible(
 ) {
   const content = await requestChatCompletion(buildRoleplayTurnPrompt(input), config);
   return parseRoleplayTurnResponse(content, input, config.providerLabel);
+}
+
+export async function generatePracticeWithOpenAiCompatible(
+  input: GeneratePracticeInput,
+  config: OpenAiCompatibleConfig
+) {
+  const content = await requestChatCompletion(buildPracticeGenerationPrompt(input), config);
+  return parsePracticeGenerationResponse(content, input, config.providerLabel);
 }

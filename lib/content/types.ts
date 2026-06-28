@@ -9,6 +9,20 @@ export type MaterialSegment = {
   familiarity: "认识" | "模糊" | "不认识" | "重点";
 };
 
+export type MaterialAudioCue = {
+  segmentId: string;
+  order: number;
+  startMs: number;
+  endMs: number;
+};
+
+export type MaterialAudioAsset = {
+  source: "material";
+  url: string;
+  label: string;
+  cues: MaterialAudioCue[];
+};
+
 export type StudyMaterialRecord = {
   id: string;
   title: string;
@@ -24,6 +38,7 @@ export type StudyMaterialRecord = {
   keyExpressions: string[];
   contentText: string;
   segments: MaterialSegment[];
+  audio?: MaterialAudioAsset;
   source: MaterialSource;
   currentSegmentOrder: number;
   createdAt: string;
@@ -35,4 +50,6 @@ export type NewTextMaterialInput = {
   type: string;
   level: string;
   contentText: string;
+  audioUrl?: string;
+  audioCueText?: string;
 };

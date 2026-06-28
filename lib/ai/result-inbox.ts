@@ -2,7 +2,7 @@
 
 import type { AiRequestQueueKind } from "@/lib/ai/request-queue";
 
-export type AiResultInboxKind = Extract<AiRequestQueueKind, "correct-writing" | "roleplay-next">;
+export type AiResultInboxKind = Extract<AiRequestQueueKind, "correct-writing" | "roleplay-next" | "generate-practice">;
 
 export type AiResultInboxRecord = {
   id: string;

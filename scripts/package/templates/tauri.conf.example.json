@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Learn English",
+  "version": "0.1.0",
+  "identifier": "com.learnenglish.app",
+  "build": {
+    "frontendDist": "../out",
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Learn English",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 390,
+        "minHeight": 700
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

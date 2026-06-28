@@ -1,10 +1,30 @@
 # 项目总进度
 
-日期：2026-06-06
+日期：2026-06-27
 
 ## 当前阶段
 
-项目当前处于 **Sprint 7：内容库和课程体系建设**。功能闭环已经进入可用阶段，当前重点是把材料、课程路径和每日学习流程组织得更清楚。
+项目当前已完成 **Sprint 7：内容库和课程体系建设** 第一轮、**Sprint 8：练习生成、诊断画像和工程封装补强**，并进入 **Sprint 9：内容规模、材料音频和发布前验收收口**。当前重点已经从“手工堆练习内容”转为“任意材料自动裂变练习 + AI 按需生成 + 题库 SRS 沉淀 + 真实音频/本地语音运行脚手架”。
+
+Sprint 8 新增收口能力：
+
+- 练习页直接绑定当前材料，自动派生跟读、复述、填空、写作和角色准备练习。
+- 新增 `/api/ai/generate-practice`，可基于材料生成分级练习集。
+- AI 练习生成失败可进入本地 AI 请求队列，恢复后重试并写入 AI 结果收件箱。
+- 生成练习可保存到本地练习题库，并按 SRS 到期复习。
+- 练习题库和练习尝试记录纳入同步快照。
+- 本地语音模型改为 manifest + bootstrap + doctor 的工程化准备方式，不提交大模型二进制。
+- 移动/桌面封装提供 Capacitor、Tauri、Electron 脚手架模板和检查命令。
+- 移动交互回归补齐静态检查与 Playwright 截图脚本。
+- 内置材料库已扩展到 100+ 可练材料，并接入课程阶段。
+- 导入材料支持自带音频 URL 和句子时间轴，学习页可播放当前句真实音频片段。
+- 本地语音新增模型下载 dry-run、启动脚本生成和三项语音 doctor 检查。
+- 本地语音新增开发 runtime，可在没有生产模型时自测 STT/TTS/发音评分 endpoint 合同。
+- 设置页新增 TTS 配置说明和服务端 TTS 试听入口。
+- 新增全局 Toast 提示系统，学习、练习、复习、词句本、材料库和设置页的关键反馈会同步进入全局提示层。
+- 核心交互 QA 新增 `qa:interactions:check`，覆盖学习、练习、复习和设置关键动作。
+- 发布前总门禁新增 `release:check`，串联 lint、typecheck、test、工程检查、交互检查、语音 dry-run、依赖审计和 build。
+- GitHub Actions CI 已接入扩展门禁和 Playwright 移动截图回归。
 
 总体状态：
 
@@ -47,11 +67,20 @@ AI 自由角色追问      已完成
 音频级发音评分入口 已完成
 移动端深层截图回归 已完成
 内容库第一轮扩充     已完成
+场景材料第二轮扩充   已完成
 课程路径第一轮       已完成
 课程阶段目标         已完成
 今日页路径推荐       已完成
 每日学习推荐规则     已完成
-今日智能建议         已完成
+今日智能建议           已完成
+今日练习真实内容       已完成
+课程阶段复盘           已完成
+练习页材料裂变练习     已完成
+角色扮演目标跟踪       已完成
+输出长期弱项画像       已完成
+三项语音练习诊断       已完成
+封装准备度检查         已完成
+移动交互回归检查       已完成
 PWA 基础离线和安装   已完成
 云同步前置快照       已完成
 云数据库表结构草案   已完成
@@ -187,10 +216,26 @@ AI 结果清空确认      已完成
 | Sprint 6G | 已完成 | 新增 `/api/speech/pronunciation-score` 和本地发音评分 adapter，跟读录音后可请求本地音频级评分 |
 | Sprint 6H | 已完成 | 补充移动端深层截图回归记录，覆盖练习、导入、词句本、复习、学习、进度和设置长页面 |
 | Sprint 7A | 已完成 | 内置材料扩展到 18 篇，新增美国生活、租房社区、自动化职场、移民入籍四条课程路径 |
+| Sprint 7B | 已完成第一轮 | 内置材料扩展到 24 篇，新增餐厅点餐、邮局寄件、手机套餐、租约签署、开机点检、civics 常识六篇材料并接入课程阶段 |
 | Sprint 7C | 已完成第一轮 | 今日页读取课程路径和材料库，自动推荐当前路径下一篇材料，并生成今日队列 |
 | Sprint 7D | 已完成第一轮 | 首页支持 30/45/60 分钟每日学习模式，自动分配复习、听读、精学和输出时间 |
 | Sprint 7E | 已完成第一轮 | 今日页结合课程路径、学习记录、输出薄弱项和复习压力生成下一步智能建议 |
 | Sprint 7F | 已完成第一轮 | 课程路径拆分为阶段目标、完成标准、阶段进度和输出任务 |
+| Sprint 7G | 已完成第一轮 | 新增 `createTodayPracticePlan`，跟读/复述/短写作从当前材料生成，今日页新增“今日练习”卡并跳转练习页锚点 |
+| Sprint 7H | 已完成第一轮 | 新增 `createCourseStageRetrospective`，今日页和材料库展示阶段复盘和阶段完成后的下一步建议 |
+| Sprint 8A | 已完成 | 新增 `createMaterialPracticeDrills`，每篇材料自动裂变出跟读、复述、填空、写作和角色准备微练习，并在练习页展示 |
+| Sprint 8B | 已完成 | 新增角色目标跟踪和输出长期弱项画像，展示目标分、连续达标、风险等级、主攻弱项和训练计划 |
+| Sprint 8C | 已完成 | 本地语音诊断扩展为 STT/TTS/发音评分三项，设置页和 `speech:check` 同步展示 `practiceReady` |
+| Sprint 8D | 已完成 | 新增 `package:check` 和 `qa:mobile:check`，补齐移动/桌面封装准备度与移动交互回归检查 |
+| Sprint 9A | 已完成 | 新增 `seed-expansion`，课程库扩展到 100+ 可练材料并接入既有课程阶段 |
+| Sprint 9B | 已完成 | 新增材料音频数据模型、导入/编辑表单字段和学习页当前句音频片段播放 |
+| Sprint 9C | 已完成 | 新增 `speech:download`、`speech:start` 和 manifest runtime hints，形成本地语音下载/启动脚手架 |
+| Sprint 9D | 已完成 | 设置页新增 TTS 配置说明和服务端 TTS 试听入口 |
+| Sprint 9E | 已完成 | 新增 `qa:interactions:check`，覆盖学习、练习、复习和设置核心交互契约 |
+| Sprint 9F | 已完成 | 新增 `release:check` 和扩展 CI，发布前自动跑工程、交互、语音 dry-run、依赖审计、构建和移动截图回归 |
+| Sprint 9G | 已完成 | 新增 `speech:dev-runtime`，提供可自测的本地 STT/TTS/发音评分合同服务用于开发和 CI |
+| Sprint 9H | 已完成 | 新增 `components/ui/toast.tsx` 和全局 ToastProvider，核心页面消息同步进入统一反馈层 |
+| Sprint 9I | 已完成 | 当前 Windows 目标机器已部署 whisper.cpp + Windows SAPI 本地语音 runtime，并验证 Next API 可用 |
 
 ## 当前可用能力
 
@@ -201,9 +246,11 @@ AI 结果清空确认      已完成
 - 今日页支持 30、45、60 分钟三档学习节奏
 - 今日页会按时长自动分配复习/热身、听读输入、逐句精学和跟读输出
 - 今日页会结合学习记录、输出薄弱项和复习压力，推荐下一步优先动作
+- 今日页会把当前材料派生为跟读、复述和短写作任务，直达练习页对应模块
 - 材料库
-- 材料库内置 18 篇 A1-A2 起步材料
+- 材料库内置 24 篇 A1-A2 起步材料
 - 材料库支持美国生活、日常、租房、银行、交通、职场、自动化、入籍方向筛选
+- 内置材料覆盖看医生、购物、点餐、药房、银行、公交、邮局、手机店、看房、签约、维修、账单、邻里、职场点检、PLC、安全、交接班、面试、N-400、地址、civics 和宣誓场景
 - 材料库展示四条课程路径：生活生存、租房社区、自动化职场、移民入籍
 - 课程路径展示路径进度、已开始数量、总输入时长和下一篇入口
 - 课程路径展示当前阶段、阶段完成标准、阶段进度和阶段输出任务
@@ -364,9 +411,14 @@ AI 结果清空确认      已完成
 - 练习页和设置页清空 AI 结果收件箱前需要二次确认
 - 进度页会从真实练习记录生成输出薄弱项统计
 - 输出薄弱项支持识别发音听辨、流利度、关键信息、完整句、语法自然度、词汇表达和礼貌表达
-- 新增 `/api/speech/readiness`，用于检查当前 STT/TTS 是本地、云端还是未配置
-- 设置页会展示本地 Whisper/STT 和本地 TTS 的离线准备状态及下一步配置项
-- 新增 `npm run speech:check`，可在命令行检查本地语音配置并支持 JSON/strict 模式
+- 练习页会从当前材料自动生成 5-8 个微练习，覆盖跟读、复述、填空、写作和角色准备
+- 练习页角色扮演会展示目标分、最佳完成度、最近一次、连续达标和下一目标
+- 进度页会生成长期输出弱项画像，展示风险等级、主攻弱项、周目标和 P0/P1/P2 训练计划
+- 新增 `/api/speech/readiness`，用于检查当前 STT/TTS/发音评分是本地、云端还是未配置
+- 设置页会展示本地 Whisper/STT、本地 TTS 和本地发音评分的练习链路准备状态及下一步配置项
+- 新增 `npm run speech:check`，可在命令行检查本地语音配置并支持 JSON/strict/strict-practice 模式
+- 新增 `npm run package:check`，检查 PWA、service worker、环境变量模板和部署文档封装准备度
+- 新增 `npm run qa:mobile:check`，检查移动端关键锚点、表单、确认态和截图基线
 - 新增 `components/ui/` 基础 UI 组件
 - 新增 `components.json` shadcn/ui 配置
 - 新增 `lib/utils.ts` 统一 className 合并工具
@@ -406,13 +458,12 @@ AI 结果清空确认      已完成
 - 复习页读取真实本地卡片
 - 四档复习评分并更新下次复习时间
 
-## 当前未完成能力
+## 当前外部发布边界
 
-- 内置离线 Whisper 模型打包
-- 生产级音频强制对齐模型打包和真实音素明细评分
-- 内置离线 TTS 模型打包
-- 更完整的多场景角色扮演脚本库和会话记忆
-- 交互式弹窗和表单填充后的移动端截图回归记录
+- 当前 Windows 目标机器已部署真实本地语音 runtime：whisper.cpp STT、Windows SAPI TTS、基于 whisper 转写的词级发音评分；生产级音素级强制对齐仍需替换为 MFA/WhisperX/wav2vec2 等专门服务。
+- 离线 Whisper 模型已下载到被 Git 忽略的 `local-models/whisper/ggml-base.en.bin`；模型二进制不提交进仓库。
+- 原生移动/桌面端已具备脚手架、`npm run package:native:check` 发布环境检查和手动 GitHub Native Release workflow；正式签名发布需要在目标平台 CI 中注入证书、密钥和商店配置。
+- 真实浏览器截图回归已具备脚本，CI 已安装 Playwright Chromium 并上传截图报告 artifact。
 
 ## 文档说明
 
@@ -429,14 +480,19 @@ AI 结果清空确认      已完成
 - `sprint-5-status.md`：Sprint 5 的验收记录，会随着同步、离线和跨端能力继续更新。
 - `sprint-6-status.md`：Sprint 6 的验收记录，会随着学习智能分析和离线模型预研继续更新。
 - `sprint-7-status.md`：Sprint 7 的验收记录，会随着内容库和课程体系建设继续更新。
+- `sprint-8-status.md`：Sprint 8 的验收记录，记录练习生成、诊断画像、语音链路和跨端工程检查。
+- `sprint-9-status.md`：Sprint 9 的验收记录，记录内容规模、材料音频、本地语音脚手架、TTS 试听和核心交互 QA。
+- `local-speech-runtime-contract.md`：本地 STT、TTS、发音评分/强制对齐 runtime 的 endpoint、字段和返回结构合同。
+- `packaging-mobile-desktop.md`：移动端和桌面端封装路线、边界和检查命令。
 - `qa/mobile-visual-regression-2026-05-31.md`：移动端首屏截图回归记录。
 - `qa/mobile-deep-visual-regression-2026-06-01.md`：移动端深层截图回归记录。
+- `qa/mobile-interaction-regression-2026-06-27.md`：移动端交互回归检查记录。
 - `project-progress.md`：项目总进度看板，也就是当前文件。
 
 ## 下一步
 
 当前下一步：
 
-1. Sprint 7B：继续扩展美国生活、工作、移民场景材料。
-2. Sprint 7G：把更多真实学习内容接入每日流程和练习入口。
-3. Sprint 7H：增加课程阶段复盘和阶段完成后的下一步建议。
+1. 在目标机器选择并启动具体本地 STT/TTS/发音评分 runtime，然后用 `npm run speech:check -- --strict-practice` 验证。
+2. 如果要把移动端/桌面端作为正式发布目标，基于 `npm run package:scaffold` 生成的脚手架接入平台签名和发布流水线。
+3. 在目标平台 CI 中运行对应严格发布检查，例如 `npm run package:native:check -- --strict --target capacitor --profile android`。

@@ -3,6 +3,8 @@
 import { materials as seedCards, studySegments } from "@/lib/mock-data";
 import { recordStudyActivity } from "@/lib/analytics/progress-store";
 import { seedMaterialContentById } from "@/lib/content/course-catalog";
+import { createMaterialAudioAsset } from "@/lib/content/material-audio";
+import { supplementalSeedMaterials } from "@/lib/content/seed-expansion";
 import { estimateReadingMinutes, splitTextIntoSegments } from "@/lib/content/split-text";
 import type { NewTextMaterialInput, StudyMaterialRecord } from "@/lib/content/types";
 import { archiveLearningItemsByMaterialId } from "@/lib/review/review-store";
@@ -18,7 +20,7 @@ function nowIso() {
 }
 
 export function getSeedMaterials(): StudyMaterialRecord[] {
-  return seedCards.map((material, index) => {
+  return [...seedCards, ...supplementalSeedMaterials].map((material, index) => {
     const contentText =
       index === 0
         ? seedContent
@@ -123,6 +125,11 @@ export function createTextMaterial(input: NewTextMaterialInput): StudyMaterialRe
   const timestamp = nowIso();
   const id = `user-${Date.now()}`;
   const segments = splitTextIntoSegments(input.contentText);
+  const audio = createMaterialAudioAsset({
+    audioUrl: input.audioUrl,
+    audioCueText: input.audioCueText,
+    segments
+  });
 
   return {
     id,
@@ -139,6 +146,7 @@ export function createTextMaterial(input: NewTextMaterialInput): StudyMaterialRe
     keyExpressions: segments.slice(0, 3).map((segment) => segment.text.split(/\s+/).slice(0, 4).join(" ")),
     contentText: input.contentText.trim(),
     segments,
+    audio,
     source: "user",
     currentSegmentOrder: 1,
     createdAt: timestamp,
@@ -149,6 +157,11 @@ export function createTextMaterial(input: NewTextMaterialInput): StudyMaterialRe
 function createMaterialFields(input: NewTextMaterialInput) {
   const contentText = input.contentText.trim();
   const segments = splitTextIntoSegments(contentText);
+  const audio = createMaterialAudioAsset({
+    audioUrl: input.audioUrl,
+    audioCueText: input.audioCueText,
+    segments
+  });
 
   return {
     title: input.title.trim(),
@@ -160,7 +173,8 @@ function createMaterialFields(input: NewTextMaterialInput) {
       .slice(0, 3)
       .map((segment) => segment.text.split(/\s+/).slice(0, 4).join(" ")),
     contentText,
-    segments
+    segments,
+    audio
   };
 }
 

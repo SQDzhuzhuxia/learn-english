@@ -106,7 +106,7 @@ shadcn/ui 适合本项目的原因：
 - `separator`
 - `skeleton`
 - `table`
-- `toast` 或 `sonner`
+- `toast`
 
 本项目业务组件继续放在：
 
@@ -150,11 +150,13 @@ npx shadcn@latest init
 npx shadcn@latest add button card input textarea label select checkbox switch tabs dialog sheet dropdown-menu tooltip badge progress separator skeleton table
 ```
 
-后续如果需要 toast：
+Toast 已采用项目内轻量实现：
 
 ```bash
-npx shadcn@latest add sonner
+components/ui/toast.tsx
 ```
+
+`ToastProvider` 挂载在 `components/layout/app-shell.tsx`，核心学习、练习、复习、词句本、材料库和设置页的消息会同步进入全局提示层。
 
 ## 7. 迁移路线
 

@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Lint, typecheck, test, build
+    name: Quality gates
     runs-on: ubuntu-latest
 
     steps:
@@ -42,5 +42,61 @@ jobs:
       - name: Test
         run: npm run test
 
+      - name: Package readiness
+        run: npm run package:check
+
+      - name: Native release contract
+        run: npm run package:native:check -- --json
+
+      - name: Core interaction QA
+        run: npm run qa:interactions:check
+
+      - name: Mobile interaction QA
+        run: npm run qa:mobile:check
+
+      - name: Local speech doctor
+        run: npm run speech:doctor
+
+      - name: Local speech download dry run
+        run: npm run speech:download -- --dry-run --include-optional --json
+
+      - name: Local speech development runtime self-test
+        run: npm run speech:dev-runtime -- --self-test --json
+
+      - name: Windows local speech runtime contract
+        run: npm run speech:windows-runtime -- --self-test --json
+        if: runner.os == 'Windows'
+
+      - name: Local speech startup script dry run
+        run: npm run speech:start -- --write --json
+
       - name: Build
         run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start production server
+        run: |
+          npm run start -- --hostname 127.0.0.1 --port 3000 > /tmp/learn-english-next.log 2>&1 &
+          echo $! > /tmp/learn-english-next.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000 >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/learn-english-next.log
+          exit 1
+
+      - name: Mobile screenshot regression
+        run: npm run qa:mobile:screenshots -- --base-url=http://127.0.0.1:3000
+
+      - name: Upload mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-screenshot-regression
+          path: |
+            docs/qa/mobile-screenshot-regression-*.md
+            docs/qa/screenshots/*-mobile-auto/

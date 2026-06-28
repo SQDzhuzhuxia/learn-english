@@ -12,6 +12,7 @@ describe("sync snapshot", () => {
       {
         "learn-english.materials.v1": "[1]",
         "learn-english.review-cards.v1": "[2]",
+        "learn-english.practice-questions.v1": "[4]",
         "learn-english.unknown.v1": "[3]",
         "other-app": "ignore"
       },
@@ -26,6 +27,7 @@ describe("sync snapshot", () => {
     expect(snapshot.deviceId).toBe("test-device");
     expect(snapshot.records.map((record) => record.key)).toEqual([
       "learn-english.materials.v1",
+      "learn-english.practice-questions.v1",
       "learn-english.review-cards.v1"
     ]);
   });
@@ -54,6 +56,8 @@ describe("sync snapshot", () => {
 
   it("recognizes syncable storage keys", () => {
     expect(isSyncableStorageKey("learn-english.practice-attempts.v1")).toBe(true);
+    expect(isSyncableStorageKey("learn-english.practice-questions.v1")).toBe(true);
+    expect(isSyncableStorageKey("learn-english.practice-question-attempts.v1")).toBe(true);
     expect(isSyncableStorageKey("learn-english.ai-result-inbox.v1")).toBe(true);
     expect(isSyncableStorageKey("learn-english.random.v1")).toBe(false);
   });

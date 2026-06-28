@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createFallbackMaterialExplanation,
+  createFallbackPracticeSet,
   createFallbackSegmentExplanation,
   createFallbackWritingCorrection
 } from "@/lib/ai/fallback-explanation";
@@ -58,5 +59,29 @@ describe("createFallbackSegmentExplanation", () => {
     expect(correction.source).toBe("fallback");
     expect(correction.correctedText).toBe("I want see doctor.");
     expect(correction.keyProblems.length).toBeGreaterThan(0);
+  });
+
+  it("creates a local generated practice set without an API key", () => {
+    const practiceSet = createFallbackPracticeSet({
+      materialId: "doctor-visit",
+      materialTitle: "A Visit to the Doctor",
+      materialType: "美国生活",
+      level: "A1",
+      summary: "A patient calls to make a doctor appointment.",
+      keyExpressions: ["make an appointment", "sore throat"],
+      targetCount: 5,
+      segments: [
+        {
+          id: "s1",
+          order: 1,
+          text: "I would like to make an appointment with a doctor."
+        }
+      ]
+    });
+
+    expect(practiceSet.source).toBe("fallback");
+    expect(practiceSet.drills).toHaveLength(5);
+    expect(practiceSet.drills.map((drill) => drill.type)).toContain("cloze");
+    expect(practiceSet.drills[0]?.prompt).toContain("appointment");
   });
 });

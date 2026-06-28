@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { useToastMessage } from "@/components/ui/toast";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 import {
@@ -106,6 +107,7 @@ export function CloudSyncPanel() {
   const [pendingAction, setPendingAction] = useState<PendingSyncAction | null>(null);
   const [lastUploadState, setLastUploadState] = useState(() => loadAutoSyncUploadState());
   const [lastSyncEvent, setLastSyncEvent] = useState(() => loadCloudSyncLastEvent());
+  useToastMessage(message, { title: "云同步" });
 
   useEffect(() => {
     if (!supabase) {

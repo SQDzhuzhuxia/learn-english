@@ -1,0 +1,125 @@
+# Sprint 9 Status
+
+Date: 2026-06-28
+
+## Goal
+
+Sprint 9 closes the remaining product and engineering gaps after Sprint 8:
+expand the built-in practice corpus, support real material audio playback, make
+local speech model setup operable, expose TTS configuration with a preview path,
+and add a stronger regression gate for core user interactions.
+
+## Delivered
+
+- Built-in seed content is expanded to 100+ practice-ready materials through
+  `lib/content/seed-expansion.ts`.
+- Existing course stages now include supplemental U.S. life, work, automation,
+  immigration, civics, housing, service, safety, interview, and community
+  scenarios.
+- Imported materials can store an optional material audio URL and sentence cue
+  timeline.
+- The study page can play the current sentence from a material-owned audio file
+  and still falls back to TTS when no material audio exists.
+- Material import and edit forms expose audio URL and timeline fields.
+- Local speech setup now has manifest-driven download and startup helpers:
+  - `npm run speech:download`
+  - `npm run speech:dev-runtime`
+  - `npm run speech:start`
+  - `npm run speech:doctor`
+- `speech:dev-runtime` provides deterministic local STT, TTS, and pronunciation
+  endpoint contracts for development and CI self-tests.
+- `speech:windows-runtime` is available for the current Windows target machine:
+  whisper.cpp backs STT, Windows SAPI backs TTS, and a whisper-backed word
+  alignment scorer backs the pronunciation endpoint.
+- The generated local speech startup script lives outside source control under
+  `.local-speech/`.
+- Settings now shows TTS configuration guidance and a server-side TTS preview
+  action.
+- Global toast feedback is implemented through `components/ui/toast.tsx` and
+  mounted in the app shell; core page messages are mirrored into the global
+  feedback layer.
+- Core interaction regression is available as an npm script:
+  - `npm run qa:interactions:check`
+- The full release gate is available as one command:
+  - `npm run release:check`
+  - `npm run release:check -- --with-screenshots --base-url=http://127.0.0.1:3000`
+- Native mobile/desktop release readiness is executable:
+  - `npm run package:native:check`
+  - `npm run package:native:check -- --strict --target capacitor --profile android`
+- A manual native release workflow is available at
+  `.github/workflows/native-release.yml`; it injects signing secrets, enforces
+  strict profile checks, builds the Web/PWA bundle, and uploads the generated
+  native scaffold artifact.
+- Existing mobile QA still covers mobile anchors, destructive confirmations,
+  import constraints, screenshot automation availability, and narrow viewport
+  safety:
+  - `npm run qa:mobile:check`
+  - `npm run qa:mobile:screenshots`
+- GitHub Actions CI now runs the expanded quality gate: package readiness,
+  core interaction QA, mobile interaction QA, local speech doctor, local speech
+  dry-runs, production build, Playwright Chromium install, and mobile screenshot
+  regression artifact upload.
+
+## Scope Notes
+
+The repository intentionally does not commit multi-GB offline Whisper, TTS, or
+forced-alignment model binaries. The product-side delivery is the stable endpoint
+contract, manifest, model download helper, generated startup script, readiness
+API, doctor command, and settings visibility.
+
+The same boundary applies to mobile and desktop packaging. The repo now provides
+PWA readiness checks, native shell scaffolds for Capacitor, Tauri, and Electron,
+and a strict signing-environment checker. Store signing, installer notarization,
+and CI release pipelines remain release-environment work because they require
+platform accounts, certificates, and distribution choices.
+
+## Verification
+
+Current Sprint 9 verification:
+
+```bash
+npm run release:check
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+npm run package:check
+npm run package:native:check -- --json
+npm run qa:interactions:check
+npm run qa:mobile:check
+npm run qa:mobile:screenshots -- --base-url=http://127.0.0.1:3000
+npm run speech:doctor
+npm run speech:download -- --dry-run --include-optional --json
+npm run speech:dev-runtime -- --self-test --json
+npm run speech:start -- --write --json
+```
+
+Last local result on 2026-06-28:
+
+```text
+release:check: passed
+release:check --with-screenshots: passed
+lint: passed
+typecheck: passed
+test: 45 files / 190 tests passed
+build: passed, 21 app routes generated
+package:check: passed
+package:native:check: passed in contract mode; signed release secrets not present
+qa:interactions:check: passed
+qa:mobile:check: passed
+qa:mobile:screenshots: passed with system Chrome, 5 routes, no horizontal overflow
+speech:doctor: passed
+speech:download dry-run: passed
+speech:dev-runtime self-test: passed
+speech:windows-runtime self-test: passed, transcript "Hello World!", score 99
+speech:start --write: passed
+```
+
+## Remaining Release Work
+
+- Replace the Windows pronunciation endpoint with a specialist phoneme-level
+  forced aligner such as MFA, WhisperX, or wav2vec2 alignment if production
+  phoneme timing is required.
+- Add real Android/iOS/macOS/Windows certificates, store keys, and notarization
+  credentials to the target release environment, then enforce the matching
+  strict native release profile.

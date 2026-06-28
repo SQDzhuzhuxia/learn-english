@@ -96,6 +96,8 @@ http://localhost:3000
 质量检查：
 
 ```bash
+npm run release:check
+npm run package:native:check
 npm run lint
 npm run typecheck
 npm run test
@@ -167,9 +169,11 @@ TTS_VOICE=alloy
 
 ```bash
 npm run speech:check
+npm run speech:dev-runtime -- --self-test --json
+npm run speech:windows-runtime -- --self-test --json
 ```
 
-这个命令会读取 `.env` 和 `.env.local`，检查 STT/TTS 当前是本地可用、云端可用还是未配置。设置页里的“离线语音准备”也会展示同样的诊断结果。
+`speech:check` 会读取 `.env` 和 `.env.local`，检查 STT/TTS/发音评分当前是本地可用、云端可用还是未配置。`speech:dev-runtime` 会启动或自测一个轻量本地合同服务，方便在没有生产模型时验证页面和 endpoint wiring。`speech:windows-runtime` 会在 Windows 上启动真实本地语音链路：whisper.cpp STT、Windows SAPI TTS、基于 whisper 转写的词级发音评分。设置页里的“离线语音准备”也会展示同样的诊断结果。
 
 ### 音频级发音评分
 
@@ -205,13 +209,10 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 ## 路线图
 
-- 更完整的开放式 AI 角色扮演会话记忆和目标跟踪
-- 输出错误类型统计和长期弱项画像
-- 云同步冲突细粒度合并
-- 离线音频缓存和 AI 请求队列
-- 内置离线 Whisper / TTS 模型打包预研
-- 更细的发音、重音、连读和音素级反馈
-- 移动端和桌面端封装
+- 选择并部署目标机器上的本地 STT、TTS、发音评分/强制对齐 runtime
+- 按 `docs/local-speech-runtime-contract.md` 完成离线模型下载、启动和 `strict-practice` 验证
+- 如果要发布原生移动/桌面版本，接入平台签名、安装包构建和发布流水线
+- 持续扩充真实学习材料、角色扮演场景和题库内容
 
 ## 贡献
 

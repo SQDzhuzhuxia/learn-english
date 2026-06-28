@@ -1,12 +1,13 @@
 import { resolveSpeechRuntimeConfig } from "@/lib/speech/server/transcribe-audio";
 import { resolveTextToSpeechRuntimeConfig } from "@/lib/speech/server/synthesize-speech";
+import { resolvePronunciationScoringConfig } from "@/lib/speech/server/pronunciation-score";
 
 type Environment = Record<string, string | undefined>;
 
 export type SpeechReadinessStatus = "local" | "cloud" | "fallback";
 
 export type SpeechReadinessItem = {
-  id: "stt" | "tts";
+  id: "stt" | "tts" | "pronunciation";
   label: string;
   status: SpeechReadinessStatus;
   provider: string;
@@ -17,8 +18,10 @@ export type SpeechReadinessItem = {
 
 export type LocalSpeechReadiness = {
   offlineReady: boolean;
+  practiceReady: boolean;
   stt: SpeechReadinessItem;
   tts: SpeechReadinessItem;
+  pronunciation: SpeechReadinessItem;
   nextSteps: string[];
 };
 
@@ -98,9 +101,44 @@ function createTtsItem(env: Environment): SpeechReadinessItem {
   };
 }
 
+function createPronunciationItem(env: Environment): SpeechReadinessItem {
+  const config = resolvePronunciationScoringConfig(env);
+
+  if (config.mode === "fallback") {
+    return {
+      id: "pronunciation",
+      label: "本地发音评分",
+      status: "fallback",
+      provider: config.reason,
+      mode: config.mode,
+      detail: "当前跟读会保留文本级完整度和发音重点诊断，尚未接入本地强制对齐或发音评分服务。",
+      requiredEnv: [
+        "PRONUNCIATION_PROVIDER",
+        "PRONUNCIATION_BASE_URL",
+        "PRONUNCIATION_ENDPOINT_PATH"
+      ]
+    };
+  }
+
+  return {
+    id: "pronunciation",
+    label: "本地发音评分",
+    status: "local",
+    provider: config.providerLabel,
+    mode: config.mode,
+    detail: "已配置本地 multipart 发音评分 endpoint，跟读录音后可返回发音、流利度、对齐和词级评分。",
+    requiredEnv: [
+      "PRONUNCIATION_PROVIDER",
+      "PRONUNCIATION_BASE_URL",
+      "PRONUNCIATION_ENDPOINT_PATH"
+    ]
+  };
+}
+
 export function summarizeLocalSpeechReadiness(env: Environment = process.env): LocalSpeechReadiness {
   const stt = createSpeechItem(env);
   const tts = createTtsItem(env);
+  const pronunciation = createPronunciationItem(env);
   const nextSteps: string[] = [];
 
   if (stt.status !== "local") {
@@ -111,14 +149,24 @@ export function summarizeLocalSpeechReadiness(env: Environment = process.env): L
     nextSteps.push("配置本地 OpenAI-compatible TTS endpoint，并设置 TTS_PROVIDER=local。");
   }
 
-  if (stt.status === "local" && tts.status === "local") {
-    nextSteps.push("本机 STT/TTS endpoint 已具备，下一步可以把模型启动脚本和模型文件下载流程标准化。");
+  if (pronunciation.status !== "local") {
+    nextSteps.push("配置本地发音评分或强制对齐 endpoint，并设置 PRONUNCIATION_PROVIDER=local。");
+  }
+
+  if (stt.status === "local" && tts.status === "local" && pronunciation.status !== "local") {
+    nextSteps.push("本机 STT/TTS endpoint 已具备，继续接入本地发音评分或强制对齐 endpoint 后即可完成口语练习链路。");
+  }
+
+  if (stt.status === "local" && tts.status === "local" && pronunciation.status === "local") {
+    nextSteps.push("本机 STT/TTS/发音评分 endpoint 已具备，可运行 npm run speech:check -- --strict-practice 做发布前确认。");
   }
 
   return {
     offlineReady: stt.status === "local" && tts.status === "local",
+    practiceReady: stt.status === "local" && tts.status === "local" && pronunciation.status === "local",
     stt,
     tts,
+    pronunciation,
     nextSteps
   };
 }

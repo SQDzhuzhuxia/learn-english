@@ -65,6 +65,9 @@ jobs:
       - name: Validate native signing environment
         run: npm run package:native:check -- --strict --target ${{ inputs.target }} --profile ${{ inputs.profile }}
 
+      - name: Materialize signing files
+        run: npm run package:native:materialize -- --clean --target ${{ inputs.target }} --profile ${{ inputs.profile }}
+
       - name: Build Web/PWA bundle
         run: npm run build
 
@@ -76,3 +79,8 @@ jobs:
         with:
           name: native-${{ inputs.target }}-${{ inputs.profile }}-scaffold
           path: .package-scaffold/
+
+      - name: Remove materialized signing files
+        if: always()
+        shell: bash
+        run: rm -rf .native-release

@@ -43,3 +43,4 @@ transcripts/
 local-models/
 .local-speech/
 .package-scaffold/
+.native-release/

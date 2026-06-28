@@ -106,6 +106,14 @@ function createReport() {
       "package:native:check should verify native signing and release environment contracts."
     ),
     check(
+      "native-secret-materializer",
+      "Native secret materializer",
+      packageJson.scripts?.["package:native:materialize"] ===
+        "node scripts/package/materialize-native-secrets.mjs" &&
+        hasFile("scripts/package/materialize-native-secrets.mjs"),
+      "package:native:materialize should write signing secrets to ignored CI-local files for native build tools."
+    ),
+    check(
       "native-release-env-template",
       "Native release env template",
       [
@@ -130,6 +138,7 @@ function createReport() {
       hasFile(".github/workflows/native-release.yml") &&
         nativeReleaseWorkflow.includes("workflow_dispatch") &&
         nativeReleaseWorkflow.includes("package:native:check -- --strict") &&
+        nativeReleaseWorkflow.includes("package:native:materialize") &&
         nativeReleaseWorkflow.includes("ANDROID_KEYSTORE_BASE64") &&
         nativeReleaseWorkflow.includes("APPLE_CERTIFICATE_BASE64") &&
         nativeReleaseWorkflow.includes("WINDOWS_CERTIFICATE_BASE64"),

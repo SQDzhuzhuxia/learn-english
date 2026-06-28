@@ -48,8 +48,8 @@ and add a stronger regression gate for core user interactions.
   - `npm run package:native:check -- --strict --target capacitor --profile android`
 - A manual native release workflow is available at
   `.github/workflows/native-release.yml`; it injects signing secrets, enforces
-  strict profile checks, builds the Web/PWA bundle, and uploads the generated
-  native scaffold artifact.
+  strict profile checks, materializes temporary signing files, builds the
+  Web/PWA bundle, and uploads the generated native scaffold artifact.
 - Existing mobile QA still covers mobile anchors, destructive confirmations,
   import constraints, screenshot automation availability, and narrow viewport
   safety:

@@ -19,6 +19,7 @@ npm run package:check
 npm run package:check -- --json
 npm run package:native:check
 npm run package:native:check -- --json
+npm run package:native:materialize -- --dry-run --target capacitor --profile android
 ```
 
 The check verifies:
@@ -37,6 +38,11 @@ The check verifies:
 `package:native:check` runs in non-strict contract mode by default. This is the
 mode used by normal CI because signing secrets are not expected on every pull
 request.
+
+`package:native:materialize` is for release CI after strict checks pass. It
+writes signing material from environment variables into ignored `.native-release/`
+files that native build tools can consume. It prints only file paths and byte
+counts, not secret values.
 
 ## Scaffold Native Shells
 
@@ -84,6 +90,19 @@ scaffold, and uploads it as an artifact.
 The workflow intentionally fails before build artifacts are created when required
 certificates or store keys are missing. Add only the secrets for the release
 profile you are actually shipping.
+
+After strict validation, the workflow runs `package:native:materialize` to create
+temporary signing files such as:
+
+- `.native-release/android/release.keystore`
+- `.native-release/android/signing.properties`
+- `.native-release/apple/signing-certificate.p12`
+- `.native-release/apple/AuthKey_<key-id>.p8`
+- `.native-release/windows/code-signing.pfx`
+- `.native-release/electron/electron-builder.env`
+
+The final cleanup step removes `.native-release/` even when a later build step
+fails.
 
 ## Recommended Path
 

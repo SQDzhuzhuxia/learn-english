@@ -20,6 +20,7 @@ npm run package:check -- --json
 npm run package:native:check
 npm run package:native:check -- --json
 npm run package:native:dev-secrets -- --target windows
+npm run package:native:dev-secrets -- --target tauri-update
 npm run package:native:prepare -- --target all --profile android --web-url=https://your-deployed-app.example
 npm run package:native:materialize -- --dry-run --target capacitor --profile android
 npm run release:external:audit -- --with-runtime
@@ -52,8 +53,9 @@ counts, not secret values.
 `package:native:dev-secrets` can generate local development signing material
 where the current platform allows it. On this Windows machine it creates Android
 PKCS12 keystore material when JDK `keytool` is available, plus a self-signed
-Windows code-signing PFX. These are useful for local smoke tests only; they are
-not valid for store releases.
+Windows code-signing PFX and a Tauri updater keypair through the Tauri signer.
+These are useful for local smoke tests only; they are not valid for store
+releases.
 
 `release:external:audit` verifies the current machine-level release evidence:
 downloaded local speech model files, whisper.cpp binaries, strict local speech
@@ -133,6 +135,7 @@ For local Android and Windows packaging smoke tests:
 ```bash
 npm run package:native:dev-secrets -- --target android
 npm run package:native:dev-secrets -- --target windows
+npm run package:native:dev-secrets -- --target tauri-update
 ```
 
 This writes:
@@ -141,6 +144,9 @@ This writes:
 - `.native-release/dev-secrets/android-dev-signing.env`
 - `.native-release/dev-secrets/windows-dev-code-signing.pfx`
 - `.native-release/dev-secrets/windows-dev-signing.env`
+- `.native-release/dev-secrets/tauri-dev-update.key`
+- `.native-release/dev-secrets/tauri-dev-update.key.pub`
+- `.native-release/dev-secrets/tauri-dev-update-signing.env`
 
 The generated credentials are development-only. Do not use them for Google Play,
 Microsoft Store, notarized desktop releases, or public distribution.

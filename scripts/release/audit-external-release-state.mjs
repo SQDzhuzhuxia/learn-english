@@ -134,6 +134,7 @@ function checkWorkflow() {
 function createNativeSigningReport() {
   const androidEnv = readEnvFile(".native-release/dev-secrets/android-dev-signing.env");
   const windowsEnv = readEnvFile(".native-release/dev-secrets/windows-dev-signing.env");
+  const tauriUpdateEnv = readEnvFile(".native-release/dev-secrets/tauri-dev-update-signing.env");
   const electronWindowsEnv = {
     ...windowsEnv,
     CSC_LINK: windowsEnv.CSC_LINK || windowsEnv.WINDOWS_CERTIFICATE_BASE64,
@@ -156,6 +157,14 @@ function createNativeSigningReport() {
       "windows",
       "--json"
     ], windowsEnv),
+    tauriUpdateDev: runNode("scripts/package/verify-native-release-env.mjs", [
+      "--strict",
+      "--target",
+      "tauri",
+      "--profile",
+      "tauri-update",
+      "--json"
+    ], tauriUpdateEnv),
     electronWindowsDev: runNode("scripts/package/verify-native-release-env.mjs", [
       "--strict",
       "--target",
@@ -183,7 +192,7 @@ function createNativeSigningReport() {
   };
 
   return {
-    ok: checks.androidDev.ok && checks.tauriWindowsDev.ok && checks.electronWindowsDev.ok,
+    ok: checks.androidDev.ok && checks.tauriWindowsDev.ok && checks.tauriUpdateDev.ok && checks.electronWindowsDev.ok,
     storeReady: checks.iosStore.ok && checks.macosStore.ok,
     checks
   };
@@ -206,13 +215,17 @@ function createReport(options) {
     fileState(".native-release/android/signing.properties", 1),
     fileState(".native-release/windows/code-signing.pfx", 1),
     fileState(".native-release/windows/signing.env", 1),
+    fileState(".native-release/tauri/update-signing.env", 1),
     fileState(".native-release/electron/electron-builder.env", 1)
   ];
   const devSecrets = [
     fileState(".native-release/dev-secrets/android-dev-release.p12", 1),
     fileState(".native-release/dev-secrets/android-dev-signing.env", 1),
     fileState(".native-release/dev-secrets/windows-dev-code-signing.pfx", 1),
-    fileState(".native-release/dev-secrets/windows-dev-signing.env", 1)
+    fileState(".native-release/dev-secrets/windows-dev-signing.env", 1),
+    fileState(".native-release/dev-secrets/tauri-dev-update.key", 1),
+    fileState(".native-release/dev-secrets/tauri-dev-update.key.pub", 1),
+    fileState(".native-release/dev-secrets/tauri-dev-update-signing.env", 1)
   ];
   const nativeSigning = createNativeSigningReport();
   const workflow = checkWorkflow();
@@ -268,6 +281,7 @@ function printReport(report) {
   );
   printCheck("Android development signing", report.native.signing.checks.androidDev.ok);
   printCheck("Tauri Windows development signing", report.native.signing.checks.tauriWindowsDev.ok);
+  printCheck("Tauri updater development signing", report.native.signing.checks.tauriUpdateDev.ok);
   printCheck("Electron Windows development signing", report.native.signing.checks.electronWindowsDev.ok);
   printCheck("Native workflow", report.native.workflow.ok, report.native.workflow.path);
   printCheck("iOS store signing", report.native.signing.checks.iosStore.ok, "requires real Apple credentials");

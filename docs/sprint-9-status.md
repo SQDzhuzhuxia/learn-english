@@ -62,6 +62,10 @@ and add a stronger regression gate for core user interactions.
 - `package:native:dev-secrets -- --target android` can generate a
   development-only Android PKCS12 keystore when JDK `keytool` is available; the
   generated env passes the strict Android signing contract.
+- `package:native:dev-secrets -- --target tauri-update` can generate a
+  development-only Tauri updater keypair through the Tauri signer; the generated
+  env passes the strict updater signing contract and can be materialized for
+  native build tooling.
 - Existing mobile QA still covers mobile anchors, destructive confirmations,
   import constraints, screenshot automation availability, and narrow viewport
   safety:

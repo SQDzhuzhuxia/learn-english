@@ -209,6 +209,81 @@ function createAndroidReport() {
   };
 }
 
+function createTauriUpdateReport(options) {
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+
+  const keyPath = path.join(OUT_DIR, "tauri-dev-update.key");
+  const publicKeyPath = `${keyPath}.pub`;
+  const envPath = path.join(OUT_DIR, "tauri-dev-update-signing.env");
+  const result = spawnSync(
+    "npx",
+    [
+      "--yes",
+      "@tauri-apps/cli",
+      "signer",
+      "generate",
+      "--ci",
+      "--force",
+      "--password",
+      options.password,
+      "--write-keys",
+      keyPath
+    ],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      shell: process.platform === "win32",
+      timeout: 120000
+    }
+  );
+
+  if (result.status !== 0 || !fs.existsSync(keyPath) || !fs.existsSync(publicKeyPath)) {
+    return {
+      ok: false,
+      target: "tauri-update",
+      reason: result.error?.message || result.stderr || result.stdout || `Tauri signer exited ${result.status}`
+    };
+  }
+
+  const privateKey = fs.readFileSync(keyPath, "utf8").trim();
+  const publicKey = fs.readFileSync(publicKeyPath, "utf8").trim();
+  const envContent = [
+    "# Development-only Tauri updater signing material. Do not use for public releases.",
+    `TAURI_SIGNING_PRIVATE_KEY=${privateKey}`,
+    `TAURI_SIGNING_PRIVATE_KEY_PATH=${keyPath.replaceAll("\\", "/")}`,
+    `TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${options.password}`,
+    `TAURI_SIGNING_PUBLIC_KEY=${publicKey}`,
+    ""
+  ].join("\n");
+  fs.writeFileSync(envPath, envContent, "utf8");
+
+  return {
+    ok: true,
+    target: "tauri-update",
+    outDir: path.relative(ROOT, OUT_DIR),
+    files: [
+      {
+        path: path.relative(ROOT, keyPath),
+        bytes: Buffer.byteLength(privateKey)
+      },
+      {
+        path: path.relative(ROOT, publicKeyPath),
+        bytes: Buffer.byteLength(publicKey)
+      },
+      {
+        path: path.relative(ROOT, envPath),
+        bytes: Buffer.byteLength(envContent)
+      }
+    ],
+    env: {
+      TAURI_SIGNING_PRIVATE_KEY: "<generated>",
+      TAURI_SIGNING_PRIVATE_KEY_PATH: path.relative(ROOT, keyPath),
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "<generated>",
+      TAURI_SIGNING_PUBLIC_KEY: "<generated>"
+    }
+  };
+}
+
 function createAppleReport() {
   return {
     ok: false,
@@ -226,6 +301,10 @@ function createReport(options) {
     return createAndroidReport(options);
   }
 
+  if (options.target === "tauri-update") {
+    return createTauriUpdateReport(options);
+  }
+
   if (options.target === "apple" || options.target === "ios" || options.target === "macos") {
     return createAppleReport(options);
   }
@@ -233,7 +312,7 @@ function createReport(options) {
   return {
     ok: false,
     target: options.target,
-    reason: "Supported targets: windows, android, apple"
+    reason: "Supported targets: windows, android, tauri-update, apple"
   };
 }
 

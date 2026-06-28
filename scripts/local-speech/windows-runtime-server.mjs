@@ -98,6 +98,10 @@ function createTempPath(extension) {
   return path.join(TMP_DIR, `${Date.now()}-${Math.random().toString(16).slice(2)}${extension}`);
 }
 
+function createTempBase() {
+  return path.join(TMP_DIR, `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+}
+
 function removeQuietly(filePath) {
   try {
     fs.rmSync(filePath, { force: true });
@@ -116,6 +120,10 @@ function normalizeText(text) {
 
 function wordsFromText(text) {
   return normalizeText(text).split(" ").filter(Boolean);
+}
+
+function normalizeSpokenEntries(spokenWords) {
+  return spokenWords.map((item) => (typeof item === "string" ? { word: item } : item));
 }
 
 function wordSimilarity(a, b) {
@@ -150,8 +158,10 @@ function wordSimilarity(a, b) {
 }
 
 function alignWords(referenceWords, spokenWords) {
+  const spokenEntries = normalizeSpokenEntries(spokenWords);
+  const spokenWordValues = spokenEntries.map((item) => item.word);
   const rows = referenceWords.length + 1;
-  const cols = spokenWords.length + 1;
+  const cols = spokenWordValues.length + 1;
   const cost = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
   const back = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ""));
 
@@ -167,7 +177,7 @@ function alignWords(referenceWords, spokenWords) {
 
   for (let i = 1; i < rows; i += 1) {
     for (let j = 1; j < cols; j += 1) {
-      const substitutionCost = referenceWords[i - 1] === spokenWords[j - 1] ? 0 : 1;
+      const substitutionCost = referenceWords[i - 1] === spokenWordValues[j - 1] ? 0 : 1;
       const choices = [
         { type: "match", value: cost[i - 1][j - 1] + substitutionCost },
         { type: "delete", value: cost[i - 1][j] + 1 },
@@ -181,19 +191,23 @@ function alignWords(referenceWords, spokenWords) {
 
   const aligned = [];
   let i = referenceWords.length;
-  let j = spokenWords.length;
+  let j = spokenWordValues.length;
 
   while (i > 0 || j > 0) {
     const action = back[i][j];
 
     if (action === "match") {
       const expected = referenceWords[i - 1];
-      const actual = spokenWords[j - 1];
+      const actualEntry = spokenEntries[j - 1];
+      const actual = actualEntry.word;
       const similarity = wordSimilarity(expected, actual);
       aligned.unshift({
         word: expected,
         actual,
         score: expected === actual ? 98 : Math.round(55 + similarity * 35),
+        startMs: actualEntry.startMs,
+        endMs: actualEntry.endMs,
+        confidence: actualEntry.confidence,
         issue: expected === actual ? undefined : `识别为 ${actual}`
       });
       i -= 1;
@@ -289,6 +303,121 @@ function transcribeFile(inputPath, options, language = "en") {
   }
 
   return text;
+}
+
+function readOffset(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.round(value) : undefined;
+}
+
+function readConfidence(value) {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(1, Number(value.toFixed(3)))) : undefined;
+}
+
+function extractWhisperSegments(data) {
+  const transcription = Array.isArray(data?.transcription) ? data.transcription : [];
+
+  return transcription
+    .map((segment) => {
+      const text = String(segment?.text || "").trim();
+      const startMs = readOffset(segment?.offsets?.from);
+      const endMs = readOffset(segment?.offsets?.to);
+
+      if (!text || startMs === undefined || endMs === undefined) {
+        return null;
+      }
+
+      return {
+        text,
+        startMs,
+        endMs
+      };
+    })
+    .filter(Boolean);
+}
+
+function extractWhisperTimedWords(data) {
+  const transcription = Array.isArray(data?.transcription) ? data.transcription : [];
+  const timedWords = [];
+
+  transcription.forEach((segment) => {
+    const tokens = Array.isArray(segment?.tokens) ? segment.tokens : [];
+
+    tokens.forEach((token) => {
+      const rawText = String(token?.text || "");
+
+      if (!rawText.trim() || rawText.trim().startsWith("[_")) {
+        return;
+      }
+
+      const tokenWords = wordsFromText(rawText);
+
+      if (tokenWords.length === 0) {
+        return;
+      }
+
+      const startMs = readOffset(token?.offsets?.from);
+      const endMs = readOffset(token?.offsets?.to);
+      const confidence = readConfidence(token?.p);
+      const hasSpan = startMs !== undefined && endMs !== undefined;
+      const span = hasSpan ? Math.max(0, endMs - startMs) : 0;
+
+      tokenWords.forEach((word, index) => {
+        const itemStart = hasSpan && tokenWords.length > 1 ? Math.round(startMs + (span / tokenWords.length) * index) : startMs;
+        const itemEnd = hasSpan && tokenWords.length > 1 ? Math.round(startMs + (span / tokenWords.length) * (index + 1)) : endMs;
+
+        timedWords.push({
+          word,
+          startMs: itemStart,
+          endMs: itemEnd,
+          confidence
+        });
+      });
+    });
+  });
+
+  return timedWords;
+}
+
+function transcribeFileWithAlignment(inputPath, options, language = "en") {
+  const wavPath = convertToWav(inputPath);
+  const outputBase = createTempBase();
+  const jsonPath = `${outputBase}.json`;
+
+  try {
+    const result = spawnSync(
+      options.whisperCli,
+      ["-m", options.model, "-f", wavPath, "-l", language || "en", "-oj", "-ojf", "-of", outputBase, "-np"],
+      {
+        cwd: ROOT,
+        encoding: "utf8",
+        timeout: 120000
+      }
+    );
+
+    if (result.status !== 0 || !fs.existsSync(jsonPath)) {
+      throw new Error(result.stderr || result.stdout || `whisper-cli alignment exited ${result.status}`);
+    }
+
+    const data = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+    const segments = extractWhisperSegments(data);
+    const text = segments.map((segment) => segment.text).join(" ").replace(/\s+/g, " ").trim();
+
+    if (!text) {
+      throw new Error("whisper-cli alignment returned an empty transcript");
+    }
+
+    return {
+      text,
+      words: extractWhisperTimedWords(data),
+      segments
+    };
+  } finally {
+    if (wavPath !== inputPath) {
+      removeQuietly(wavPath);
+    }
+
+    removeQuietly(jsonPath);
+  }
 }
 
 function shellQuotePowerShell(value) {
@@ -431,14 +560,17 @@ function createTtsHandler() {
   };
 }
 
-function scorePronunciation(referenceText, transcript) {
+function scorePronunciation(referenceText, transcript, timedWords = [], segments = []) {
   const referenceWords = wordsFromText(referenceText);
-  const spokenWords = wordsFromText(transcript);
+  const spokenWords = timedWords.length > 0 ? timedWords : wordsFromText(transcript);
   const aligned = alignWords(referenceWords, spokenWords);
   const wordScores = aligned.map((item) => ({
     word: item.word,
     score: item.score,
-    ...(item.issue ? { issue: item.issue } : {})
+    ...(item.issue ? { issue: item.issue } : {}),
+    ...(item.startMs !== undefined ? { start_ms: item.startMs } : {}),
+    ...(item.endMs !== undefined ? { end_ms: item.endMs } : {}),
+    ...(item.confidence !== undefined ? { confidence: item.confidence } : {})
   }));
   const average = wordScores.length
     ? Math.round(wordScores.reduce((sum, item) => sum + item.score, 0) / wordScores.length)
@@ -460,8 +592,10 @@ function scorePronunciation(referenceText, transcript) {
     pronunciation_score: average,
     fluency_score: fluencyScore,
     alignment_score: Math.round((alignmentScore + (referenceWords.length ? (exact / referenceWords.length) * 100 : 0)) / 2),
+    alignment_source: timedWords.length > 0 ? "whisper.cpp-token-timestamps" : "transcript-text-alignment",
     feedback_zh: feedbackZh,
     transcript,
+    segments: segments.slice(0, 6),
     words: wordScores.slice(0, 12),
     phoneme_focus: createPhonemeFocus(lowWords)
   };
@@ -487,8 +621,23 @@ function createPronunciationHandler(options) {
       }
 
       inputPath = await saveUploadedFile(formData, "file");
-      const transcript = providedTranscript || transcribeFile(inputPath, options, "en");
-      sendJson(res, 200, scorePronunciation(referenceText, transcript));
+      let alignment;
+
+      try {
+        alignment = transcribeFileWithAlignment(inputPath, options, "en");
+      } catch (alignmentError) {
+        if (!providedTranscript) {
+          throw alignmentError;
+        }
+
+        alignment = {
+          text: providedTranscript,
+          words: [],
+          segments: []
+        };
+      }
+
+      sendJson(res, 200, scorePronunciation(referenceText, alignment.text, alignment.words, alignment.segments));
     } catch (error) {
       sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
     } finally {
@@ -574,7 +723,6 @@ async function selfTest(options) {
     const pronunciationForm = new FormData();
     pronunciationForm.set("file", createFileFromBuffer(audio, "hello.wav"));
     pronunciationForm.set("reference_text", "hello world");
-    pronunciationForm.set("transcript", sttPayload.text || "");
     const pronunciationResponse = await fetch(runtime.endpoints.pronunciation, {
       method: "POST",
       body: pronunciationForm

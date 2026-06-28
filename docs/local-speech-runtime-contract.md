@@ -43,8 +43,8 @@ serious pronunciation or transcription evaluation.
 
 - STT uses whisper.cpp `whisper-cli.exe` and `local-models/whisper/ggml-base.en.bin`.
 - TTS uses Windows SAPI and returns WAV audio through the OpenAI-compatible TTS path.
-- pronunciation scoring uses whisper.cpp transcription plus word-level alignment
-  against the reference sentence.
+- pronunciation scoring uses whisper.cpp JSON output, token timestamps, and
+  word-level alignment against the reference sentence.
 
 Run the self-test before keeping it open:
 
@@ -58,9 +58,11 @@ English model under `local-models/whisper/`. These paths are intentionally
 ignored by Git.
 
 This runtime is a real local speech runtime for daily practice and local smoke
-tests. It is not a dedicated phoneme-level forced aligner; for production-grade
-phoneme timing, replace the pronunciation endpoint with MFA, WhisperX, wav2vec2
-alignment, or another specialist service while preserving the contract below.
+tests. It now returns token timestamp based word offsets and confidence from
+whisper.cpp. It is not a dedicated phoneme-level forced aligner; for
+production-grade phoneme timing, replace the pronunciation endpoint with MFA,
+WhisperX, wav2vec2 alignment, or another specialist service while preserving the
+contract below.
 
 ## STT Endpoint
 
@@ -188,10 +190,11 @@ Preferred response:
   "pronunciationScore": 78,
   "fluencyScore": 84,
   "alignmentScore": 86,
+  "alignmentSource": "whisper.cpp-token-timestamps",
   "feedbackZh": "整体清楚，注意 please 的 /z/ 结尾和 slowly 的重音。",
   "words": [
-    { "word": "please", "score": 72, "issue": "final consonant" },
-    { "word": "slowly", "score": 76, "issue": "word stress" }
+    { "word": "please", "score": 72, "issue": "final consonant", "startMs": 820, "endMs": 1240, "confidence": 0.84 },
+    { "word": "slowly", "score": 76, "issue": "word stress", "startMs": 2100, "endMs": 2860, "confidence": 0.79 }
   ],
   "phonemeFocus": [
     {
@@ -210,6 +213,7 @@ Snake_case aliases are also accepted for score fields:
   "pronunciation_score": 78,
   "fluency_score": 84,
   "alignment_score": 86,
+  "alignment_source": "whisper.cpp-token-timestamps",
   "feedback_zh": "..."
 }
 ```

@@ -29,7 +29,7 @@ npm run speech:check -- --strict-practice
 - `speech:doctor` validates the local model manifest, bootstrap script, and readiness JSON shape.
 - `speech:download` downloads model files declared in `models-manifest.json`; use `--dry-run` first and `--include-optional` for optional models.
 - `speech:dev-runtime` starts a lightweight local contract server for development. It returns deterministic STT text, a short WAV TTS response, and pronunciation-score JSON so the app can test endpoint wiring without a production model.
-- `speech:windows-runtime` starts the Windows local runtime used on this machine: whisper.cpp for STT, Windows SAPI for TTS, and whisper-backed word alignment for pronunciation scoring.
+- `speech:windows-runtime` starts the Windows local runtime used on this machine: whisper.cpp for STT, Windows SAPI for TTS, and whisper.cpp token-timestamp alignment for pronunciation scoring.
 - `speech:start -- --write` generates `.local-speech/start-local-speech.ps1` with service environment variables and startup commands.
 
 ## Development Runtime
@@ -79,7 +79,8 @@ The current machine has been configured with:
 
 This runtime uses real local speech components. STT is backed by whisper.cpp and
 TTS is backed by Windows SAPI. Pronunciation scoring is a whisper-backed
-word-level alignment scorer, not a dedicated phoneme-level MFA/WhisperX stack.
+word-level alignment scorer with token timestamps, start/end offsets, and token
+confidence. It is still not a dedicated phoneme-level MFA/WhisperX stack.
 
 ## Bootstrap Local Model Workspace
 

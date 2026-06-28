@@ -4,6 +4,9 @@ export type PronunciationWordScore = {
   word: string;
   score: number;
   issue?: string;
+  startMs?: number;
+  endMs?: number;
+  confidence?: number;
 };
 
 export type PronunciationPhonemeFocus = {
@@ -20,6 +23,7 @@ export type PronunciationScoringResult = {
   pronunciationScore?: number;
   fluencyScore?: number;
   alignmentScore?: number;
+  alignmentSource?: string;
   wordScores: PronunciationWordScore[];
   phonemeFocus: PronunciationPhonemeFocus[];
   feedbackZh?: string;
@@ -53,6 +57,8 @@ type RawPronunciationResponse = {
   fluency_score?: number;
   alignmentScore?: number;
   alignment_score?: number;
+  alignmentSource?: string;
+  alignment_source?: string;
   feedbackZh?: string;
   feedback_zh?: string;
   feedback?: string;
@@ -61,6 +67,11 @@ type RawPronunciationResponse = {
     text?: string;
     score?: number;
     issue?: string;
+    startMs?: number;
+    start_ms?: number;
+    endMs?: number;
+    end_ms?: number;
+    confidence?: number;
   }>;
   phonemeFocus?: Array<{
     label?: string;
@@ -91,6 +102,16 @@ function readNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : undefined;
 }
 
+function readPositiveInteger(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.round(value) : undefined;
+}
+
+function readConfidence(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.min(1, Number(value.toFixed(3))))
+    : undefined;
+}
+
 function normalizeWordScores(words: RawPronunciationResponse["words"]): PronunciationWordScore[] {
   if (!Array.isArray(words)) {
     return [];
@@ -114,6 +135,22 @@ function normalizeWordScores(words: RawPronunciationResponse["words"]): Pronunci
 
       if (issue) {
         normalized.issue = issue;
+      }
+
+      const startMs = readPositiveInteger(item.startMs ?? item.start_ms);
+      const endMs = readPositiveInteger(item.endMs ?? item.end_ms);
+      const confidence = readConfidence(item.confidence);
+
+      if (startMs !== undefined) {
+        normalized.startMs = startMs;
+      }
+
+      if (endMs !== undefined) {
+        normalized.endMs = endMs;
+      }
+
+      if (confidence !== undefined) {
+        normalized.confidence = confidence;
       }
 
       return normalized;
@@ -269,6 +306,7 @@ export async function scorePronunciation(
       pronunciationScore,
       fluencyScore,
       alignmentScore,
+      alignmentSource: data.alignmentSource?.trim() || data.alignment_source?.trim() || undefined,
       wordScores: normalizeWordScores(data.words),
       phonemeFocus: normalizePhonemeFocus(data),
       feedbackZh: data.feedbackZh?.trim() || data.feedback_zh?.trim() || data.feedback?.trim() || undefined

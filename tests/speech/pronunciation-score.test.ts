@@ -47,8 +47,18 @@ describe("scorePronunciation", () => {
           pronunciation_score: 78,
           fluency_score: 84,
           alignment_score: 88,
+          alignment_source: "whisper.cpp-token-timestamps",
           feedback_zh: "th 和词尾辅音需要更清楚。",
-          words: [{ word: "appointment", score: 76, issue: "word stress" }],
+          words: [
+            {
+              word: "appointment",
+              score: 76,
+              issue: "word stress",
+              start_ms: 1200,
+              end_ms: 1880,
+              confidence: 0.82
+            }
+          ],
           phoneme_focus: [{ label: "th", detail: "舌尖音", words: ["with"] }]
         }),
         {
@@ -80,7 +90,11 @@ describe("scorePronunciation", () => {
     );
     expect(result.source).toBe("local");
     expect(result.score).toBe(82);
+    expect(result.alignmentSource).toBe("whisper.cpp-token-timestamps");
     expect(result.wordScores[0]?.word).toBe("appointment");
+    expect(result.wordScores[0]?.startMs).toBe(1200);
+    expect(result.wordScores[0]?.endMs).toBe(1880);
+    expect(result.wordScores[0]?.confidence).toBe(0.82);
     expect(result.phonemeFocus[0]?.label).toBe("th");
   });
 });

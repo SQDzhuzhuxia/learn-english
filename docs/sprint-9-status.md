@@ -30,7 +30,7 @@ and add a stronger regression gate for core user interactions.
   endpoint contracts for development and CI self-tests.
 - `speech:windows-runtime` is available for the current Windows target machine:
   whisper.cpp backs STT, Windows SAPI backs TTS, and a whisper-backed word
-  alignment scorer backs the pronunciation endpoint.
+  alignment scorer with token timestamps backs the pronunciation endpoint.
 - The generated local speech startup script lives outside source control under
   `.local-speech/`.
 - Settings now shows TTS configuration guidance and a server-side TTS preview
@@ -123,7 +123,7 @@ qa:mobile:screenshots: passed with system Chrome, 5 routes, no horizontal overfl
 speech:doctor: passed
 speech:download dry-run: passed
 speech:dev-runtime self-test: passed
-speech:windows-runtime self-test: passed, transcript "Hello World!", score 99
+speech:windows-runtime self-test: passed, transcript "Hello World!", score 99, alignment source whisper.cpp-token-timestamps
 speech:start --write: passed
 ```
 

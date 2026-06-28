@@ -50,6 +50,8 @@ and add a stronger regression gate for core user interactions.
   `.github/workflows/native-release.yml`; it injects signing secrets, enforces
   strict profile checks, materializes temporary signing files, builds the
   Web/PWA bundle, and uploads the generated native scaffold artifact.
+- `package:native:dev-secrets -- --target windows` can generate a self-signed
+  development-only Windows PFX for local packaging smoke tests.
 - Existing mobile QA still covers mobile anchors, destructive confirmations,
   import constraints, screenshot automation availability, and narrow viewport
   safety:

@@ -114,6 +114,14 @@ function createReport() {
       "package:native:materialize should write signing secrets to ignored CI-local files for native build tools."
     ),
     check(
+      "native-dev-secret-helper",
+      "Native development secret helper",
+      packageJson.scripts?.["package:native:dev-secrets"] ===
+        "node scripts/package/create-dev-native-secrets.mjs" &&
+        hasFile("scripts/package/create-dev-native-secrets.mjs"),
+      "package:native:dev-secrets should generate local development signing material where the platform allows it."
+    ),
+    check(
       "native-release-env-template",
       "Native release env template",
       [

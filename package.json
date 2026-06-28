@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "package:check": "node scripts/package/check-package-readiness.mjs",
+    "package:native:dev-secrets": "node scripts/package/create-dev-native-secrets.mjs",
     "package:native:materialize": "node scripts/package/materialize-native-secrets.mjs",
     "package:native:check": "node scripts/package/verify-native-release-env.mjs",
     "package:scaffold": "node scripts/package/scaffold-native-package.mjs",

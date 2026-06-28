@@ -19,6 +19,7 @@ npm run package:check
 npm run package:check -- --json
 npm run package:native:check
 npm run package:native:check -- --json
+npm run package:native:dev-secrets -- --target windows
 npm run package:native:materialize -- --dry-run --target capacitor --profile android
 ```
 
@@ -43,6 +44,11 @@ request.
 writes signing material from environment variables into ignored `.native-release/`
 files that native build tools can consume. It prints only file paths and byte
 counts, not secret values.
+
+`package:native:dev-secrets` can generate local development signing material
+where the current platform allows it. On this Windows machine it creates a
+self-signed code-signing PFX and an env file under `.native-release/dev-secrets/`.
+This is useful for local smoke tests only; it is not valid for store releases.
 
 ## Scaffold Native Shells
 
@@ -78,6 +84,26 @@ The script checks the scaffold files, build plan, and required signing variables
 for the selected target/profile. Missing secrets are listed explicitly. In
 non-strict mode the command verifies the contract and reports whether the current
 environment is ready for a signed release without failing normal development CI.
+
+## Development Signing Material
+
+For local Windows packaging smoke tests:
+
+```bash
+npm run package:native:dev-secrets -- --target windows
+```
+
+This writes:
+
+- `.native-release/dev-secrets/windows-dev-code-signing.pfx`
+- `.native-release/dev-secrets/windows-dev-signing.env`
+
+The generated certificate is self-signed and development-only. Do not use it for
+Microsoft Store, notarized desktop releases, or public distribution.
+
+Android release keystores must be generated with a real JDK `keytool` and
+protected as long-lived release credentials. Apple certificates and App Store
+Connect keys must come from an Apple Developer account.
 
 ## GitHub Native Release Workflow
 

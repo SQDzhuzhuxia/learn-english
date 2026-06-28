@@ -182,8 +182,8 @@ npm run release:secrets:sync -- --profile windows-store
 
 Use `--env-file=.env.release.local` when the release secrets are stored in a
 local ignored file, and `--repo=owner/name` when the current Git remote is not
-the target GitHub repository. The script reports only secret names, presence,
-and sync status.
+the target GitHub repository. Set `GH_CLI_PATH` when `gh` is installed outside
+PATH. The script reports only secret names, presence, and sync status.
 
 ## GitHub Native Release Workflow
 

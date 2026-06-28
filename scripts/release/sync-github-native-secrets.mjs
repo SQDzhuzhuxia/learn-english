@@ -137,17 +137,40 @@ function selectedSecretNames(profileIds) {
 function commandExists(command, args = ["--version"]) {
   const result = spawnSync(command, args, {
     cwd: ROOT,
-    encoding: "utf8",
-    shell: process.platform === "win32"
+    encoding: "utf8"
   });
 
   return {
     ok: result.status === 0,
+    command,
     status: result.status,
     error: result.error?.message ?? "",
     stdout: result.stdout?.trim() ?? "",
     stderr: result.stderr?.trim() ?? ""
   };
+}
+
+function detectGitHubCli() {
+  const candidates = [
+    process.env.GH_CLI_PATH,
+    "gh",
+    process.platform === "win32" ? "C:\\Program Files\\GitHub CLI\\gh.exe" : ""
+  ].filter(Boolean);
+  const seen = new Set();
+  const results = [];
+
+  for (const candidate of candidates) {
+    if (seen.has(candidate)) continue;
+
+    seen.add(candidate);
+
+    const result = commandExists(candidate);
+    results.push(result);
+
+    if (result.ok) return result;
+  }
+
+  return results.at(-1) ?? commandExists("gh");
 }
 
 function detectRepo() {
@@ -166,18 +189,17 @@ function detectRepo() {
   return `${match.groups.owner}/${match.groups.repo}`;
 }
 
-function syncSecret(name, value, repo) {
+function syncSecret(name, value, repo, ghCommand) {
   const args = ["secret", "set", name];
 
   if (repo) {
     args.push("--repo", repo);
   }
 
-  const result = spawnSync("gh", args, {
+  const result = spawnSync(ghCommand, args, {
     cwd: ROOT,
     encoding: "utf8",
-    input: value,
-    shell: process.platform === "win32"
+    input: value
   });
 
   return {
@@ -203,7 +225,7 @@ function createReport(options) {
     present: Boolean(env[name])
   }));
   const missing = secretStates.filter((secret) => !secret.present).map((secret) => secret.name);
-  const gh = commandExists("gh");
+  const gh = detectGitHubCli();
 
   if (unsupported.length > 0) {
     return {
@@ -240,7 +262,7 @@ function createReport(options) {
     };
   }
 
-  const synced = secrets.map((name) => syncSecret(name, env[name], repo));
+  const synced = secrets.map((name) => syncSecret(name, env[name], repo, gh.command));
 
   return {
     ok: synced.every((item) => item.ok),

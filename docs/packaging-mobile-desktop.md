@@ -69,7 +69,7 @@ readiness, optional live Windows runtime self-test, development signing material
 materialized Android/Windows/Electron signing files, and the native release
 workflow. Add `--strict-store` when you want the command to fail unless real
 Google Play, Apple/App Store/notarization, and Microsoft Store credentials are
-present too.
+present and GitHub CLI is authenticated for CI secret syncing.
 
 ## Scaffold Native Shells
 

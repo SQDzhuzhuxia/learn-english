@@ -158,6 +158,65 @@ function checkGitHubSecretSync() {
   };
 }
 
+function runCommand(command, args = []) {
+  const result = spawnSync(command, args, {
+    cwd: ROOT,
+    encoding: "utf8"
+  });
+
+  return {
+    ok: result.status === 0,
+    command,
+    status: result.status,
+    stdout: result.stdout?.trim() ?? "",
+    stderr: result.stderr?.trim() ?? "",
+    error: result.error?.message ?? ""
+  };
+}
+
+function checkGitHubCli() {
+  const candidates = [
+    process.env.GH_CLI_PATH,
+    "gh",
+    process.platform === "win32" ? "C:\\Program Files\\GitHub CLI\\gh.exe" : ""
+  ].filter(Boolean);
+  const seen = new Set();
+  const attempts = [];
+
+  for (const candidate of candidates) {
+    if (seen.has(candidate)) continue;
+
+    seen.add(candidate);
+
+    const version = runCommand(candidate, ["--version"]);
+    attempts.push(version);
+
+    if (version.ok) {
+      const auth = runCommand(candidate, ["auth", "status"]);
+
+      return {
+        ok: true,
+        command: candidate,
+        version: version.stdout.split(/\r?\n/)[0] ?? "",
+        authenticated: auth.ok,
+        authStatus: auth.status,
+        authMessage: auth.ok ? auth.stdout : auth.stderr,
+        attempts
+      };
+    }
+  }
+
+  return {
+    ok: false,
+    command: "",
+    version: "",
+    authenticated: false,
+    authStatus: 1,
+    authMessage: attempts.at(-1)?.stderr || attempts.at(-1)?.error || "GitHub CLI is not available.",
+    attempts
+  };
+}
+
 function createNativeSigningReport() {
   const androidEnv = readEnvFile(".native-release/dev-secrets/android-dev-signing.env");
   const windowsEnv = readEnvFile(".native-release/dev-secrets/windows-dev-signing.env");
@@ -273,6 +332,7 @@ function createReport(options) {
   const nativeSigning = createNativeSigningReport();
   const workflow = checkWorkflow();
   const githubSecretSync = checkGitHubSecretSync();
+  const githubCli = checkGitHubCli();
   const git = gitStatus();
   const localReady =
     model.ok &&
@@ -284,12 +344,16 @@ function createReport(options) {
     devSecrets.every((item) => item.ok) &&
     nativeSigning.ok &&
     workflow.ok &&
-    githubSecretSync.ok;
+    githubSecretSync.ok &&
+    githubCli.ok;
+  const ciSecretSyncReady = githubSecretSync.ok && githubCli.ok && githubCli.authenticated;
+  const storeReady = nativeSigning.storeReady && ciSecretSyncReady;
 
   return {
-    ok: options.strictStore ? localReady && nativeSigning.storeReady && git.clean : localReady && git.clean,
+    ok: options.strictStore ? localReady && storeReady && git.clean : localReady && git.clean,
     localReady,
-    storeReady: nativeSigning.storeReady,
+    storeReady,
+    ciSecretSyncReady,
     git,
     speech: {
       model,
@@ -303,6 +367,7 @@ function createReport(options) {
       materialized,
       workflow,
       githubSecretSync,
+      githubCli,
       signing: nativeSigning
     }
   };
@@ -331,12 +396,15 @@ function printReport(report) {
   printCheck("Electron Windows development signing", report.native.signing.checks.electronWindowsDev.ok);
   printCheck("Native workflow", report.native.workflow.ok, report.native.workflow.path);
   printCheck("GitHub Secrets sync helper", report.native.githubSecretSync.ok, report.native.githubSecretSync.path);
+  printCheck("GitHub CLI", report.native.githubCli.ok, report.native.githubCli.version || report.native.githubCli.authMessage);
+  printCheck("GitHub auth", report.native.githubCli.authenticated, "requires gh auth login before syncing CI secrets");
   printCheck("Google Play publishing", report.native.signing.checks.androidStore.ok, "requires real Google Play credentials");
   printCheck("iOS store signing", report.native.signing.checks.iosStore.ok, "requires real Apple credentials");
   printCheck("macOS notarization", report.native.signing.checks.macosStore.ok, "requires real Apple credentials");
   printCheck("Microsoft Store publishing", report.native.signing.checks.microsoftStore.ok, "requires real Microsoft Store credentials");
   console.log("");
   console.log(`Local ready: ${report.localReady ? "yes" : "no"}`);
+  console.log(`CI secret sync ready: ${report.ciSecretSyncReady ? "yes" : "no"}`);
   console.log(`Store ready: ${report.storeReady ? "yes" : "no"}`);
 }
 

@@ -46,6 +46,8 @@ and add a stronger regression gate for core user interactions.
 - Machine-level external release evidence can be audited with:
   - `npm run release:external:audit -- --with-runtime`
   - `npm run release:external:audit -- --strict-store`
+  - strict store mode requires real store credentials plus authenticated GitHub
+    CLI access for CI secret syncing.
 - Native mobile/desktop release readiness is executable:
   - `npm run package:native:check`
   - `npm run package:native:check -- --strict --target capacitor --profile android`

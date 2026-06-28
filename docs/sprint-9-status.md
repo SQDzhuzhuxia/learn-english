@@ -43,6 +43,9 @@ and add a stronger regression gate for core user interactions.
 - The full release gate is available as one command:
   - `npm run release:check`
   - `npm run release:check -- --with-screenshots --base-url=http://127.0.0.1:3000`
+- Machine-level external release evidence can be audited with:
+  - `npm run release:external:audit -- --with-runtime`
+  - `npm run release:external:audit -- --strict-store`
 - Native mobile/desktop release readiness is executable:
   - `npm run package:native:check`
   - `npm run package:native:check -- --strict --target capacitor --profile android`
@@ -96,6 +99,7 @@ npm run build
 npm run package:check
 npm run package:native:check -- --json
 npm run package:native:prepare -- --clean --target all --profile android --web-url=http://127.0.0.1:3000 --json
+npm run release:external:audit -- --with-runtime
 npm run qa:interactions:check
 npm run qa:mobile:check
 npm run qa:mobile:screenshots -- --base-url=http://127.0.0.1:3000
@@ -117,6 +121,7 @@ build: passed, 21 app routes generated
 package:check: passed
 package:native:check: passed in contract mode; signed release secrets not present
 package:native:prepare: passed, generated Capacitor/Tauri/Electron wrapper inputs
+release:external:audit --with-runtime: local evidence passed; store credentials not present
 qa:interactions:check: passed
 qa:mobile:check: passed
 qa:mobile:screenshots: passed with system Chrome, 5 routes, no horizontal overflow

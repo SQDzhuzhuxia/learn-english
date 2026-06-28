@@ -20,6 +20,7 @@
     "qa:interactions:check": "node scripts/qa/check-core-interactions.mjs",
     "qa:mobile:check": "node scripts/qa/check-mobile-interactions.mjs",
     "qa:mobile:screenshots": "node scripts/qa/mobile-screenshot-regression.mjs",
+    "release:external:audit": "node scripts/release/audit-external-release-state.mjs",
     "release:check": "node scripts/qa/release-check.mjs",
     "speech:bootstrap": "node scripts/local-speech/bootstrap-local-speech.mjs",
     "speech:check": "node scripts/local-speech/check-local-speech.mjs",

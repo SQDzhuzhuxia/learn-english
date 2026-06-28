@@ -18,6 +18,11 @@ const TARGETS = [
         vars: ["ANDROID_KEYSTORE_BASE64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD"]
       },
       {
+        id: "android-store",
+        label: "Google Play publishing",
+        vars: ["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64", "GOOGLE_PLAY_PACKAGE_NAME"]
+      },
+      {
         id: "ios",
         label: "iOS signing and App Store Connect",
         vars: [
@@ -57,6 +62,17 @@ const TARGETS = [
         id: "windows",
         label: "Windows code signing",
         vars: ["WINDOWS_CERTIFICATE_BASE64", "WINDOWS_CERTIFICATE_PASSWORD"]
+      },
+      {
+        id: "windows-store",
+        label: "Microsoft Store publishing",
+        vars: [
+          "MICROSOFT_STORE_TENANT_ID",
+          "MICROSOFT_STORE_CLIENT_ID",
+          "MICROSOFT_STORE_CLIENT_SECRET",
+          "MICROSOFT_STORE_SELLER_ID",
+          "MICROSOFT_STORE_PRODUCT_ID"
+        ]
       }
     ]
   },
@@ -84,6 +100,17 @@ const TARGETS = [
         id: "windows",
         label: "Windows code signing",
         vars: ["CSC_LINK", "CSC_KEY_PASSWORD"]
+      },
+      {
+        id: "windows-store",
+        label: "Microsoft Store publishing",
+        vars: [
+          "MICROSOFT_STORE_TENANT_ID",
+          "MICROSOFT_STORE_CLIENT_ID",
+          "MICROSOFT_STORE_CLIENT_SECRET",
+          "MICROSOFT_STORE_SELLER_ID",
+          "MICROSOFT_STORE_PRODUCT_ID"
+        ]
       }
     ]
   }

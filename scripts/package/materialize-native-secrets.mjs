@@ -25,6 +25,22 @@ const PROFILES = {
       }
     ]
   },
+  "capacitor:android-store": {
+    label: "Google Play publishing",
+    required: ["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64", "GOOGLE_PLAY_PACKAGE_NAME"],
+    files: [
+      { env: "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64", path: "android/google-play-service-account.json", binary: true },
+      {
+        path: "android/google-play.env",
+        content: (env) =>
+          [
+            `GOOGLE_PLAY_PACKAGE_NAME=${env.GOOGLE_PLAY_PACKAGE_NAME}`,
+            `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON=${path.join(OUT_DIR, "android", "google-play-service-account.json").replaceAll("\\", "/")}`,
+            ""
+          ].join("\n")
+      }
+    ]
+  },
   "capacitor:ios": {
     label: "Capacitor iOS",
     required: [
@@ -104,6 +120,30 @@ const PROFILES = {
       }
     ]
   },
+  "tauri:windows-store": {
+    label: "Microsoft Store publishing",
+    required: [
+      "MICROSOFT_STORE_TENANT_ID",
+      "MICROSOFT_STORE_CLIENT_ID",
+      "MICROSOFT_STORE_CLIENT_SECRET",
+      "MICROSOFT_STORE_SELLER_ID",
+      "MICROSOFT_STORE_PRODUCT_ID"
+    ],
+    files: [
+      {
+        path: "windows/microsoft-store.env",
+        content: (env) =>
+          [
+            `MICROSOFT_STORE_TENANT_ID=${env.MICROSOFT_STORE_TENANT_ID}`,
+            `MICROSOFT_STORE_CLIENT_ID=${env.MICROSOFT_STORE_CLIENT_ID}`,
+            `MICROSOFT_STORE_CLIENT_SECRET=${env.MICROSOFT_STORE_CLIENT_SECRET}`,
+            `MICROSOFT_STORE_SELLER_ID=${env.MICROSOFT_STORE_SELLER_ID}`,
+            `MICROSOFT_STORE_PRODUCT_ID=${env.MICROSOFT_STORE_PRODUCT_ID}`,
+            ""
+          ].join("\n")
+      }
+    ]
+  },
   "electron:macos": {
     label: "Electron macOS",
     required: ["APPLE_TEAM_ID", "CSC_LINK", "CSC_KEY_PASSWORD", "APPLE_NOTARIZATION_USERNAME", "APPLE_NOTARIZATION_PASSWORD"],
@@ -129,6 +169,30 @@ const PROFILES = {
       {
         path: "electron/electron-builder.env",
         content: (env) => [`CSC_LINK=${env.CSC_LINK}`, `CSC_KEY_PASSWORD=${env.CSC_KEY_PASSWORD}`, ""].join("\n")
+      }
+    ]
+  },
+  "electron:windows-store": {
+    label: "Microsoft Store publishing",
+    required: [
+      "MICROSOFT_STORE_TENANT_ID",
+      "MICROSOFT_STORE_CLIENT_ID",
+      "MICROSOFT_STORE_CLIENT_SECRET",
+      "MICROSOFT_STORE_SELLER_ID",
+      "MICROSOFT_STORE_PRODUCT_ID"
+    ],
+    files: [
+      {
+        path: "electron/microsoft-store.env",
+        content: (env) =>
+          [
+            `MICROSOFT_STORE_TENANT_ID=${env.MICROSOFT_STORE_TENANT_ID}`,
+            `MICROSOFT_STORE_CLIENT_ID=${env.MICROSOFT_STORE_CLIENT_ID}`,
+            `MICROSOFT_STORE_CLIENT_SECRET=${env.MICROSOFT_STORE_CLIENT_SECRET}`,
+            `MICROSOFT_STORE_SELLER_ID=${env.MICROSOFT_STORE_SELLER_ID}`,
+            `MICROSOFT_STORE_PRODUCT_ID=${env.MICROSOFT_STORE_PRODUCT_ID}`,
+            ""
+          ].join("\n")
       }
     ]
   }

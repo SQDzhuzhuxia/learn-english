@@ -49,11 +49,16 @@ and add a stronger regression gate for core user interactions.
 - Native mobile/desktop release readiness is executable:
   - `npm run package:native:check`
   - `npm run package:native:check -- --strict --target capacitor --profile android`
+  - `npm run package:native:check -- --strict --target capacitor --profile android-store`
+  - `npm run package:native:check -- --strict --target tauri --profile windows-store`
 - A manual native release workflow is available at
   `.github/workflows/native-release.yml`; it injects signing secrets, enforces
   strict profile checks, materializes temporary signing files, builds the
   Web/PWA bundle, prepares deployed Web/PWA native wrapper inputs, and uploads
   the generated release-input artifacts.
+- Native release checks now distinguish signing from store publishing:
+  Google Play service-account credentials and Microsoft Store Partner Center
+  credentials have their own strict profiles.
 - `package:native:prepare` generates Capacitor, Tauri, and Electron wrapper
   inputs under `.native-release/wrapper/` for a deployed Web/PWA URL. This keeps
   native shells compatible with the app's server-backed Next.js API routes.

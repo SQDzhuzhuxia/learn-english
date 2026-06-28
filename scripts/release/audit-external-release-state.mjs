@@ -117,10 +117,12 @@ function checkWorkflow() {
     "package:native:materialize",
     "package:native:prepare",
     "ANDROID_KEYSTORE_BASE64",
+    "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64",
     "APPLE_CERTIFICATE_BASE64",
     "APP_STORE_CONNECT_API_KEY_BASE64",
     "WINDOWS_CERTIFICATE_BASE64",
-    "CSC_LINK"
+    "CSC_LINK",
+    "MICROSOFT_STORE_CLIENT_ID"
   ];
   const missing = required.filter((item) => !workflow.includes(item));
 
@@ -149,6 +151,14 @@ function createNativeSigningReport() {
       "android",
       "--json"
     ], androidEnv),
+    androidStore: runNode("scripts/package/verify-native-release-env.mjs", [
+      "--strict",
+      "--target",
+      "capacitor",
+      "--profile",
+      "android-store",
+      "--json"
+    ]),
     tauriWindowsDev: runNode("scripts/package/verify-native-release-env.mjs", [
       "--strict",
       "--target",
@@ -188,12 +198,20 @@ function createNativeSigningReport() {
       "--profile",
       "macos",
       "--json"
+    ]),
+    microsoftStore: runNode("scripts/package/verify-native-release-env.mjs", [
+      "--strict",
+      "--target",
+      "tauri",
+      "--profile",
+      "windows-store",
+      "--json"
     ])
   };
 
   return {
     ok: checks.androidDev.ok && checks.tauriWindowsDev.ok && checks.tauriUpdateDev.ok && checks.electronWindowsDev.ok,
-    storeReady: checks.iosStore.ok && checks.macosStore.ok,
+    storeReady: checks.androidStore.ok && checks.iosStore.ok && checks.macosStore.ok && checks.microsoftStore.ok,
     checks
   };
 }
@@ -284,8 +302,10 @@ function printReport(report) {
   printCheck("Tauri updater development signing", report.native.signing.checks.tauriUpdateDev.ok);
   printCheck("Electron Windows development signing", report.native.signing.checks.electronWindowsDev.ok);
   printCheck("Native workflow", report.native.workflow.ok, report.native.workflow.path);
+  printCheck("Google Play publishing", report.native.signing.checks.androidStore.ok, "requires real Google Play credentials");
   printCheck("iOS store signing", report.native.signing.checks.iosStore.ok, "requires real Apple credentials");
   printCheck("macOS notarization", report.native.signing.checks.macosStore.ok, "requires real Apple credentials");
+  printCheck("Microsoft Store publishing", report.native.signing.checks.microsoftStore.ok, "requires real Microsoft Store credentials");
   console.log("");
   console.log(`Local ready: ${report.localReady ? "yes" : "no"}`);
   console.log(`Store ready: ${report.storeReady ? "yes" : "no"}`);

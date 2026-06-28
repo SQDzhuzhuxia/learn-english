@@ -133,10 +133,12 @@ function createReport() {
       "Native release env template",
       [
         "ANDROID_KEYSTORE_BASE64",
+        "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64",
         "APPLE_CERTIFICATE_BASE64",
         "TAURI_SIGNING_PRIVATE_KEY",
         "WINDOWS_CERTIFICATE_BASE64",
-        "CSC_LINK"
+        "CSC_LINK",
+        "MICROSOFT_STORE_CLIENT_ID"
       ].every((key) => envExample.includes(key)),
       ".env.example should document native mobile and desktop signing variables."
     ),
@@ -157,8 +159,10 @@ function createReport() {
         nativeReleaseWorkflow.includes("package:native:materialize") &&
         nativeReleaseWorkflow.includes("package:native:prepare") &&
         nativeReleaseWorkflow.includes("ANDROID_KEYSTORE_BASE64") &&
+        nativeReleaseWorkflow.includes("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64") &&
         nativeReleaseWorkflow.includes("APPLE_CERTIFICATE_BASE64") &&
-        nativeReleaseWorkflow.includes("WINDOWS_CERTIFICATE_BASE64"),
+        nativeReleaseWorkflow.includes("WINDOWS_CERTIFICATE_BASE64") &&
+        nativeReleaseWorkflow.includes("MICROSOFT_STORE_CLIENT_ID"),
       "Native release workflow should expose strict signed-release profiles backed by GitHub Secrets."
     ),
     check(

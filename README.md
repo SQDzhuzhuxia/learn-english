@@ -98,6 +98,8 @@ http://localhost:3000
 ```bash
 npm run release:check
 npm run package:native:check
+npm run package:native:check -- --strict --target capacitor --profile android-store
+npm run package:native:check -- --strict --target tauri --profile windows-store
 npm run package:native:dev-secrets -- --target android
 npm run package:native:dev-secrets -- --target windows
 npm run package:native:dev-secrets -- --target tauri-update

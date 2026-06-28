@@ -116,11 +116,14 @@ release CI environment after adding the required secrets:
 
 ```bash
 npm run package:native:check -- --strict --target capacitor --profile android
+npm run package:native:check -- --strict --target capacitor --profile android-store
 npm run package:native:check -- --strict --target capacitor --profile ios
 npm run package:native:check -- --strict --target tauri --profile macos
 npm run package:native:check -- --strict --target tauri --profile windows
+npm run package:native:check -- --strict --target tauri --profile windows-store
 npm run package:native:check -- --strict --target electron --profile macos
 npm run package:native:check -- --strict --target electron --profile windows
+npm run package:native:check -- --strict --target electron --profile windows-store
 ```
 
 The script checks the scaffold files, build plan, and required signing variables
@@ -153,7 +156,10 @@ Microsoft Store, notarized desktop releases, or public distribution.
 
 Android store release keystores should be created intentionally and protected as
 long-lived release credentials. Apple certificates and App Store Connect keys
-must come from an Apple Developer account.
+must come from an Apple Developer account. Google Play publishing requires a
+real Play Console service-account JSON key and package name. Microsoft Store
+publishing requires real Partner Center application credentials and product
+metadata.
 
 ## GitHub Native Release Workflow
 
@@ -173,9 +179,13 @@ temporary signing files such as:
 
 - `.native-release/android/release.keystore`
 - `.native-release/android/signing.properties`
+- `.native-release/android/google-play-service-account.json`
+- `.native-release/android/google-play.env`
 - `.native-release/apple/signing-certificate.p12`
 - `.native-release/apple/AuthKey_<key-id>.p8`
 - `.native-release/windows/code-signing.pfx`
+- `.native-release/windows/microsoft-store.env`
+- `.native-release/electron/microsoft-store.env`
 - `.native-release/electron/electron-builder.env`
 
 The final cleanup step removes `.native-release/` even when a later build step

@@ -23,6 +23,7 @@ npm run package:native:dev-secrets -- --target windows
 npm run package:native:dev-secrets -- --target tauri-update
 npm run package:native:prepare -- --target all --profile android --web-url=https://your-deployed-app.example
 npm run package:native:materialize -- --dry-run --target capacitor --profile android
+npm run release:secrets:sync -- --dry-run --profile android-store
 npm run release:external:audit -- --with-runtime
 npm run release:external:audit -- --strict-store
 ```
@@ -57,12 +58,18 @@ Windows code-signing PFX and a Tauri updater keypair through the Tauri signer.
 These are useful for local smoke tests only; they are not valid for store
 releases.
 
+`release:secrets:sync` pushes the selected native signing and store publishing
+environment variables into GitHub Actions Secrets with `gh secret set`. Secret
+values are passed through stdin, not command-line arguments. Use `--dry-run` to
+verify which secrets are present before syncing.
+
 `release:external:audit` verifies the current machine-level release evidence:
 downloaded local speech model files, whisper.cpp binaries, strict local speech
 readiness, optional live Windows runtime self-test, development signing material,
 materialized Android/Windows/Electron signing files, and the native release
 workflow. Add `--strict-store` when you want the command to fail unless real
-Apple/App Store/notarization credentials are present too.
+Google Play, Apple/App Store/notarization, and Microsoft Store credentials are
+present too.
 
 ## Scaffold Native Shells
 
@@ -160,6 +167,23 @@ must come from an Apple Developer account. Google Play publishing requires a
 real Play Console service-account JSON key and package name. Microsoft Store
 publishing requires real Partner Center application credentials and product
 metadata.
+
+## Sync GitHub Actions Secrets
+
+Install and authenticate the GitHub CLI on the release machine, then sync only
+the profile you are preparing to ship:
+
+```bash
+npm run release:secrets:sync -- --dry-run --profile android-store
+npm run release:secrets:sync -- --profile android-store
+npm run release:secrets:sync -- --dry-run --profile windows-store
+npm run release:secrets:sync -- --profile windows-store
+```
+
+Use `--env-file=.env.release.local` when the release secrets are stored in a
+local ignored file, and `--repo=owner/name` when the current Git remote is not
+the target GitHub repository. The script reports only secret names, presence,
+and sync status.
 
 ## GitHub Native Release Workflow
 

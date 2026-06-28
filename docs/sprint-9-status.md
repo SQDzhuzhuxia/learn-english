@@ -59,6 +59,10 @@ and add a stronger regression gate for core user interactions.
 - Native release checks now distinguish signing from store publishing:
   Google Play service-account credentials and Microsoft Store Partner Center
   credentials have their own strict profiles.
+- GitHub Actions native release secrets can be synced from the release
+  environment with:
+  - `npm run release:secrets:sync -- --dry-run --profile android-store`
+  - `npm run release:secrets:sync -- --profile windows-store`
 - `package:native:prepare` generates Capacitor, Tauri, and Electron wrapper
   inputs under `.native-release/wrapper/` for a deployed Web/PWA URL. This keeps
   native shells compatible with the app's server-backed Next.js API routes.
@@ -90,10 +94,10 @@ API, doctor command, and settings visibility.
 
 The same boundary applies to mobile and desktop packaging. The repo now provides
 PWA readiness checks, native shell scaffolds for Capacitor, Tauri, and Electron,
-deployed Web/PWA wrapper generation, and a strict signing-environment checker.
-Store signing, installer notarization, and CI release pipelines remain
-release-environment work because they require platform accounts, certificates,
-and distribution choices.
+deployed Web/PWA wrapper generation, strict signing-environment checks, GitHub
+Actions secret syncing, and the manual native release workflow. The final store
+publishing run remains release-environment work because it requires platform
+accounts, certificates, and distribution choices.
 
 ## Verification
 
@@ -108,6 +112,7 @@ npm run build
 npm run package:check
 npm run package:native:check -- --json
 npm run package:native:prepare -- --clean --target all --profile android --web-url=http://127.0.0.1:3000 --json
+npm run release:secrets:sync -- --dry-run --profile android-store
 npm run release:external:audit -- --with-runtime
 npm run qa:interactions:check
 npm run qa:mobile:check
@@ -130,6 +135,7 @@ build: passed, 21 app routes generated
 package:check: passed
 package:native:check: passed in contract mode; signed release secrets not present
 package:native:prepare: passed, generated Capacitor/Tauri/Electron wrapper inputs
+release:secrets:sync dry-run: passed with fake local store secret values
 release:external:audit --with-runtime: local evidence passed; store credentials not present
 qa:interactions:check: passed
 qa:mobile:check: passed
@@ -148,4 +154,5 @@ speech:start --write: passed
   phoneme timing is required.
 - Add real Android/iOS/macOS/Windows certificates, store keys, and notarization
   credentials to the target release environment, then enforce the matching
-  strict native release profile.
+  strict native release profile and sync those values with
+  `release:secrets:sync`.

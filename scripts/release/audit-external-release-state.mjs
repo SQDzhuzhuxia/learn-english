@@ -133,6 +133,31 @@ function checkWorkflow() {
   };
 }
 
+function checkGitHubSecretSync() {
+  const packageJson = JSON.parse(readText("package.json") || "{}");
+  const script = readText("scripts/release/sync-github-native-secrets.mjs");
+  const required = [
+    "gh",
+    "secret",
+    "set",
+    "ANDROID_KEYSTORE_BASE64",
+    "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64",
+    "APP_STORE_CONNECT_API_KEY_BASE64",
+    "MICROSOFT_STORE_CLIENT_ID"
+  ];
+  const missing = required.filter((item) => !script.includes(item));
+
+  return {
+    ok:
+      packageJson.scripts?.["release:secrets:sync"] ===
+        "node scripts/release/sync-github-native-secrets.mjs" &&
+      script.length > 0 &&
+      missing.length === 0,
+    path: "scripts/release/sync-github-native-secrets.mjs",
+    missing
+  };
+}
+
 function createNativeSigningReport() {
   const androidEnv = readEnvFile(".native-release/dev-secrets/android-dev-signing.env");
   const windowsEnv = readEnvFile(".native-release/dev-secrets/windows-dev-signing.env");
@@ -247,6 +272,7 @@ function createReport(options) {
   ];
   const nativeSigning = createNativeSigningReport();
   const workflow = checkWorkflow();
+  const githubSecretSync = checkGitHubSecretSync();
   const git = gitStatus();
   const localReady =
     model.ok &&
@@ -257,7 +283,8 @@ function createReport(options) {
     materialized.every((item) => item.ok) &&
     devSecrets.every((item) => item.ok) &&
     nativeSigning.ok &&
-    workflow.ok;
+    workflow.ok &&
+    githubSecretSync.ok;
 
   return {
     ok: options.strictStore ? localReady && nativeSigning.storeReady && git.clean : localReady && git.clean,
@@ -275,6 +302,7 @@ function createReport(options) {
       devSecrets,
       materialized,
       workflow,
+      githubSecretSync,
       signing: nativeSigning
     }
   };
@@ -302,6 +330,7 @@ function printReport(report) {
   printCheck("Tauri updater development signing", report.native.signing.checks.tauriUpdateDev.ok);
   printCheck("Electron Windows development signing", report.native.signing.checks.electronWindowsDev.ok);
   printCheck("Native workflow", report.native.workflow.ok, report.native.workflow.path);
+  printCheck("GitHub Secrets sync helper", report.native.githubSecretSync.ok, report.native.githubSecretSync.path);
   printCheck("Google Play publishing", report.native.signing.checks.androidStore.ok, "requires real Google Play credentials");
   printCheck("iOS store signing", report.native.signing.checks.iosStore.ok, "requires real Apple credentials");
   printCheck("macOS notarization", report.native.signing.checks.macosStore.ok, "requires real Apple credentials");

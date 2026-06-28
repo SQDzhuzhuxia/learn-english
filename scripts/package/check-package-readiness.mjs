@@ -32,6 +32,7 @@ function createReport() {
   const deploymentGuide = readText("docs/deployment-guide.md");
   const ciWorkflow = readText(".github/workflows/ci.yml");
   const nativeReleaseWorkflow = readText(".github/workflows/native-release.yml");
+  const githubSecretSync = readText("scripts/release/sync-github-native-secrets.mjs");
 
   const checks = [
     check(
@@ -148,6 +149,22 @@ function createReport() {
       packageJson.scripts?.["release:check"] === "node scripts/qa/release-check.mjs" &&
         hasFile("scripts/qa/release-check.mjs"),
       "release:check should run the local pre-release quality gate."
+    ),
+    check(
+      "github-native-secret-sync",
+      "GitHub native secret sync",
+      packageJson.scripts?.["release:secrets:sync"] ===
+        "node scripts/release/sync-github-native-secrets.mjs" &&
+        hasFile("scripts/release/sync-github-native-secrets.mjs") &&
+        [
+          "gh",
+          "secret",
+          "set",
+          "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64",
+          "APP_STORE_CONNECT_API_KEY_BASE64",
+          "MICROSOFT_STORE_CLIENT_ID"
+        ].every((item) => githubSecretSync.includes(item)),
+      "release:secrets:sync should safely push native release secrets into GitHub Actions."
     ),
     check(
       "native-release-workflow",

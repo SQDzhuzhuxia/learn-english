@@ -105,6 +105,7 @@ npm run package:native:dev-secrets -- --target windows
 npm run package:native:dev-secrets -- --target tauri-update
 npm run package:native:prepare -- --target all --profile android --web-url=http://127.0.0.1:3000
 npm run package:native:materialize -- --dry-run --target capacitor --profile android
+npm run release:secrets:sync -- --dry-run --profile android-store
 npm run release:external:audit -- --with-runtime
 npm run lint
 npm run typecheck

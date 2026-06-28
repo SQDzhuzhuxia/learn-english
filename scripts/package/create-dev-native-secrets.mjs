@@ -29,12 +29,16 @@ function parseArgs() {
   return options;
 }
 
-function hasCommand(command) {
-  const result = spawnSync("powershell.exe", ["-NoProfile", "-Command", `Get-Command ${command} -ErrorAction SilentlyContinue`], {
+function resolveCommand(command) {
+  const result = spawnSync("powershell.exe", [
+    "-NoProfile",
+    "-Command",
+    `$env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User'); (Get-Command ${command} -ErrorAction SilentlyContinue).Source`
+  ], {
     encoding: "utf8"
   });
 
-  return result.status === 0 && Boolean(result.stdout.trim());
+  return result.status === 0 ? result.stdout.trim() : "";
 }
 
 function shellQuote(value) {
@@ -113,7 +117,8 @@ function createWindowsDevCertificate(options) {
 }
 
 function createAndroidReport() {
-  const keytoolReady = hasCommand("keytool");
+  const keytoolPath = resolveCommand("keytool");
+  const keytoolReady = Boolean(keytoolPath);
 
   if (!keytoolReady) {
     return {
@@ -123,10 +128,84 @@ function createAndroidReport() {
     };
   }
 
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+
+  const keystorePath = path.join(OUT_DIR, "android-dev-release.p12");
+  const envPath = path.join(OUT_DIR, "android-dev-signing.env");
+  const storePassword = process.env.ANDROID_DEV_KEYSTORE_PASSWORD || "learn-english-dev";
+  const keyPassword = process.env.ANDROID_DEV_KEY_PASSWORD || storePassword;
+  const alias = process.env.ANDROID_DEV_KEY_ALIAS || "learn-english-dev";
+
+  fs.rmSync(keystorePath, { force: true });
+
+  const result = spawnSync(
+    keytoolPath,
+    [
+      "-genkeypair",
+      "-v",
+      "-storetype",
+      "PKCS12",
+      "-keystore",
+      keystorePath,
+      "-alias",
+      alias,
+      "-keyalg",
+      "RSA",
+      "-keysize",
+      "2048",
+      "-validity",
+      "365",
+      "-storepass",
+      storePassword,
+      "-keypass",
+      keyPassword,
+      "-dname",
+      "CN=Learn English Dev Android,O=Learn English,C=US"
+    ],
+    {
+      encoding: "utf8"
+    }
+  );
+
+  if (result.status !== 0) {
+    return {
+      ok: false,
+      target: "android",
+      reason: result.stderr || result.stdout || `keytool exited ${result.status}`
+    };
+  }
+
+  const keystore = fs.readFileSync(keystorePath);
+  const envContent = [
+    "# Development-only Android signing material. Do not use for store releases.",
+    `ANDROID_KEYSTORE_BASE64=${keystore.toString("base64")}`,
+    `ANDROID_KEYSTORE_PASSWORD=${storePassword}`,
+    `ANDROID_KEY_ALIAS=${alias}`,
+    `ANDROID_KEY_PASSWORD=${keyPassword}`,
+    ""
+  ].join("\n");
+  fs.writeFileSync(envPath, envContent, "utf8");
+
   return {
-    ok: false,
+    ok: true,
     target: "android",
-    reason: "Android dev keystore generation is intentionally not run automatically until a JDK path and alias/password policy are chosen."
+    outDir: path.relative(ROOT, OUT_DIR),
+    files: [
+      {
+        path: path.relative(ROOT, keystorePath),
+        bytes: keystore.byteLength
+      },
+      {
+        path: path.relative(ROOT, envPath),
+        bytes: Buffer.byteLength(envContent)
+      }
+    ],
+    env: {
+      ANDROID_KEYSTORE_BASE64: "<generated>",
+      ANDROID_KEYSTORE_PASSWORD: "<generated>",
+      ANDROID_KEY_ALIAS: alias,
+      ANDROID_KEY_PASSWORD: "<generated>"
+    }
   };
 }
 

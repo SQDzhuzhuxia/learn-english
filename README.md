@@ -98,6 +98,7 @@ http://localhost:3000
 ```bash
 npm run release:check
 npm run package:native:check
+npm run package:native:dev-secrets -- --target android
 npm run package:native:dev-secrets -- --target windows
 npm run package:native:materialize -- --dry-run --target capacitor --profile android
 npm run lint

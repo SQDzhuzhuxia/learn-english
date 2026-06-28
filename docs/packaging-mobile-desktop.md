@@ -46,9 +46,10 @@ files that native build tools can consume. It prints only file paths and byte
 counts, not secret values.
 
 `package:native:dev-secrets` can generate local development signing material
-where the current platform allows it. On this Windows machine it creates a
-self-signed code-signing PFX and an env file under `.native-release/dev-secrets/`.
-This is useful for local smoke tests only; it is not valid for store releases.
+where the current platform allows it. On this Windows machine it creates Android
+PKCS12 keystore material when JDK `keytool` is available, plus a self-signed
+Windows code-signing PFX. These are useful for local smoke tests only; they are
+not valid for store releases.
 
 ## Scaffold Native Shells
 
@@ -87,23 +88,26 @@ environment is ready for a signed release without failing normal development CI.
 
 ## Development Signing Material
 
-For local Windows packaging smoke tests:
+For local Android and Windows packaging smoke tests:
 
 ```bash
+npm run package:native:dev-secrets -- --target android
 npm run package:native:dev-secrets -- --target windows
 ```
 
 This writes:
 
+- `.native-release/dev-secrets/android-dev-release.p12`
+- `.native-release/dev-secrets/android-dev-signing.env`
 - `.native-release/dev-secrets/windows-dev-code-signing.pfx`
 - `.native-release/dev-secrets/windows-dev-signing.env`
 
-The generated certificate is self-signed and development-only. Do not use it for
+The generated credentials are development-only. Do not use them for Google Play,
 Microsoft Store, notarized desktop releases, or public distribution.
 
-Android release keystores must be generated with a real JDK `keytool` and
-protected as long-lived release credentials. Apple certificates and App Store
-Connect keys must come from an Apple Developer account.
+Android store release keystores should be created intentionally and protected as
+long-lived release credentials. Apple certificates and App Store Connect keys
+must come from an Apple Developer account.
 
 ## GitHub Native Release Workflow
 

@@ -52,6 +52,9 @@ and add a stronger regression gate for core user interactions.
   Web/PWA bundle, and uploads the generated native scaffold artifact.
 - `package:native:dev-secrets -- --target windows` can generate a self-signed
   development-only Windows PFX for local packaging smoke tests.
+- `package:native:dev-secrets -- --target android` can generate a
+  development-only Android PKCS12 keystore when JDK `keytool` is available; the
+  generated env passes the strict Android signing contract.
 - Existing mobile QA still covers mobile anchors, destructive confirmations,
   import constraints, screenshot automation availability, and narrow viewport
   safety:

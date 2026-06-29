@@ -72,19 +72,51 @@ function envState(name) {
   };
 }
 
+function commandCandidates(command) {
+  const candidates = [command];
+
+  if (command === "fastlane") {
+    candidates.unshift(process.env.FASTLANE_CLI_PATH);
+    if (process.platform === "win32") candidates.push("C:\\Ruby33-x64\\bin\\fastlane.bat");
+  }
+
+  if (command === "msstore") {
+    candidates.unshift(process.env.MSSTORE_CLI_PATH);
+  }
+
+  return candidates.filter(Boolean);
+}
+
 function commandState(command) {
-  const result = spawnSync(command, ["--version"], {
-    cwd: ROOT,
-    encoding: "utf8",
-    shell: process.platform === "win32"
-  });
+  const attempts = [];
+
+  for (const candidate of commandCandidates(command)) {
+    const result = spawnSync(candidate, ["--version"], {
+      cwd: ROOT,
+      encoding: "utf8",
+      shell: process.platform === "win32"
+    });
+    const state = {
+      command: candidate,
+      present: result.status === 0,
+      status: result.status,
+      version: result.stdout?.trim().split(/\r?\n/)[0] ?? "",
+      error: result.stderr?.trim() || result.error?.message || ""
+    };
+
+    attempts.push(state);
+
+    if (state.present) {
+      return {
+        ...state,
+        attempts
+      };
+    }
+  }
 
   return {
-    command,
-    present: result.status === 0,
-    status: result.status,
-    version: result.stdout?.trim().split(/\r?\n/)[0] ?? "",
-    error: result.stderr?.trim() || result.error?.message || ""
+    ...attempts.at(-1),
+    attempts
   };
 }
 
@@ -121,6 +153,7 @@ function copyAppleApiKeyForAltool() {
 
 function createAndroidStorePlan(options) {
   const artifact = options.artifact || process.env.ANDROID_AAB_PATH || "";
+  const fastlane = commandState("fastlane");
 
   return {
     key: "capacitor:android-store",
@@ -130,11 +163,11 @@ function createAndroidStorePlan(options) {
     environment: ["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64", "GOOGLE_PLAY_PACKAGE_NAME"].map(envState),
     files: [fileState(".native-release/android/google-play-service-account.json")],
     artifacts: [{ name: "ANDROID_AAB_PATH", path: artifact, ...fileState(artifact) }],
-    tools: [commandState("fastlane")],
+    tools: [fastlane],
     steps: [
       {
         label: "Upload Android App Bundle to Google Play",
-        command: "fastlane",
+        command: fastlane.command,
         args: [
           "supply",
           "--aab",
@@ -237,6 +270,7 @@ function createMacosPlan(options) {
 
 function createWindowsStorePlan(options) {
   const artifact = options.artifact || process.env.WINDOWS_STORE_PACKAGE_PATH || "";
+  const msstore = commandState("msstore");
   const pathOrUrl = process.env.MICROSOFT_STORE_PROJECT_PATH || options.webUrl || ".native-release/wrapper/electron";
   const publishArgs = ["publish", pathOrUrl, "-id", process.env.MICROSOFT_STORE_PRODUCT_ID || ""];
 
@@ -262,11 +296,11 @@ function createWindowsStorePlan(options) {
     ].map(envState),
     files: [fileState(`.native-release/${options.target === "electron" ? "electron" : "windows"}/microsoft-store.env`)],
     artifacts: [{ name: "WINDOWS_STORE_PACKAGE_PATH", path: artifact, required: false, ...fileState(artifact) }],
-    tools: [commandState("msstore")],
+    tools: [msstore],
     steps: [
       {
         label: "Configure Microsoft Store Developer CLI",
-        command: "msstore",
+        command: msstore.command,
         args: [
           "reconfigure",
           "--tenantId",
@@ -282,7 +316,7 @@ function createWindowsStorePlan(options) {
       },
       {
         label: options.commit ? "Publish Microsoft Store submission" : "Create Microsoft Store draft submission",
-        command: "msstore",
+        command: msstore.command,
         args: publishArgs,
         preview: `msstore ${publishArgs.map(quote).join(" ")}`
       }

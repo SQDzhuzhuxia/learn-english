@@ -65,6 +65,9 @@ and add a stronger regression gate for core user interactions.
   environment with:
   - `npm run release:secrets:sync -- --dry-run --profile android-store`
   - `npm run release:secrets:sync -- --profile windows-store`
+- Native store release submission can be preflighted, and optionally executed
+  in release CI, with:
+  - `npm run release:native:store -- --dry-run --target capacitor --profile android-store`
 - `package:native:prepare` generates Capacitor, Tauri, and Electron wrapper
   inputs under `.native-release/wrapper/` for a deployed Web/PWA URL. This keeps
   native shells compatible with the app's server-backed Next.js API routes.
@@ -97,9 +100,10 @@ API, doctor command, and settings visibility.
 The same boundary applies to mobile and desktop packaging. The repo now provides
 PWA readiness checks, native shell scaffolds for Capacitor, Tauri, and Electron,
 deployed Web/PWA wrapper generation, strict signing-environment checks, GitHub
-Actions secret syncing, and the manual native release workflow. The final store
+Actions secret syncing, native store submission preflight, and the manual native
+release workflow with an opt-in store submission stage. The final store
 publishing run remains release-environment work because it requires platform
-accounts, certificates, and distribution choices.
+accounts, certificates, signed package artifacts, and distribution choices.
 
 ## Verification
 
@@ -114,6 +118,7 @@ npm run build
 npm run package:check
 npm run package:native:check -- --json
 npm run package:native:prepare -- --clean --target all --profile android --web-url=http://127.0.0.1:3000 --json
+npm run release:native:store -- --dry-run --target capacitor --profile android-store
 npm run release:secrets:sync -- --dry-run --profile android-store
 npm run release:external:audit -- --with-runtime
 npm run qa:interactions:check
@@ -137,6 +142,7 @@ build: passed, 21 app routes generated
 package:check: passed
 package:native:check: passed in contract mode; signed release secrets not present
 package:native:prepare: passed, generated Capacitor/Tauri/Electron wrapper inputs
+release:native:store dry-run: passed as a store submission preflight runner; real store credentials and signed artifacts not present
 release:secrets:sync dry-run: passed with fake local store secret values
 release:external:audit --with-runtime: local evidence passed; store credentials not present
 qa:interactions:check: passed
@@ -155,6 +161,6 @@ speech:start --write: passed
   forced aligner such as MFA, WhisperX, or wav2vec2 alignment if production
   phoneme timing is required.
 - Add real Android/iOS/macOS/Windows certificates, store keys, and notarization
-  credentials to the target release environment, then enforce the matching
-  strict native release profile and sync those values with
-  `release:secrets:sync`.
+  credentials plus signed store artifacts to the target release environment,
+  then enforce the matching strict native release profile, sync those values
+  with `release:secrets:sync`, and run the workflow with `submit_to_store=true`.

@@ -27,6 +27,25 @@ on:
         description: Deployed Web/PWA URL that native shells should wrap
         required: true
         type: string
+      submit_to_store:
+        description: Run the native store submission command after preflight
+        required: false
+        default: false
+        type: boolean
+      store_artifact_path:
+        description: Path to the signed package to submit, when the store profile requires one
+        required: false
+        type: string
+      store_track:
+        description: Store track or channel, such as Google Play internal
+        required: false
+        default: internal
+        type: string
+      commit_store_submission:
+        description: Commit the store submission when the store CLI supports drafts
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -34,7 +53,7 @@ permissions:
 jobs:
   native-release-contract:
     name: Native release contract
-    runs-on: ${{ inputs.profile == 'windows' && 'windows-latest' || inputs.profile == 'ios' && 'macos-latest' || inputs.profile == 'macos' && 'macos-latest' || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.profile == 'windows' && 'windows-latest' || inputs.profile == 'windows-store' && 'windows-latest' || inputs.profile == 'ios' && 'macos-latest' || inputs.profile == 'macos' && 'macos-latest' || 'ubuntu-latest' }}
     env:
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -89,6 +108,22 @@ jobs:
 
       - name: Prepare deployed Web/PWA wrapper
         run: npm run package:native:prepare -- --clean --target "${{ inputs.target }}" --profile "${{ inputs.profile }}" --web-url "${{ inputs.web_url }}"
+
+      - name: Install Google Play publisher
+        if: ${{ inputs.profile == 'android-store' && inputs.submit_to_store == true }}
+        run: gem install fastlane
+
+      - name: Install Microsoft Store Developer CLI
+        if: ${{ inputs.profile == 'windows-store' && inputs.submit_to_store == true }}
+        uses: microsoft/microsoft-store-apppublisher@v1.1
+
+      - name: Preflight native store submission
+        if: ${{ inputs.profile == 'android-store' || inputs.profile == 'ios' || inputs.profile == 'macos' || inputs.profile == 'windows-store' }}
+        run: npm run release:native:store -- --dry-run --target "${{ inputs.target }}" --profile "${{ inputs.profile }}" --web-url "${{ inputs.web_url }}" --artifact "${{ inputs.store_artifact_path }}" --track "${{ inputs.store_track }}"
+
+      - name: Submit native release to store
+        if: ${{ inputs.submit_to_store == true && (inputs.profile == 'android-store' || inputs.profile == 'ios' || inputs.profile == 'macos' || inputs.profile == 'windows-store') }}
+        run: npm run release:native:store -- --target "${{ inputs.target }}" --profile "${{ inputs.profile }}" --web-url "${{ inputs.web_url }}" --artifact "${{ inputs.store_artifact_path }}" --track "${{ inputs.store_track }}" ${{ inputs.commit_store_submission == true && '--commit' || '' }}
 
       - name: Upload native scaffold artifact
         uses: actions/upload-artifact@v4

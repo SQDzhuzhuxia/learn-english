@@ -116,6 +116,8 @@ function checkWorkflow() {
     "package:native:check -- --strict",
     "package:native:materialize",
     "package:native:prepare",
+    "release:native:store",
+    "submit_to_store",
     "ANDROID_KEYSTORE_BASE64",
     "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64",
     "APPLE_CERTIFICATE_BASE64",
@@ -129,6 +131,30 @@ function checkWorkflow() {
   return {
     ok: workflow.length > 0 && missing.length === 0,
     path: ".github/workflows/native-release.yml",
+    missing
+  };
+}
+
+function checkNativeStoreRelease() {
+  const packageJson = JSON.parse(readText("package.json") || "{}");
+  const script = readText("scripts/release/run-native-store-release.mjs");
+  const required = [
+    "fastlane",
+    "xcrun",
+    "msstore",
+    "GOOGLE_PLAY_PACKAGE_NAME",
+    "APP_STORE_CONNECT_API_KEY_ID",
+    "MICROSOFT_STORE_PRODUCT_ID"
+  ];
+  const missing = required.filter((item) => !script.includes(item));
+
+  return {
+    ok:
+      packageJson.scripts?.["release:native:store"] ===
+        "node scripts/release/run-native-store-release.mjs" &&
+      script.length > 0 &&
+      missing.length === 0,
+    path: "scripts/release/run-native-store-release.mjs",
     missing
   };
 }
@@ -332,6 +358,7 @@ function createReport(options) {
   const nativeSigning = createNativeSigningReport();
   const workflow = checkWorkflow();
   const githubSecretSync = checkGitHubSecretSync();
+  const nativeStoreRelease = checkNativeStoreRelease();
   const githubCli = checkGitHubCli();
   const git = gitStatus();
   const localReady =
@@ -344,6 +371,7 @@ function createReport(options) {
     devSecrets.every((item) => item.ok) &&
     nativeSigning.ok &&
     workflow.ok &&
+    nativeStoreRelease.ok &&
     githubSecretSync.ok &&
     githubCli.ok;
   const ciSecretSyncReady = githubSecretSync.ok && githubCli.ok && githubCli.authenticated;
@@ -366,6 +394,7 @@ function createReport(options) {
       devSecrets,
       materialized,
       workflow,
+      nativeStoreRelease,
       githubSecretSync,
       githubCli,
       signing: nativeSigning
@@ -395,6 +424,7 @@ function printReport(report) {
   printCheck("Tauri updater development signing", report.native.signing.checks.tauriUpdateDev.ok);
   printCheck("Electron Windows development signing", report.native.signing.checks.electronWindowsDev.ok);
   printCheck("Native workflow", report.native.workflow.ok, report.native.workflow.path);
+  printCheck("Native store release runner", report.native.nativeStoreRelease.ok, report.native.nativeStoreRelease.path);
   printCheck("GitHub Secrets sync helper", report.native.githubSecretSync.ok, report.native.githubSecretSync.path);
   printCheck("GitHub CLI", report.native.githubCli.ok, report.native.githubCli.version || report.native.githubCli.authMessage);
   printCheck("GitHub auth", report.native.githubCli.authenticated, "requires gh auth login before syncing CI secrets");

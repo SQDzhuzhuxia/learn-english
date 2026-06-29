@@ -33,6 +33,7 @@ function createReport() {
   const ciWorkflow = readText(".github/workflows/ci.yml");
   const nativeReleaseWorkflow = readText(".github/workflows/native-release.yml");
   const githubSecretSync = readText("scripts/release/sync-github-native-secrets.mjs");
+  const nativeStoreRelease = readText("scripts/release/run-native-store-release.mjs");
 
   const checks = [
     check(
@@ -167,6 +168,22 @@ function createReport() {
       "release:secrets:sync should safely push native release secrets into GitHub Actions."
     ),
     check(
+      "native-store-release-runner",
+      "Native store release runner",
+      packageJson.scripts?.["release:native:store"] ===
+        "node scripts/release/run-native-store-release.mjs" &&
+        hasFile("scripts/release/run-native-store-release.mjs") &&
+        [
+          "fastlane",
+          "xcrun",
+          "msstore",
+          "GOOGLE_PLAY_PACKAGE_NAME",
+          "APP_STORE_CONNECT_API_KEY_ID",
+          "MICROSOFT_STORE_PRODUCT_ID"
+        ].every((item) => nativeStoreRelease.includes(item)),
+      "release:native:store should preflight and optionally submit native store releases."
+    ),
+    check(
       "native-release-workflow",
       "Native release workflow",
       hasFile(".github/workflows/native-release.yml") &&
@@ -175,6 +192,8 @@ function createReport() {
         nativeReleaseWorkflow.includes("package:native:check -- --strict") &&
         nativeReleaseWorkflow.includes("package:native:materialize") &&
         nativeReleaseWorkflow.includes("package:native:prepare") &&
+        nativeReleaseWorkflow.includes("release:native:store") &&
+        nativeReleaseWorkflow.includes("submit_to_store") &&
         nativeReleaseWorkflow.includes("ANDROID_KEYSTORE_BASE64") &&
         nativeReleaseWorkflow.includes("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64") &&
         nativeReleaseWorkflow.includes("APPLE_CERTIFICATE_BASE64") &&

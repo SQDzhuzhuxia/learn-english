@@ -23,6 +23,7 @@ npm run package:native:dev-secrets -- --target windows
 npm run package:native:dev-secrets -- --target tauri-update
 npm run package:native:prepare -- --target all --profile android --web-url=https://your-deployed-app.example
 npm run package:native:materialize -- --dry-run --target capacitor --profile android
+npm run release:native:store -- --dry-run --target capacitor --profile android-store
 npm run release:secrets:sync -- --dry-run --profile android-store
 npm run release:external:audit -- --with-runtime
 npm run release:external:audit -- --strict-store
@@ -62,6 +63,12 @@ releases.
 environment variables into GitHub Actions Secrets with `gh secret set`. Secret
 values are passed through stdin, not command-line arguments. Use `--dry-run` to
 verify which secrets are present before syncing.
+
+`release:native:store` performs native store submission preflight and optional
+submission commands. In `--dry-run` mode it reports required environment
+variables, materialized files, signed package artifacts, external store tools,
+and the exact upload command shape. Without `--dry-run`, it runs the selected
+store tool only after all required evidence is present.
 
 `release:external:audit` verifies the current machine-level release evidence:
 downloaded local speech model files, whisper.cpp binaries, strict local speech
@@ -192,11 +199,28 @@ release contract for native targets. It accepts `target`, `profile`, and the
 deployed `web_url`, injects signing secrets from GitHub Actions Secrets, runs the
 matching strict `package:native:check` profile, builds the Web/PWA bundle,
 generates the native scaffold, prepares deployed Web/PWA wrapper inputs, and
-uploads both as artifacts.
+uploads both as artifacts. Store profiles also run a `release:native:store`
+preflight. Set `submit_to_store=true` only when the signed package artifact path
+and store credentials are ready.
 
 The workflow intentionally fails before build artifacts are created when required
 certificates or store keys are missing. Add only the secrets for the release
 profile you are actually shipping.
+
+Store submission profile notes:
+
+- `capacitor/android-store` expects a signed AAB path through
+  `store_artifact_path` or `ANDROID_AAB_PATH`, then uploads with Fastlane
+  `supply`.
+- `capacitor/ios` expects a signed IPA path through `store_artifact_path` or
+  `IOS_IPA_PATH`, then uploads with `xcrun altool`.
+- `tauri/macos` or `electron/macos` expects a notarization artifact path through
+  `store_artifact_path` or `MACOS_NOTARIZATION_ARTIFACT_PATH`, then submits with
+  `xcrun notarytool`.
+- `tauri/windows-store` or `electron/windows-store` expects a Microsoft Store
+  package/project path through `store_artifact_path`,
+  `WINDOWS_STORE_PACKAGE_PATH`, `MICROSOFT_STORE_PROJECT_PATH`, or `web_url`,
+  then runs `msstore publish`.
 
 After strict validation, the workflow runs `package:native:materialize` to create
 temporary signing files such as:

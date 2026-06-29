@@ -15,7 +15,7 @@ export type PracticeAttemptRecord = {
 };
 
 const PRACTICE_ATTEMPTS_KEY = "learn-english.practice-attempts.v1";
-const MAX_ATTEMPTS = 200;
+const MAX_ATTEMPTS = 5000;
 
 function canUseStorage() {
   return typeof window !== "undefined" && Boolean(window.localStorage);

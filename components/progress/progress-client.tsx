@@ -1,14 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, AlertCircle, BarChart3, Clock3, Map, TrendingUp } from "lucide-react";
-import {
-  learningBalance,
-  progressStats,
-  scenarioMap,
-  weaknessInsights,
-  weeklyTimeline
-} from "@/lib/mock-data";
+import { Activity, AlertCircle, BarChart3, Clock3, Map as MapIcon, TrendingUp } from "lucide-react";
 import {
   summarizeStudyActivities,
   type ActivitySummary,
@@ -19,8 +12,10 @@ import {
   createOutputWeaknessProfile,
   type OutputWeaknessProfile
 } from "@/lib/analytics/output-weakness-profile";
+import { loadMaterials } from "@/lib/content/material-store";
+import type { StudyMaterialRecord } from "@/lib/content/types";
 import { loadLearningItems } from "@/lib/review/review-store";
-import { loadPracticeAttempts } from "@/lib/speech/practice-store";
+import { loadPracticeAttempts, type PracticeAttemptRecord } from "@/lib/speech/practice-store";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -43,17 +38,27 @@ type ProgressViewState = {
   timeline: WeeklyActivityDay[];
   outputErrorSummary: OutputErrorSummary;
   outputWeaknessProfile: OutputWeaknessProfile;
+  scenarios: ScenarioCapability[];
 };
+
+type ScenarioCapability = {
+  name: string;
+  status: string;
+  progress: number;
+  evidence: string;
+};
+
+const emptyBalance: BalanceItem[] = [
+  { label: "听读输入", value: 0, minutes: 0 },
+  { label: "输出练习", value: 0, minutes: 0 },
+  { label: "复习巩固", value: 0, minutes: 0 }
+];
 
 function createBalance(summary: ActivitySummary): BalanceItem[] {
   const totalMinutes = summary.inputMinutes + summary.outputMinutes + summary.reviewMinutes;
 
   if (totalMinutes === 0) {
-    return learningBalance.map((item) => ({
-      ...item,
-      value: 0,
-      minutes: 0
-    }));
+    return emptyBalance;
   }
 
   return [
@@ -101,13 +106,78 @@ function createStats(summary: ActivitySummary, activeItemCount: number): Progres
 }
 
 function createInitialState(): ProgressViewState {
+  const emptySummary = summarizeStudyActivities([]);
+
   return {
-    stats: progressStats,
-    balance: learningBalance,
-    timeline: weeklyTimeline,
+    stats: createStats(emptySummary, 0),
+    balance: createBalance(emptySummary),
+    timeline: emptySummary.weeklyTimeline,
     outputErrorSummary: summarizeOutputErrors([]),
-    outputWeaknessProfile: createOutputWeaknessProfile([])
+    outputWeaknessProfile: createOutputWeaknessProfile([]),
+    scenarios: []
   };
+}
+
+function average(values: number[]) {
+  const validValues = values.filter((value) => Number.isFinite(value));
+
+  return validValues.length > 0
+    ? Math.round(validValues.reduce((sum, value) => sum + value, 0) / validValues.length)
+    : 0;
+}
+
+function createScenarioCapabilities(
+  materials: StudyMaterialRecord[],
+  attempts: PracticeAttemptRecord[]
+): ScenarioCapability[] {
+  const materialTitleToType = new Map(materials.map((material) => [material.title, material.type]));
+  const attemptsByType = new Map<string, PracticeAttemptRecord[]>();
+
+  attempts.forEach((attempt) => {
+    const type = materialTitleToType.get(attempt.materialTitle);
+
+    if (!type) {
+      return;
+    }
+
+    attemptsByType.set(type, [...(attemptsByType.get(type) ?? []), attempt]);
+  });
+
+  const grouped = new Map<string, StudyMaterialRecord[]>();
+
+  materials.forEach((material) => {
+    grouped.set(material.type, [...(grouped.get(material.type) ?? []), material]);
+  });
+
+  return Array.from(grouped.entries())
+    .map(([type, typeMaterials]) => {
+      const typeAttempts = attemptsByType.get(type) ?? [];
+      const completed = typeMaterials.filter((material) => material.status === "已完成").length;
+      const studiedProgress = average(typeMaterials.map((material) => material.progress));
+      const completedProgress = Math.round((completed / Math.max(1, typeMaterials.length)) * 100);
+      const outputScore = average(typeAttempts.map((attempt) => attempt.score ?? 0));
+      const outputBoost = Math.min(100, typeAttempts.length * 12);
+      const progress = Math.min(
+        100,
+        Math.round(studiedProgress * 0.45 + completedProgress * 0.25 + outputScore * 0.2 + outputBoost * 0.1)
+      );
+      const status =
+        progress >= 80
+          ? "可迁移"
+          : progress >= 50
+            ? "训练中"
+            : progress > 0
+              ? "起步"
+              : "未开始";
+
+      return {
+        name: type,
+        status,
+        progress,
+        evidence: `${typeMaterials.length} 篇材料 · ${typeAttempts.length} 次输出`
+      };
+    })
+    .sort((left, right) => right.progress - left.progress || left.name.localeCompare(right.name, "zh-CN"));
 }
 
 export function ProgressClient() {
@@ -126,13 +196,15 @@ export function ProgressClient() {
       const practiceAttempts = loadPracticeAttempts();
       const outputErrorSummary = summarizeOutputErrors(practiceAttempts);
       const outputWeaknessProfile = createOutputWeaknessProfile(practiceAttempts);
+      const scenarios = createScenarioCapabilities(loadMaterials(), practiceAttempts);
 
       setViewState({
         stats: createStats(summary, activeItemCount),
         balance: createBalance(summary),
         timeline: summary.weeklyTimeline,
         outputErrorSummary,
-        outputWeaknessProfile
+        outputWeaknessProfile,
+        scenarios
       });
     });
 
@@ -326,12 +398,12 @@ export function ProgressClient() {
                 </article>
               ))
             ) : (
-              weaknessInsights.map((insight) => (
-                <article key={insight.title} className="rounded-lg border border-border bg-white p-4">
-                  <h3 className="font-semibold text-foreground">{insight.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-muted">{insight.detail}</p>
+              viewState.outputWeaknessProfile.blockers.map((blocker) => (
+                <article key={blocker} className="rounded-lg border border-border bg-white p-4">
+                  <h3 className="font-semibold text-foreground">等待真实输出</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted">{blocker}</p>
                   <p className="mt-3 rounded-lg bg-panel-strong px-3 py-2 text-sm leading-6 text-muted">
-                    {insight.action}
+                    {viewState.outputWeaknessProfile.weeklyTarget}
                   </p>
                 </article>
               ))
@@ -344,13 +416,13 @@ export function ProgressClient() {
         <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">场景能力地图</CardTitle>
-          <Map className="h-5 w-5 text-foreground" />
+          <MapIcon className="h-5 w-5 text-foreground" />
         </div>
         <CardDescription>把学习目标落到美国生活、工作和移民场景里。</CardDescription>
         </CardHeader>
         <CardContent>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          {scenarioMap.map((scenario) => (
+          {viewState.scenarios.map((scenario) => (
             <div key={scenario.name} className="rounded-lg border border-border bg-white p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -360,8 +432,14 @@ export function ProgressClient() {
                 <Activity className="h-4 w-4 shrink-0 text-foreground" />
               </div>
               <Progress value={scenario.progress} className="mt-3" />
+              <p className="mt-2 text-xs text-muted">{scenario.evidence}</p>
             </div>
           ))}
+          {viewState.scenarios.length === 0 ? (
+            <p className="rounded-lg border border-border bg-white p-4 text-sm leading-6 text-muted md:col-span-2 xl:col-span-5">
+              完成材料学习或输出练习后，这里会按真实材料类型生成能力地图。
+            </p>
+          ) : null}
         </div>
         </CardContent>
       </Card>

@@ -188,13 +188,13 @@ npm run speech:windows-runtime -- --self-test --json
 ### 音频级发音评分
 
 ```env
-PRONUNCIATION_PROVIDER=fallback
-PRONUNCIATION_BASE_URL=
+PRONUNCIATION_PROVIDER=local
+PRONUNCIATION_BASE_URL=http://127.0.0.1:8090
 PRONUNCIATION_MODEL=
 PRONUNCIATION_ENDPOINT_PATH=/score-pronunciation
 ```
 
-未配置时，跟读仍会使用文本级完整度和发音重点诊断。配置本地 endpoint 后，跟读录音结束会请求 `/api/speech/pronunciation-score`，并展示发音、流利度、对齐和词级评分。
+本地测试建议先运行 `npm run speech:windows-runtime` 或 `npm run speech:dev-runtime`，让跟读录音结束后请求 `/api/speech/pronunciation-score`，并展示发音、流利度、对齐和词级评分。未启动本地 endpoint 时，跟读仍会明确提示发音评分不可用，并退回文本级完整度诊断。
 
 ### Supabase
 

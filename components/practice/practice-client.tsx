@@ -64,6 +64,7 @@ import { saveWritingItemAsReviewCard } from "@/lib/review/review-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useToastMessage } from "@/components/ui/toast";
@@ -137,6 +138,13 @@ type PracticeRoleplayTurn = {
   isAiGenerated?: boolean;
 };
 
+type PracticeQuestionEvaluation = {
+  score: number;
+  rating: "again" | "hard" | "good" | "easy";
+  correct: boolean;
+  message: string;
+};
+
 const ROLEPLAY_KEYWORD_STOP_WORDS = new Set([
   "with",
   "that",
@@ -147,6 +155,29 @@ const ROLEPLAY_KEYWORD_STOP_WORDS = new Set([
   "please",
   "thank",
   "your"
+]);
+
+const PRACTICE_ANSWER_STOP_WORDS = new Set([
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "to",
+  "of",
+  "in",
+  "on",
+  "at",
+  "for",
+  "with",
+  "is",
+  "are",
+  "am",
+  "i",
+  "you",
+  "it",
+  "this",
+  "that"
 ]);
 
 function formatSeconds(seconds: number) {
@@ -193,6 +224,83 @@ function getPracticeAttemptTypeLabel(type: PracticeAttemptRecord["type"]) {
   };
 
   return labels[type];
+}
+
+function estimateWritingCorrectionScore(correction: AiWritingCorrection, originalText: string) {
+  const wordCount = originalText.trim().split(/\s+/).filter(Boolean).length;
+  const changed = correction.correctedText.trim().toLowerCase() !== originalText.trim().toLowerCase();
+  const problemPenalty = Math.min(36, correction.keyProblems.length * 8);
+  const changePenalty = changed ? 8 : 0;
+  const lengthPenalty = wordCount > 0 && wordCount < 5 ? 10 : 0;
+
+  return Math.max(20, Math.min(95, 88 - problemPenalty - changePenalty - lengthPenalty));
+}
+
+function normalizePracticeAnswer(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s']/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function practiceAnswerTokens(text: string) {
+  return normalizePracticeAnswer(text)
+    .split(/\s+/)
+    .filter((token) => token.length > 1 && !PRACTICE_ANSWER_STOP_WORDS.has(token));
+}
+
+function estimatePracticeAnswerScore(question: PracticeQuestionRecord, userAnswer: string) {
+  const normalizedUserAnswer = normalizePracticeAnswer(userAnswer);
+  const normalizedAnswer = normalizePracticeAnswer(question.answer);
+
+  if (!normalizedUserAnswer) {
+    return 0;
+  }
+
+  if (normalizedUserAnswer === normalizedAnswer) {
+    return 100;
+  }
+
+  if (question.choices?.some((choice) => normalizePracticeAnswer(choice) === normalizedUserAnswer)) {
+    return normalizedAnswer === normalizedUserAnswer ? 100 : 25;
+  }
+
+  const answerTokens = new Set(practiceAnswerTokens(question.answer));
+  const userTokens = new Set(practiceAnswerTokens(userAnswer));
+  const matchedAnswerTokens = Array.from(answerTokens).filter((token) => userTokens.has(token));
+  const answerCoverage =
+    answerTokens.size > 0 ? matchedAnswerTokens.length / answerTokens.size : 0;
+  const hintCoverage =
+    question.hints.length > 0
+      ? question.hints.filter((hint) => normalizedUserAnswer.includes(normalizePracticeAnswer(hint))).length /
+        question.hints.length
+      : 0;
+  const promptKeywordCoverage =
+    question.type === "writing" || question.type === "roleplay"
+      ? Math.min(1, userTokens.size / 6)
+      : 0;
+
+  return Math.round(Math.max(answerCoverage * 100, hintCoverage * 80, promptKeywordCoverage * 70));
+}
+
+function evaluatePracticeQuestionAnswer(
+  question: PracticeQuestionRecord,
+  userAnswer: string
+): PracticeQuestionEvaluation {
+  const score = estimatePracticeAnswerScore(question, userAnswer);
+  const rating = score >= 88 ? "easy" : score >= 68 ? "good" : score >= 40 ? "hard" : "again";
+  const correct = score >= 68;
+  const message = correct
+    ? `答案可用，匹配度 ${score}%。系统会延后复习。`
+    : `答案还不稳，匹配度 ${score}%。先对照标准答案补齐关键信息。`;
+
+  return {
+    score,
+    rating,
+    correct,
+    message
+  };
 }
 
 function getAiResultInboxTypeLabel(kind: AiResultInboxRecord["kind"]) {
@@ -345,6 +453,8 @@ export function PracticeClient() {
   const [practiceGenerationMessage, setPracticeGenerationMessage] = useState("");
   const [duePracticeQuestions, setDuePracticeQuestions] = useState<PracticeQuestionRecord[]>([]);
   const [practiceQuestionCount, setPracticeQuestionCount] = useState(0);
+  const [practiceQuestionAnswers, setPracticeQuestionAnswers] = useState<Record<string, string>>({});
+  const [practiceQuestionFeedback, setPracticeQuestionFeedback] = useState<Record<string, PracticeQuestionEvaluation>>({});
   const [selectedWritingIndex, setSelectedWritingIndex] = useState(0);
   const [writingText, setWritingText] = useState("");
   const [writingCorrection, setWritingCorrection] = useState<AiWritingCorrection | null>(null);
@@ -1181,11 +1291,36 @@ export function PracticeClient() {
     );
   }
 
-  function handleReviewPracticeQuestion(question: PracticeQuestionRecord, rating: "again" | "hard" | "good" | "easy") {
+  function handlePracticeQuestionAnswerChange(questionId: string, value: string) {
+    setPracticeQuestionAnswers((current) => ({
+      ...current,
+      [questionId]: value
+    }));
+    setPracticeQuestionFeedback((current) => {
+      const next = { ...current };
+      delete next[questionId];
+      return next;
+    });
+  }
+
+  function handleUsePracticeQuestionChoice(questionId: string, choice: string) {
+    handlePracticeQuestionAnswerChange(questionId, choice);
+  }
+
+  function handleSubmitPracticeQuestion(question: PracticeQuestionRecord) {
+    const userAnswer = practiceQuestionAnswers[question.id]?.trim() ?? "";
+
+    if (!userAnswer) {
+      setPracticeGenerationMessage("请先输入你的答案，再提交判分。");
+      return;
+    }
+
+    const evaluation = evaluatePracticeQuestionAnswer(question, userAnswer);
     const result = reviewPracticeQuestion({
       questionId: question.id,
-      rating,
-      correct: rating === "good" || rating === "easy"
+      rating: evaluation.rating,
+      correct: evaluation.correct,
+      userAnswer
     });
 
     if (!result) {
@@ -1193,6 +1328,15 @@ export function PracticeClient() {
       return;
     }
 
+    setPracticeQuestionFeedback((current) => ({
+      ...current,
+      [question.id]: evaluation
+    }));
+    setPracticeQuestionAnswers((current) => {
+      const next = { ...current };
+      delete next[question.id];
+      return next;
+    });
     refreshPracticeQuestionQueue();
     recordStudyActivity({
       type: "review",
@@ -1200,7 +1344,7 @@ export function PracticeClient() {
       minutes: 1,
       materialTitle: question.materialTitle
     });
-    setPracticeGenerationMessage(`已记录「${question.title}」的练习结果，下次复习已重新安排。`);
+    setPracticeGenerationMessage(`已提交「${question.title}」：${evaluation.message}`);
   }
 
   function handleSaveRoleplayNaturalReply() {
@@ -1445,17 +1589,31 @@ export function PracticeClient() {
         throw new Error(payload.error ?? "写作批改失败。");
       }
 
+      const correction = payload.correction;
+      const attempt = addPracticeAttempt({
+        type: "writing",
+        prompt: prompt.prompt,
+        materialTitle: currentMaterial?.title ?? prompt.title,
+        durationSeconds: Math.max(30, writingText.trim().split(/\s+/).length * 6),
+        transcript: writingText.trim(),
+        score: estimateWritingCorrectionScore(correction, writingText),
+        feedback: correction.feedbackZh
+      });
+
       recordStudyActivity({
         type: "output",
         label: `短写作：${prompt.title}`,
-        minutes: 1
+        minutes: 1,
+        materialId: currentMaterial?.id,
+        materialTitle: currentMaterial?.title
       });
-      setWritingCorrection(payload.correction);
+      setAttempts([attempt, ...loadPracticeAttempts().filter((item) => item.id !== attempt.id)]);
+      setWritingCorrection(correction);
       setWritingSaveMessage("");
       setSavedWritingKeys({});
       setWritingMessage(
-        payload.correction.source === "model"
-          ? `已由 ${payload.correction.provider} 批改。`
+        correction.source === "model"
+          ? `已由 ${correction.provider} 批改，并写入长期弱项画像。`
           : "当前使用本地降级写作反馈，配置 AI 后会调用模型。"
       );
     } catch (error) {
@@ -2278,48 +2436,67 @@ export function PracticeClient() {
           </CardHeader>
           <CardContent className="space-y-3">
             {duePracticeQuestions.length > 0 ? (
-              duePracticeQuestions.map((question) => (
-                <article key={question.id} className="rounded-lg border border-border bg-white p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <Badge variant="outline">{question.type}</Badge>
-                      <h3 className="mt-2 text-sm font-semibold text-foreground">{question.title}</h3>
+              duePracticeQuestions.map((question) => {
+                const feedback = practiceQuestionFeedback[question.id];
+                const answerValue = practiceQuestionAnswers[question.id] ?? "";
+
+                return (
+                  <article key={question.id} className="rounded-lg border border-border bg-white p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Badge variant="outline">{question.type}</Badge>
+                        <h3 className="mt-2 text-sm font-semibold text-foreground">{question.title}</h3>
+                      </div>
+                      <span className="text-xs text-muted">{question.level}</span>
                     </div>
-                    <span className="text-xs text-muted">{question.level}</span>
-                  </div>
-                  <p className="mt-2 text-xs leading-5 text-muted">{question.instruction}</p>
-                  <p className="mt-3 break-words rounded-lg bg-panel-strong p-3 text-sm leading-6 text-foreground">
-                    {question.prompt}
-                  </p>
-                  <details className="mt-3 rounded-lg border border-border bg-panel-strong p-3">
-                    <summary className="cursor-pointer text-xs font-semibold text-foreground">查看答案和解释</summary>
-                    <p className="mt-2 text-sm leading-6 text-foreground">{question.answer}</p>
-                    <p className="mt-2 text-xs leading-5 text-muted">{question.explanationZh}</p>
-                  </details>
-                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {[
-                      ["again", "重来"],
-                      ["hard", "困难"],
-                      ["good", "顺利"],
-                      ["easy", "简单"]
-                    ].map(([rating, label]) => (
-                      <Button
-                        key={rating}
-                        variant={rating === "good" || rating === "easy" ? "soft" : "outline"}
-                        size="sm"
-                        onClick={() =>
-                          handleReviewPracticeQuestion(
-                            question,
-                            rating as "again" | "hard" | "good" | "easy"
-                          )
-                        }
-                      >
-                        {label}
-                      </Button>
-                    ))}
-                  </div>
-                </article>
-              ))
+                    <p className="mt-2 text-xs leading-5 text-muted">{question.instruction}</p>
+                    <p className="mt-3 break-words rounded-lg bg-panel-strong p-3 text-sm leading-6 text-foreground">
+                      {question.prompt}
+                    </p>
+                    {question.choices && question.choices.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {question.choices.map((choice) => (
+                          <Button
+                            key={choice}
+                            type="button"
+                            variant={answerValue === choice ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleUsePracticeQuestionChoice(question.id, choice)}
+                          >
+                            {choice}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : null}
+                    <Label className="mt-3 block">
+                      我的答案
+                      <Textarea
+                        className="mt-2 min-h-24"
+                        value={answerValue}
+                        onChange={(event) => handlePracticeQuestionAnswerChange(question.id, event.target.value)}
+                        placeholder="先写出或说出你的答案，再填到这里提交。"
+                      />
+                    </Label>
+                    <Button className="mt-3 w-full sm:w-auto" onClick={() => handleSubmitPracticeQuestion(question)}>
+                      提交并安排复习
+                    </Button>
+                    {feedback ? (
+                      <div className="mt-3 rounded-lg border border-border bg-panel-strong p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-foreground">
+                            {feedback.correct ? "答案可用" : "需要回炉"}
+                          </p>
+                          <Badge variant={feedback.correct ? "default" : "outline"}>{feedback.score}%</Badge>
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-muted">{feedback.message}</p>
+                        <p className="mt-3 text-xs font-semibold text-foreground">参考答案</p>
+                        <p className="mt-1 text-sm leading-6 text-foreground">{question.answer}</p>
+                        <p className="mt-2 text-xs leading-5 text-muted">{question.explanationZh}</p>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })
             ) : (
               <p className="rounded-lg border border-border bg-white p-4 text-sm leading-6 text-muted">
                 暂无到期练习题。先生成并加入题库，或稍后按 SRS 到期后再回来练。

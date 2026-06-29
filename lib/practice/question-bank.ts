@@ -49,8 +49,8 @@ export type PracticeQuestionImportSummary = {
 
 const PRACTICE_QUESTIONS_KEY = "learn-english.practice-questions.v1";
 const PRACTICE_QUESTION_ATTEMPTS_KEY = "learn-english.practice-question-attempts.v1";
-const MAX_QUESTIONS = 500;
-const MAX_ATTEMPTS = 1000;
+const MAX_QUESTIONS = 10000;
+const MAX_ATTEMPTS = 20000;
 
 function canUseStorage() {
   return typeof window !== "undefined" && Boolean(window.localStorage);

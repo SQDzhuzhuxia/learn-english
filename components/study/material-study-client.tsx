@@ -18,12 +18,12 @@ import {
   Sparkles,
   Volume2
 } from "lucide-react";
-import { aiExplanation } from "@/lib/mock-data";
 import {
   getCachedAiExplanation,
   setCachedAiExplanation,
   setCachedAiExplanations
 } from "@/lib/ai/explanation-cache";
+import { createFallbackSegmentExplanation } from "@/lib/ai/fallback-explanation";
 import { requestAiJsonWithQueue } from "@/lib/ai/request-queue";
 import { recordStudyActivity } from "@/lib/analytics/progress-store";
 import {
@@ -128,10 +128,6 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
       return [];
     }
 
-    if (material.source === "seed") {
-      return aiExplanation.expressions;
-    }
-
     if (aiState.explanation?.keyExpressions.length) {
       return aiState.explanation.keyExpressions.map((expression) => ({
         text: expression.text,
@@ -152,7 +148,7 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
     setPlaybackMessage("");
     setMaterialAudioMessage("");
 
-    if (!material || !current || material.source === "seed") {
+    if (!material || !current) {
       setAiState({ status: "idle" });
       return;
     }
@@ -162,7 +158,19 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
     if (cached) {
       setAiState({ status: "success", explanation: cached, message: "已读取本地 AI 解释缓存。" });
     } else {
-      setAiState({ status: "idle" });
+      setAiState({
+        status: "success",
+        explanation: createFallbackSegmentExplanation(
+          {
+            materialTitle: material.title,
+            materialType: material.type,
+            level: material.level,
+            sentence: current.text,
+            contextText: material.contentText
+          },
+          "当前句本地解释"
+        )
+      });
     }
   }, [current, material]);
 
@@ -772,34 +780,10 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
           </CardHeader>
           <CardContent>
           <p className="rounded-lg border border-border bg-panel-strong p-3 text-sm leading-6 text-foreground">
-            {material.source === "seed" ? aiExplanation.sentence : current.text}
+            {current.text}
           </p>
 
-          {material.source === "seed" ? (
-            <div className="mt-4 space-y-4">
-              <section>
-                <h3 className="text-sm font-semibold text-foreground">句子意思</h3>
-                <p className="mt-2 text-sm leading-6 text-muted">{aiExplanation.meaning}</p>
-              </section>
-
-              <section>
-                <h3 className="text-sm font-semibold text-foreground">结构拆解</h3>
-                <ul className="mt-2 space-y-2 text-sm leading-6 text-muted">
-                  {aiExplanation.structure.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </section>
-
-              <section>
-                <h3 className="text-sm font-semibold text-foreground">中文母语者易错点</h3>
-                <p className="mt-2 rounded-lg border border-border bg-panel-strong p-3 text-sm leading-6 text-foreground">
-                  {aiExplanation.commonMistake}
-                </p>
-              </section>
-            </div>
-          ) : (
-            <div className="mt-4 space-y-4">
+          <div className="mt-4 space-y-4">
               <div className="grid gap-2">
                 <Button
                   onClick={handleGenerateAiExplanation}
@@ -902,11 +886,10 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
                 </>
               ) : (
                 <p className="rounded-lg border border-border bg-white p-3 text-sm leading-6 text-muted">
-                  这篇是你导入的材料。点击生成后，系统会按“中文解释、结构拆解、易错点、重点表达”的格式给当前句做学习说明。
+                  点击生成后，系统会按“中文解释、结构拆解、易错点、重点表达”的格式给当前句做学习说明。
                 </p>
               )}
             </div>
-          )}
           </CardContent>
         </Card>
 
@@ -943,10 +926,8 @@ export function MaterialStudyClient({ materialId }: { materialId?: string }) {
             </p>
           ) : null}
           <p className="mt-4 rounded-lg border border-border bg-panel-strong p-3 text-sm leading-6 text-foreground">
-            {material.source === "seed"
-              ? aiExplanation.shadowingTip
-              : aiState.explanation?.shadowingTip ??
-                "用户导入材料已能学习和保存进度；生成 AI 解释后会自动补充跟读建议和重点表达。"}
+            {aiState.explanation?.shadowingTip ??
+              "生成 AI 解释后会自动补充跟读建议和重点表达。"}
           </p>
           <Separator className="my-4" />
           <Button asChild className="w-full" onClick={handleSaveCurrentSentence}>

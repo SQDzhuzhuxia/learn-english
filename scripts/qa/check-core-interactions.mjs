@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 
 const ROOT = process.cwd();
 
@@ -23,13 +24,30 @@ function includesAll(text, patterns) {
   return patterns.every((pattern) => text.includes(pattern));
 }
 
+function runStatefulLearningFlowQa() {
+  const vitestEntry = path.join(ROOT, "node_modules", "vitest", "vitest.mjs");
+  const result = spawnSync(process.execPath, [vitestEntry, "run", "tests/qa/learning-flow.test.ts", "--reporter=dot"], {
+    cwd: ROOT,
+    encoding: "utf8",
+    stdio: "pipe"
+  });
+
+  return {
+    ok: result.status === 0,
+    output: `${result.error?.message ?? ""}\n${result.stdout ?? ""}${result.stderr ?? ""}`.trim()
+  };
+}
+
 function createReport() {
   const study = readText("components/study/material-study-client.tsx");
   const practice = readText("components/practice/practice-client.tsx");
   const review = readText("components/review/review-client.tsx");
   const settings = readText("components/settings/settings-client.tsx");
+  const today = readText("app/page.tsx");
+  const progress = readText("components/progress/progress-client.tsx");
   const appShell = readText("components/layout/app-shell.tsx");
   const toast = readText("components/ui/toast.tsx");
+  const statefulFlow = runStatefulLearningFlowQa();
 
   const checks = [
     check(
@@ -56,12 +74,23 @@ function createReport() {
       "components/study/material-study-client.tsx"
     ),
     check(
+      "no-static-learning-mocks",
+      "Learning data",
+      !study.includes("aiExplanation") &&
+        !today.includes("@/lib/mock-data") &&
+        !progress.includes("@/lib/mock-data"),
+      "Study, Today, and Progress must not use static mock learning data for live learning decisions.",
+      "components/study/material-study-client.tsx"
+    ),
+    check(
       "practice-generation-bank",
       "Practice",
       includesAll(practice, [
         "handleGeneratePracticeSet",
         "upsertPracticeQuestionsFromSet",
-        "reviewPracticeQuestion",
+        "handleSubmitPracticeQuestion",
+        "userAnswer",
+        "我的答案",
         "practice-shadowing",
         "practice-retelling",
         "practice-roleplay",
@@ -83,6 +112,15 @@ function createReport() {
       ]),
       "Review page should keep rating, suspend, reset, and speak interactions wired.",
       "components/review/review-client.tsx"
+    ),
+    check(
+      "stateful-learning-flow",
+      "End-to-end local flow",
+      statefulFlow.ok,
+      statefulFlow.ok
+        ? "Real local flow passed: import material, study progress, review card, generated question, answer attempt, weakness profile."
+        : `Real local flow failed:\n${statefulFlow.output}`,
+      "tests/qa/learning-flow.test.ts"
     ),
     check(
       "settings-tts-preview",

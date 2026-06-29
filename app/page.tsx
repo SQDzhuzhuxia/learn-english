@@ -23,7 +23,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { dailyPlan, progressStats, reviewCards } from "@/lib/mock-data";
 import {
   getSeedMaterials,
   loadMaterials,
@@ -40,6 +39,12 @@ import { createCourseStageRetrospective } from "@/lib/content/course-catalog";
 import { loadStudyActivities, summarizeStudyActivities } from "@/lib/analytics/progress-store";
 import { summarizeOutputErrors } from "@/lib/analytics/output-error-stats";
 import { loadPracticeAttempts } from "@/lib/speech/practice-store";
+import {
+  isCardDue,
+  loadLearningItems,
+  loadReviewCards
+} from "@/lib/review/review-store";
+import type { ReviewCardRecord } from "@/lib/review/types";
 
 const stepIcons = {
   warmup: BookmarkCheck,
@@ -56,12 +61,51 @@ const practiceTaskIcons: Record<TodayPracticeTaskId, typeof Mic> = {
 
 const durationOptions: DailyStudyDuration[] = [30, 45, 60];
 
+function formatTodayLabel() {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short"
+  }).format(new Date());
+}
+
+function createTodayProgressStats(input: {
+  inputMinutes: number;
+  outputEvents: number;
+  reviewEvents: number;
+  activeItemCount: number;
+}) {
+  return [
+    {
+      label: "本周输入",
+      value: `${input.inputMinutes}`,
+      hint: "真实听读/精学分钟"
+    },
+    {
+      label: "输出次数",
+      value: `${input.outputEvents}`,
+      hint: "跟读、复述、写作、角色"
+    },
+    {
+      label: "完成复习",
+      value: `${input.reviewEvents}`,
+      hint: "本周真实评分"
+    },
+    {
+      label: "词句资产",
+      value: `${input.activeItemCount}`,
+      hint: "当前活跃复习内容"
+    }
+  ];
+}
+
 export default function TodayPage() {
   const [materials, setMaterials] = useState(() => getSeedMaterials());
   const [studyDuration, setStudyDuration] = useState<DailyStudyDuration>(30);
   const [activitySummary, setActivitySummary] = useState(() => summarizeStudyActivities([]));
   const [outputErrorSummary, setOutputErrorSummary] = useState(() => summarizeOutputErrors([]));
-  const dueCards = reviewCards.filter((card) => card.dueToday);
+  const [dueCards, setDueCards] = useState<ReviewCardRecord[]>([]);
+  const [activeItemCount, setActiveItemCount] = useState(0);
   const coursePlan = useMemo(
     () => createTodayCoursePlan(materials),
     [materials]
@@ -96,11 +140,36 @@ export default function TodayPage() {
     [activeTrack, materials]
   );
   const currentMaterialHref = currentMaterial ? `/study/${currentMaterial.id}` : "/study";
+  const todayProgressStats = useMemo(
+    () =>
+      createTodayProgressStats({
+        inputMinutes: activitySummary.inputMinutes,
+        outputEvents: activitySummary.outputEvents,
+        reviewEvents: activitySummary.reviewEvents,
+        activeItemCount
+      }),
+    [activeItemCount, activitySummary.inputMinutes, activitySummary.outputEvents, activitySummary.reviewEvents]
+  );
+  const totalMinutes = activitySummary.inputMinutes + activitySummary.outputMinutes + activitySummary.reviewMinutes;
+  const todayHabits = [
+    {
+      label: "本周真实学习",
+      value: `${totalMinutes} 分钟`
+    },
+    {
+      label: "到期复习",
+      value: `${dueCards.length} 张`
+    },
+    {
+      label: "输出记录",
+      value: `${outputErrorSummary.attemptCount} 次`
+    }
+  ];
   const todayQueue = [
     {
       id: "course-input",
       label: activeTrack?.levelRange ?? "A1-A2",
-      title: currentMaterial?.title ?? dailyPlan.currentMaterial.title,
+      title: currentMaterial?.title ?? "选择今日材料",
       action: "进入材料",
       href: currentMaterialHref
     },
@@ -128,6 +197,8 @@ export default function TodayPage() {
         setMaterials(loadMaterials());
         setActivitySummary(summarizeStudyActivities(loadStudyActivities()));
         setOutputErrorSummary(summarizeOutputErrors(loadPracticeAttempts()));
+        setDueCards(loadReviewCards().filter((card) => card.status !== "suspended" && isCardDue(card)));
+        setActiveItemCount(loadLearningItems().filter((item) => item.status !== "archived").length);
       }
     });
 
@@ -143,7 +214,7 @@ export default function TodayPage() {
           <CardContent className="pt-5">
           <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <Badge variant="soft">{dailyPlan.dateLabel} · 今日计划</Badge>
+              <Badge variant="soft">{formatTodayLabel()} · 今日计划</Badge>
               <h1 className="mt-3 text-2xl font-semibold text-foreground sm:text-3xl">
                 {sessionPlan.duration} 分钟英语输入闭环
               </h1>
@@ -253,7 +324,7 @@ export default function TodayPage() {
             <div className="min-w-0">
               <p className="text-sm font-medium text-muted">当前材料</p>
               <h2 className="mt-2 break-words text-xl font-semibold text-foreground">
-                {currentMaterial?.title ?? dailyPlan.currentMaterial.title}
+                {currentMaterial?.title ?? "选择今日材料"}
               </h2>
             </div>
             <BookOpenText className="h-5 w-5 text-foreground" />
@@ -262,10 +333,10 @@ export default function TodayPage() {
           <div className="mt-4 space-y-4">
             <div>
               <div className="flex items-center justify-between text-sm text-muted">
-                <span>{currentMaterial?.type ?? dailyPlan.currentMaterial.type} · {currentMaterial?.level ?? dailyPlan.currentMaterial.level}</span>
-                <span>{currentMaterial?.progress ?? dailyPlan.currentMaterial.progress}%</span>
+                <span>{currentMaterial?.type ?? "材料"} · {currentMaterial?.level ?? "A1-A2"}</span>
+                <span>{currentMaterial?.progress ?? 0}%</span>
               </div>
-              <Progress value={currentMaterial?.progress ?? dailyPlan.currentMaterial.progress} className="mt-2" />
+              <Progress value={currentMaterial?.progress ?? 0} className="mt-2" />
             </div>
 
             <div className="rounded-lg border border-border bg-panel-strong p-4">
@@ -384,7 +455,7 @@ export default function TodayPage() {
               {dueCards.slice(0, 3).map((card) => (
                 <div key={card.id} className="rounded-lg border border-border bg-white p-3">
                   <p className="text-sm font-medium text-foreground">{card.front}</p>
-                  <p className="mt-1 text-xs text-muted">{card.cardType} · {card.difficulty}</p>
+                  <p className="mt-1 text-xs text-muted">{card.cardType} · {card.status}</p>
                 </div>
               ))}
             </div>
@@ -400,7 +471,7 @@ export default function TodayPage() {
             </CardHeader>
             <CardContent>
             <div className="grid grid-cols-2 gap-3">
-              {progressStats.map((stat) => (
+              {todayProgressStats.map((stat) => (
                 <div key={stat.label} className="rounded-lg border border-border bg-white p-3">
                   <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
                   <p className="mt-1 text-xs font-medium text-muted">{stat.label}</p>
@@ -463,7 +534,7 @@ export default function TodayPage() {
             <h2 className="mt-3 text-lg font-semibold text-foreground">今天只需要跟着流程走</h2>
           </div>
           <div className="grid gap-2 text-sm text-muted sm:grid-cols-3">
-            {dailyPlan.habits.map((habit) => (
+            {todayHabits.map((habit) => (
               <div key={habit.label} className="rounded-lg border border-border bg-white px-3 py-2">
                 <p className="font-semibold text-foreground">{habit.value}</p>
                 <p className="mt-1 text-xs">{habit.label}</p>

@@ -5,7 +5,7 @@
 
 [![CI](https://github.com/SQDzhuzhuxia/learn-english/actions/workflows/ci.yml/badge.svg)](https://github.com/SQDzhuzhuxia/learn-english/actions/workflows/ci.yml)
 
-[English README](README.en.md) · [项目进度](docs/project-progress.md) · [技术方案](docs/technical-plan-v0.1.md) · [部署指南](docs/deployment-guide.md) · [贡献指南](CONTRIBUTING.md)
+[English README](README.en.md) · [使用教程](docs/user-guide.md) · [项目进度](docs/project-progress.md) · [技术方案](docs/technical-plan-v0.1.md) · [部署指南](docs/deployment-guide.md) · [贡献指南](CONTRIBUTING.md)
 
 ## 为什么做
 
@@ -208,6 +208,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 ## 文档
 
+- [使用教程](docs/user-guide.md)
 - [需求文档](docs/requirements-v0.1.md)
 - [技术方案](docs/technical-plan-v0.1.md)
 - [页面原型](docs/page-prototype-v0.1.md)
